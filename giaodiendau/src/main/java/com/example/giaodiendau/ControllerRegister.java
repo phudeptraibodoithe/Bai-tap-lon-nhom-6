@@ -24,23 +24,23 @@ public class ControllerRegister {
     @FXML private PasswordField repassText;
     @FXML private TextField phoneText;
     @FXML private Label err;
+    @FXML private TextField usernameText;
+
 
     private Stage stage;
     private Scene scene;
     private Parent root;
-    private String username;
-    private String password;
-    private String email;
-    private String phone;
+    private String username,phone,email,password,account;
 
     public void submit(ActionEvent event)throws IOException{
         err.setStyle("-fx-text-fill: red;");
-        username=signText.getText();
+        username=usernameText.getText();
+        account=signText.getText();
         password=passText.getText();
         email=emailText.getText();
         phone=phoneText.getText();
         if (username.trim().isEmpty() || password.trim().isEmpty() || repassText.getText().trim().isEmpty() ||
-                email.trim().isEmpty() || phone.trim().isEmpty()) {
+                email.trim().isEmpty() || phone.trim().isEmpty() || account.trim().isEmpty()) {
             err.setText("Vui lòng điền đầy đủ thông tin!");
             return;
         }
@@ -74,6 +74,7 @@ public class ControllerRegister {
         root= FXMLLoader.load(getClass().getResource("/login.fxml"));
         stage=(Stage) ((Node)e.getSource()).getScene().getWindow();
         scene=new Scene(root);
+        scene.getStylesheets().add(getClass().getResource("/Button.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
     }
@@ -82,6 +83,7 @@ public class ControllerRegister {
         root= FXMLLoader.load(getClass().getResource("/start.fxml"));
         stage=(Stage) ((Node)e.getSource()).getScene().getWindow();
         scene=new Scene(root);
+        scene.getStylesheets().add(getClass().getResource("/Button.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
     }

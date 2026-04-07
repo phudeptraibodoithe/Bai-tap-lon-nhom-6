@@ -15,10 +15,10 @@ import javafx.stage.Stage;
 import java.io.IOException;
 
 public class ControllerLogin {
-    @FXML
-    private TextField signText;
-    private PasswordField passText;
-    private Button button;
+
+    @FXML private TextField signText;
+    @FXML private PasswordField passText;
+    @FXML private Button button;
 
     private Stage stage;
     private Scene scene;
@@ -35,6 +35,7 @@ public class ControllerLogin {
         root= FXMLLoader.load(getClass().getResource("/start.fxml"));
         stage=(Stage) ((Node)e.getSource()).getScene().getWindow();
         scene=new Scene(root);
+        scene.getStylesheets().add(getClass().getResource("/Button.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
     }
@@ -43,6 +44,7 @@ public class ControllerLogin {
         root= FXMLLoader.load(getClass().getResource("/register.fxml"));
         stage=(Stage) ((Node)e.getSource()).getScene().getWindow();
         scene=new Scene(root);
+        scene.getStylesheets().add(getClass().getResource("/Button.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
     }

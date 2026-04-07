@@ -7,6 +7,7 @@
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
+
 <AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.giaodiendau.ControllerStart">
     <children>
         <AnchorPane prefHeight="600.0" prefWidth="400.0" style="-fx-background-color: #A2B5BB;">
@@ -28,24 +29,24 @@
                 </Text>
             </children>
         </AnchorPane>
-        <AnchorPane layoutX="395.0" prefHeight="600.0" prefWidth="400.0">
+        <AnchorPane layoutX="400.0" prefHeight="600.0" prefWidth="400.0" style="-fx-background-color: white;">
             <children>
-                <Button layoutX="164.0" layoutY="380.0" mnemonicParsing="false" onAction="#switchToRegister" prefHeight="47.0" prefWidth="143.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-background-color: #F4A460; -fx-cursor: HAND; -fx-border-color: BLACK; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);" text="ĐĂNG KÝ">
+                <Button layoutX="129.0" layoutY="381.0" mnemonicParsing="false" onAction="#switchToRegister" prefHeight="47.0" prefWidth="143.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-background-color: #F4A460; -fx-cursor: HAND; -fx-border-color: BLACK; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);" text="ĐĂNG KÝ">
                     <font>
                         <Font size="20.0" />
                     </font>
                 </Button>
-                <Button layoutX="164.0" layoutY="437.0" mnemonicParsing="false" onAction="#switchToLogin" prefHeight="47.0" prefWidth="143.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-background-color: #FFCC99; -fx-cursor: HAND; -fx-border-color: BLACK; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);" text="ĐĂNG NHẬP">
+                <Button layoutX="129.0" layoutY="438.0" mnemonicParsing="false" onAction="#switchToLogin" prefHeight="47.0" prefWidth="143.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-background-color: #FFCC99; -fx-cursor: HAND; -fx-border-color: BLACK; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);" text="ĐĂNG NHẬP">
                     <font>
                         <Font size="20.0" />
                     </font>
                 </Button>
-                <Text layoutX="66.0" layoutY="322.0" lineSpacing="1.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Vui Lòng Chọn Thao Tác Để Tiếp Tục " textAlignment="CENTER" wrappingWidth="338.5224609375">
+                <Text layoutX="33.0" layoutY="322.0" lineSpacing="1.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Vui Lòng Chọn Thao Tác Để Tiếp Tục " textAlignment="CENTER" wrappingWidth="338.5224609375">
                     <font>
                         <Font size="20.0" />
                     </font>
                 </Text>
-                <Text layoutX="108.0" layoutY="240.0" lineSpacing="1.0" strokeType="OUTSIDE" strokeWidth="0.0" style="-fx-font-weight: BOLD;" text="BẮT ĐẦU NGAY!!!" wrappingWidth="254.24462890625">
+                <Text layoutX="75.0" layoutY="243.0" lineSpacing="1.0" strokeType="OUTSIDE" strokeWidth="0.0" style="-fx-font-weight: BOLD;" text="BẮT ĐẦU NGAY!!!" wrappingWidth="254.24462890625">
                     <font>
                         <Font size="30.0" />
                     </font>

@@ -21,6 +21,7 @@ public class ControllerStart {
         root= FXMLLoader.load(getClass().getResource("/register.fxml"));
         stage=(Stage) ((Node)e.getSource()).getScene().getWindow();
         scene=new Scene(root);
+        scene.getStylesheets().add(getClass().getResource("/Button.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
     }
@@ -28,6 +29,7 @@ public class ControllerStart {
         root= FXMLLoader.load(getClass().getResource("/login.fxml"));
         stage=(Stage) ((Node)e.getSource()).getScene().getWindow();
         scene=new Scene(root);
+        scene.getStylesheets().add(getClass().getResource("/Button.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
     }

@@ -11,7 +11,7 @@ import javafx.stage.Stage;
 
 import java.io.IOException;
 
-public class Controller {
+public class ControllerStart {
     @FXML
     private Stage stage;
     private Scene scene;
@@ -26,13 +26,6 @@ public class Controller {
     }
     public void switchToLogin(ActionEvent e)throws IOException {
         root= FXMLLoader.load(getClass().getResource("/login.fxml"));
-        stage=(Stage) ((Node)e.getSource()).getScene().getWindow();
-        scene=new Scene(root);
-        stage.setScene(scene);
-        stage.show();
-    }
-    public void switchToStart(MouseEvent e)throws IOException {
-        root= FXMLLoader.load(getClass().getResource("/start.fxml"));
         stage=(Stage) ((Node)e.getSource()).getScene().getWindow();
         scene=new Scene(root);
         stage.setScene(scene);

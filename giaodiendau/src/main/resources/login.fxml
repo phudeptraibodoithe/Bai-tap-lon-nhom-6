@@ -10,17 +10,17 @@
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="800.0" style="-fx-background-color: #A2B5BB;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.giaodiendau.Controller">
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="800.0" style="-fx-background-color: #A2B5BB;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.giaodiendau.ControllerLogin">
     <children>
       <AnchorPane layoutX="216.0" layoutY="7.0" prefHeight="586.0" prefWidth="376.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-border-radius: 15; -fx-border-width: 2; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-border-color: #DFB76C; -fx-background-insets: 2;" />
-        <TextField layoutX="240.0" layoutY="280.0" prefHeight="25.0" prefWidth="314.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-highlight-fill: #E95C20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);" />
+        <TextField fx:id="signText" layoutX="240.0" layoutY="280.0" prefHeight="25.0" prefWidth="314.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-highlight-fill: #E95C20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);" />
         <Label layoutX="240.0" layoutY="330.0" prefHeight="17.0" prefWidth="104.0" text="Mật Khẩu">
             <font>
                 <Font size="16.0" />
             </font>
         </Label>
-        <PasswordField layoutX="240.0" layoutY="355.0" prefHeight="25.0" prefWidth="314.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-highlight-fill: #E95C20;" />
-        <Button layoutX="242.0" layoutY="413.0" mnemonicParsing="false" prefHeight="35.0" prefWidth="314.0" style="-fx-background-color: #DFB76C; -fx-background-radius: 15; -fx-border-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-cursor: hand;" text="ĐĂNG NHẬP">
+        <PasswordField fx:id="passText" layoutX="240.0" layoutY="355.0" prefHeight="25.0" prefWidth="314.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-highlight-fill: #E95C20;" />
+        <Button fx:id="button" layoutX="242.0" layoutY="413.0" mnemonicParsing="false" onAction="#submit" prefHeight="35.0" prefWidth="314.0" style="-fx-background-color: #DFB76C; -fx-background-radius: 15; -fx-border-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-cursor: hand;" text="ĐĂNG NHẬP">
             <font>
                 <Font size="21.0" />
             </font>
@@ -31,7 +31,6 @@
             </image>
         </ImageView>
         <Hyperlink layoutX="486.0" layoutY="476.0" onAction="#switchToRegister" prefHeight="23.0" prefWidth="74.0" text="ĐĂNG KÝ" />
-        <Hyperlink layoutX="242.0" layoutY="476.0" text="QUÊN MẬT KHẨU" />
         <Label layoutX="242.0" layoutY="251.0" prefHeight="25.0" prefWidth="142.0" text="Tên Đăng Nhập">
             <font>
                 <Font size="16.0" />

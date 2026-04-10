@@ -10,7 +10,6 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
@@ -34,143 +33,134 @@
                     </image>
                 </ImageView>
                 <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-text-fill: #2c3e50;" text="Menu 🏠">
-               <cursor>
-                  <Cursor fx:constant="HAND" />
-               </cursor></Button>
-                <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-text-fill: #2c3e50;" text="Lịch sử 📜">
-               <cursor>
-                  <Cursor fx:constant="HAND" />
-               </cursor></Button>
-                <Button mnemonicParsing="false" style="-fx-background-color: #99BADD; -fx-text-fill: #2c3e50;" text="Đăng sản phẩm 📤">
-                    <cursor>
-                        <Cursor fx:constant="HAND" />
-                    </cursor>
+                    <cursor><Cursor fx:constant="HAND" /></cursor>
                 </Button>
-                <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-text-fill: #2c3e50;" text="Profile 👤">
-               <cursor>
-                  <Cursor fx:constant="HAND" />
-               </cursor></Button>
+                <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-text-fill: #2c3e50;" text="Lịch sử 📜">
+                    <cursor><Cursor fx:constant="HAND" /></cursor>
+                </Button>
+                <Button mnemonicParsing="false" style="-fx-background-color: #99BADD; -fx-text-fill: #2c3e50;" text="Đăng sản phẩm 📤">
+                    <cursor><Cursor fx:constant="HAND" /></cursor>
+                </Button>
+                <Button mnemonicParsing="false" onAction="#switchToProfile" style="-fx-background-color: transparent; -fx-text-fill: #2c3e50;" text="Profile 👤">
+                    <cursor><Cursor fx:constant="HAND" /></cursor>
+                </Button>
                 <Region HBox.hgrow="ALWAYS" />
                 <Label text="User?" />
-            <ImageView fitHeight="58.0" fitWidth="61.0" pickOnBounds="true" preserveRatio="true" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);" />
+                <ImageView fitHeight="58.0" fitWidth="61.0" pickOnBounds="true" preserveRatio="true" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);" />
             </children>
         </HBox>
 
-        <GridPane hgap="30.0" prefHeight="422.0" prefWidth="950.0" style="-fx-background-color: #F0F8FF;" vgap="20.0">
+        <GridPane hgap="30.0" prefHeight="422.0" prefWidth="950.0" style="-fx-background-color: #F0F8FF;" VBox.vgrow="ALWAYS">
             <columnConstraints>
-                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="300.0" />
-                <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="500.0" />
+                <ColumnConstraints halignment="CENTER" hgrow="NEVER" maxWidth="320.0" minWidth="320.0" prefWidth="320.0" />
+                <ColumnConstraints halignment="LEFT" hgrow="ALWAYS" minWidth="10.0" prefWidth="500.0" />
             </columnConstraints>
             <rowConstraints>
-                <RowConstraints />
-                <RowConstraints />
-                <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
-            <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
+                <RowConstraints valignment="TOP" vgrow="ALWAYS" />
             </rowConstraints>
             <padding>
                 <Insets bottom="20.0" left="40.0" right="40.0" top="30.0" />
             </padding>
             <children>
 
-                <VBox prefWidth="295.0" spacing="15.0" GridPane.rowIndex="2">
+                <VBox alignment="TOP_CENTER" prefWidth="320.0" spacing="20.0" GridPane.columnIndex="0" GridPane.rowIndex="0">
                     <children>
-                        <StackPane fx:id="imageFrame" prefHeight="250.0" style="-fx-border-color: #ccc; -fx-border-radius: 10; -fx-background-color: white; -fx-background-radius: 10;">
+                        <StackPane fx:id="imageFrame" maxHeight="250.0" maxWidth="300.0" minHeight="250.0" minWidth="300.0" prefHeight="250.0" prefWidth="300.0" style="-fx-border-color: #ccc; -fx-border-radius: 10; -fx-background-color: white; -fx-background-radius: 10;">
                             <children>
-                                <VBox alignment="CENTER" prefHeight="300.0" prefWidth="300.0" spacing="10.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-border-width: 3; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-border-color: #DAA520; -fx-background-color: #B2AC88;">
+                                <VBox alignment="CENTER" maxHeight="250.0" maxWidth="300.0" prefHeight="250.0" prefWidth="300.0" spacing="10.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-border-width: 3; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-border-color: #DAA520; -fx-background-color: #B2AC88;">
                                     <children>
                                         <Label font="$x2" text="⬆">
-                                            <font>
-                                                <Font size="36.0" fx:id="x2" />
-                                            </font>
+                                            <font><Font size="36.0" fx:id="x2" /></font>
                                         </Label>
                                         <Label text="Thêm Ảnh" textFill="#555">
-                                            <font>
-                                                <Font size="18.0" />
-                                            </font>
+                                            <font><Font size="18.0" /></font>
                                         </Label>
                                     </children>
                                 </VBox>
-                        <ImageView fx:id="myImageView" fitHeight="208.0" fitWidth="290.0" onMouseClicked="#uploadImage" pickOnBounds="true" preserveRatio="true">
-                           <cursor>
-                              <Cursor fx:constant="HAND" />
-                           </cursor>
-                        </ImageView>
+                                <ImageView fx:id="myImageView" fitHeight="208.0" fitWidth="290.0" onMouseClicked="#uploadImage" pickOnBounds="true" preserveRatio="true">
+                                    <cursor><Cursor fx:constant="HAND" /></cursor>
+                                </ImageView>
                             </children>
                         </StackPane>
-                        <HBox spacing="10.0">
+
+                        <HBox alignment="CENTER_LEFT" maxWidth="300.0" spacing="20.0">
                             <children>
-                                <DatePicker prefHeight="40.0" promptText="Time Start" HBox.hgrow="ALWAYS" />
-                                <DatePicker prefHeight="40.0" promptText="Time End" HBox.hgrow="ALWAYS" />
+                                <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                                    <children>
+                                        <Label text="Ngày bắt đầu">
+                                            <font><Font size="14.0" /></font>
+                                        </Label>
+                                        <DatePicker fx:id="datePickerStart" maxWidth="Infinity" prefHeight="40.0" promptText="Time Start" />
+                                    </children>
+                                </VBox>
+                                <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                                    <children>
+                                        <Label text="Ngày kết thúc">
+                                            <font><Font size="14.0" /></font>
+                                        </Label>
+                                        <DatePicker fx:id="datePickerEnd" maxWidth="Infinity" prefHeight="40.0" promptText="Time End" />
+                                    </children>
+                                </VBox>
                             </children>
                         </HBox>
                     </children>
                 </VBox>
 
-                <VBox prefHeight="312.0" prefWidth="546.0" spacing="15.0" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                <VBox prefWidth="546.0" spacing="15.0" GridPane.columnIndex="1" GridPane.rowIndex="0">
                     <children>
+                        <Text fill="#75500c" strokeType="OUTSIDE" strokeWidth="0.0" style="-fx-font-weight: bold;" text="Thông tin cơ bản">
+                            <font><Font size="15.0" /></font>
+                        </Text>
+
                         <TextField fx:id="nameItem" prefHeight="45.0" promptText="Tên sản phẩm" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-border-width: 2; -fx-border-color: #99BADD; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);">
-                            <font>
-                                <Font size="14.0" />
-                            </font></TextField>
-                        <TextArea fx:id="inforItem" prefHeight="231.0" prefWidth="495.0" promptText="Thông tin sản phẩm" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-border-width: 2; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-border-color: #99BADD; -fx-highlight-fill: #FFD700; -fx-background-color: #F0F8FF;" wrapText="true">
-                            <font>
-                                <Font size="14.0" />
-                            </font></TextArea>
-                  <AnchorPane prefHeight="49.0" prefWidth="495.0">
-                     <children>
-                        <Label layoutX="8.0" layoutY="3.0" prefHeight="40.0" prefWidth="142.0" text="Giá khởi điểm(VNĐ):" wrapText="true">
-                           <font>
-                              <Font size="14.0" />
-                           </font>
-                        </Label>
-                        <Label layoutX="275.0" layoutY="3.0" prefHeight="40.0" prefWidth="164.0" text="Bước nhảy(VNĐ):" wrapText="true">
-                           <font>
-                              <Font size="14.0" />
-                           </font>
-                        </Label>
-                     </children>
-                  </AnchorPane>
+                            <font><Font size="14.0" /></font>
+                        </TextField>
+
+                        <TextArea fx:id="inforItem" prefHeight="145.0" prefWidth="495.0" promptText="Thông tin sản phẩm" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-border-width: 2; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-border-color: #99BADD; -fx-highlight-fill: #FFD700; -fx-background-color: #F0F8FF;" wrapText="true" VBox.vgrow="ALWAYS">
+                            <font><Font size="14.0" /></font>
+                        </TextArea>
+
+                        <HBox spacing="20.0">
+                            <children>
+                                <VBox spacing="5.0">
+                                    <children>
+                                        <Label text="Giá khởi điểm(VNĐ):">
+                                            <font><Font size="14.0" /></font>
+                                        </Label>
+                                        <Spinner fx:id="priceSpinner" editable="true" prefHeight="40.0" prefWidth="200.0" />
+                                    </children>
+                                </VBox>
+                                <VBox spacing="5.0">
+                                    <children>
+                                        <Label text="Bước nhảy(VNĐ):">
+                                            <font><Font size="14.0" /></font>
+                                        </Label>
+                                        <Spinner fx:id="jumpSpinner" prefHeight="40.0" prefWidth="200.0" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </HBox>
                     </children>
                 </VBox>
-                <Text fill="#75500c" strokeType="OUTSIDE" strokeWidth="0.0" style="-fx-font-weight: bold;" text="Thông tin cơ bản" GridPane.columnIndex="1" GridPane.rowIndex="1">
-                    <font>
-                        <Font size="15.0" />
-                    </font>
-                </Text>
-            <AnchorPane prefHeight="90.0" prefWidth="365.0" GridPane.columnIndex="1" GridPane.rowIndex="3">
-               <children>
-                  <Spinner layoutY="-13.0" prefHeight="40.0" prefWidth="227.0" />
-                  <Spinner layoutX="277.0" layoutY="-13.0" prefHeight="40.0" prefWidth="212.0" />
-               </children>
-            </AnchorPane>
+
             </children>
         </GridPane>
 
-        <HBox alignment="BOTTOM_RIGHT" spacing="15.0" style="-fx-background-color: #F0F8FF;" VBox.vgrow="ALWAYS">
+        <HBox alignment="BOTTOM_RIGHT" spacing="15.0" style="-fx-background-color: #F0F8FF;">
             <padding>
                 <Insets bottom="30.0" right="40.0" />
             </padding>
             <children>
-            <Label fx:id="thongbao" prefHeight="37.0" prefWidth="318.0" wrapText="true">
-               <font>
-                  <Font size="16.0" />
-               </font>
-            </Label>
+                <Label fx:id="thongbao" prefHeight="37.0" prefWidth="318.0" wrapText="true">
+                    <font><Font size="16.0" /></font>
+                </Label>
                 <Button fx:id="submit" mnemonicParsing="false" onAction="#postItem" prefHeight="45.0" prefWidth="120.0" style="-fx-background-color: #4CAF50; -fx-background-radius: 15; -fx-border-radius: 15;" text="ĐĂNG" textFill="WHITE">
-                    <font>
-                        <Font name="System Bold" size="14.0" />
-                    </font>
-               <cursor>
-                  <Cursor fx:constant="HAND" />
-               </cursor>
+                    <font><Font name="System Bold" size="14.0" /></font>
+                    <cursor><Cursor fx:constant="HAND" /></cursor>
                 </Button>
                 <Button fx:id="cancle" mnemonicParsing="false" onAction="#canclePost" prefHeight="45.0" prefWidth="120.0" style="-fx-background-color: #FF6961; -fx-background-radius: 15; -fx-border-radius: 15;" text="XÓA">
-                    <font>
-                        <Font size="14.0" />
-                    </font>
-               <cursor>
-                  <Cursor fx:constant="HAND" />
-               </cursor>
+                    <font><Font size="14.0" /></font>
+                    <cursor><Cursor fx:constant="HAND" /></cursor>
                 </Button>
             </children>
         </HBox>

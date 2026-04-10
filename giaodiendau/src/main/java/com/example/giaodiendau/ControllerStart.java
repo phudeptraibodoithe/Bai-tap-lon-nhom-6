@@ -18,19 +18,17 @@ public class ControllerStart {
     private Parent root;
 
     public void switchToRegister(ActionEvent e)throws IOException {
-        root= FXMLLoader.load(getClass().getResource("/register.fxml"));
-        stage=(Stage) ((Node)e.getSource()).getScene().getWindow();
-        scene=new Scene(root);
+        root = FXMLLoader.load(getClass().getResource("/register.fxml"));
+        scene = ((Node) e.getSource()).getScene();
+        scene.getStylesheets().clear();
         scene.getStylesheets().add(getClass().getResource("/Button.css").toExternalForm());
-        stage.setScene(scene);
-        stage.show();
+        scene.setRoot(root);
     }
     public void switchToLogin(ActionEvent e)throws IOException {
-        root= FXMLLoader.load(getClass().getResource("/login.fxml"));
-        stage=(Stage) ((Node)e.getSource()).getScene().getWindow();
-        scene=new Scene(root);
+        root = FXMLLoader.load(getClass().getResource("/login.fxml"));
+        scene = ((Node) e.getSource()).getScene();
+        scene.getStylesheets().clear();
         scene.getStylesheets().add(getClass().getResource("/Button.css").toExternalForm());
-        stage.setScene(scene);
-        stage.show();
+        scene.setRoot(root);
     }
 }

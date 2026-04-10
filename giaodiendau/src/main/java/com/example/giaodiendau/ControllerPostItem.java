@@ -50,6 +50,14 @@ public class ControllerPostItem implements Initializable {
         scene.setRoot(root);
     }
 
+    public void switchToHistory(ActionEvent e) throws IOException {
+        root = FXMLLoader.load(getClass().getResource("/history.fxml"));
+        scene = ((Node) e.getSource()).getScene();
+        scene.getStylesheets().clear();
+        scene.getStylesheets().add(getClass().getResource("/Button.css").toExternalForm());
+        scene.setRoot(root);
+    }
+
 
     public void uploadImage(MouseEvent event)throws IOException {
         FileChooser fileChooser = new FileChooser();
@@ -63,21 +71,13 @@ public class ControllerPostItem implements Initializable {
         if (selectedFile != null) {
             imagePath = selectedFile.toURI().toString();
             Image image = new Image(imagePath);
-
-            // Đảm bảo ImageView co dãn theo khung đã định sẵn
             myImageView.setPreserveRatio(true);
-
-            // Thiết lập để ảnh lấp đầy khung (nếu ảnh quá dài hoặc quá cao)
-            // Bạn có thể tùy chỉnh center để ảnh không bị lệch
             double width = myImageView.getFitWidth();
             double height = myImageView.getFitHeight();
-
-            // Tạo một hình chữ nhật để làm khuôn cắt
             Rectangle clip = new Rectangle(width, height);
-            clip.setArcWidth(20); // Bo góc một chút cho đẹp (tùy chọn)
+            clip.setArcWidth(20);
             clip.setArcHeight(20);
             myImageView.setClip(clip);
-
             myImageView.setImage(image);
         }
     }

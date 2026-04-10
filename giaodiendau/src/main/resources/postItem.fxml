@@ -35,7 +35,7 @@
                 <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-text-fill: #2c3e50;" text="Menu 🏠">
                     <cursor><Cursor fx:constant="HAND" /></cursor>
                 </Button>
-                <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-text-fill: #2c3e50;" text="Lịch sử 📜">
+                <Button mnemonicParsing="false" onAction="#switchToHistory" style="-fx-background-color: transparent; -fx-text-fill: #2c3e50;" text="Lịch sử 📜">
                     <cursor><Cursor fx:constant="HAND" /></cursor>
                 </Button>
                 <Button mnemonicParsing="false" style="-fx-background-color: #99BADD; -fx-text-fill: #2c3e50;" text="Đăng sản phẩm 📤">
@@ -135,7 +135,7 @@
                                         <Label text="Bước nhảy(VNĐ):">
                                             <font><Font size="14.0" /></font>
                                         </Label>
-                                        <Spinner fx:id="jumpSpinner" prefHeight="40.0" prefWidth="200.0" />
+                                        <Spinner fx:id="jumpSpinner" editable="true" prefHeight="40.0" prefWidth="200.0" />
                                     </children>
                                 </VBox>
                             </children>

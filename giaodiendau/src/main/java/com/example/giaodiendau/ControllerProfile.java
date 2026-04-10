@@ -44,6 +44,14 @@ public class ControllerProfile implements Initializable {
         scene.setRoot(root);
     }
 
+    public void switchToHistory(ActionEvent e) throws IOException {
+        root = FXMLLoader.load(getClass().getResource("/history.fxml"));
+        scene = ((Node) e.getSource()).getScene();
+        scene.getStylesheets().clear();
+        scene.getStylesheets().add(getClass().getResource("/Button.css").toExternalForm());
+        scene.setRoot(root);
+    }
+
     public void loadUserAvatar(String pathFromDB) {
         Image image;
         if (pathFromDB == null) {

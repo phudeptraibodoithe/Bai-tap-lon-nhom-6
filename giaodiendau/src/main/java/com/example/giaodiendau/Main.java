@@ -12,7 +12,7 @@ import javafx.stage.Stage;
 public class Main extends Application {
     @Override
     public void start(Stage stage) throws Exception {
-        Parent root= FXMLLoader.load(getClass().getResource("/postItem.fxml"));
+        Parent root= FXMLLoader.load(getClass().getResource("/start.fxml"));
         Scene scene=new Scene(root);
         scene.getStylesheets().add(getClass().getResource("/Button.css").toExternalForm());
         stage.setScene(scene);

@@ -2,6 +2,100 @@
 làm hệ thống đấu giá
 
 
+### Sơ đồ cấu trúc hệ thống (UML Class Diagram)
+
+```mermaid
+classDiagram
+    %% --- PHẦN CLASS KẾ THỨC CƠ BẢN ---
+    class Person {
+        <<abstract>>
+        -String account
+        -String password
+        -String username
+        -double balance
+        +getUsername() String
+        +setBalance(double balance) void
+    }
+
+    class User {
+        -String id
+        -String email
+        +deposit(double amount) void
+        +withdraw(double amount) void
+        +joinTransaction(BidTransaction transaction) Participation
+    }
+
+    class Admin {
+        +censorTransaction(BidTransaction transaction) void
+        +ban(User user) void
+    }
+
+    Person <|-- User
+    Person <|-- Admin
+
+    %% --- PHẦN ENTITY CỐT LÕI ---
+    class Item {
+        -String id
+        -String type
+        -String name
+        -String description
+        -String image
+    }
+
+    class BidTransaction {
+        -String id
+        -LocalDateTime timeStamp
+        -double currentPrice
+        -double bidIncrease
+        -String status
+    }
+
+    User "1" --> "*" Item : owns
+    BidTransaction "*" --> "1" Item : auctions
+
+    %% --- PHẦN XỬ LÝ LUỒNG ROLE ĐỘNG ---
+    class Participation {
+        -String id
+        -User user
+        -BidTransaction transaction
+        -RoleType roleType
+        -TransactionRole roleBehavior
+        -LocalDateTime joinedAt
+        +executeAction() void
+    }
+
+    class RoleType {
+        <<enumeration>>
+        SELLER
+        BIDDER
+    }
+
+    class TransactionRole {
+        <<Interface>>
+        +getRoleType() RoleType
+    }
+
+    class SellerRole {
+        +acceptBid() void
+        +cancelTransaction() void
+    }
+
+    class BidderRole {
+        +placeBid(double amount) void
+        +retractBid() void
+    }
+
+    User "1" --> "*" Participation : joins
+    BidTransaction "1" --> "*" Participation : has
+    
+    Participation --> "1" RoleType : identifies as
+    Participation "*" --> "1" TransactionRole : delegates behavior to
+    
+    TransactionRole <|.. SellerRole : implements
+    TransactionRole <|.. BidderRole : implements
+```
+
+
  Thành viên | Nội dung nhiệm vụ |  tiến độ |
 | :--- | :--- | :--- |
 | **Phúc** | Thiết kế giao diện trang chủ | 0%|

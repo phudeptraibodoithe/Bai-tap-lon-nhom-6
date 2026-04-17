@@ -105,10 +105,10 @@ classDiagram
 | **Phúc** | Tích hợp với giao diện của Phú | 0% |
 | **Phúc** | Thêm các tính năng mở rộng |0% |
 | **Phúc** | Xử lý cập nhật UI realtime và đọc dữ liệu để hiện thị  | 0%|
-| **Tâm** | Thiết kế kiến trúc Socket (Server/Client)  |0% |
-| **Tâm** | Xử lý Logic Broadcast (Gửi dữ liệu thời gian thực tới tất cả Client trong phòng) |0% |
+| **Tâm** | Thiết kế kiến trúc Socket (Server/Client)  |30% |
+| **Tâm** | Xử lý Logic Broadcast (Gửi dữ liệu thời gian thực tới tất cả Client trong phòng) |20% |
 | **Tâm** | Xây dựng Giao thức truyền tin | 0% |
-| **Tâm** | Xử lý Đa luồng | 0% |
+| **Tâm** | Xử lý Đa luồng | 20% |
 | **Thái** | Thiết kế các lớp Java thuần (User, Item,...) | 0% |
 | **Thái** | Xử lý Validation dữ liệu & Bắt lỗi Ngoại lệ (Exception) | 0%|
 | **Thái** | Code logic Trả giá & Xử lý đồng bộ (Synchronized chống trùng lặp) |0%|

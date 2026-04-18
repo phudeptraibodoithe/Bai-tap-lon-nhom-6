@@ -12,21 +12,21 @@ classDiagram
         -String account
         -String password
         -String username
-        -double balance
         +getUsername() String
-        +setUsername(String username) void
-        +setBalance(double balance) void
     }
 
     class User {
         -int id
         -String description
         -String avatarURL
+        -double balance
         +setDescription(String description) void
         +setAvatar(String avatarURL) void
         +deposit(double amount) void
         +withdraw(double amount) void
         +joinSession(AuctionSession session) Participation
+        +setBalance(double balance) void
+        +setUsername(String username) void
     }
 
     class Admin {

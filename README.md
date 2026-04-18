@@ -6,7 +6,7 @@ làm hệ thống đấu giá
 
 ```mermaid
 classDiagram
-    %% --- PHẦN CLASS KẾ THỨC CƠ BẢN ---
+    %% --- PHẦN CLASS KẾ THỪA CƠ BẢN ---
     class Person {
         <<abstract>>
         -String account
@@ -14,19 +14,23 @@ classDiagram
         -String username
         -double balance
         +getUsername() String
+        +setUsername(String username) void
         +setBalance(double balance) void
     }
 
     class User {
-        -String id
-        -String email
+        -int id
+        -String description
+        -String avatarURL
+        +setDescription(String description) void
+        +setAvatar(String avatarURL) void
         +deposit(double amount) void
         +withdraw(double amount) void
-        +joinTransaction(BidTransaction transaction) Participation
+        +joinSession(AuctionSession session) Participation
     }
 
     class Admin {
-        +censorTransaction(BidTransaction transaction) void
+        +censorSession(AuctionSession session) void
         +ban(User user) void
     }
 
@@ -35,32 +39,55 @@ classDiagram
 
     %% --- PHẦN ENTITY CỐT LÕI ---
     class Item {
-        -String id
+        -int id
+        -int sellerId
         -String type
         -String name
         -String description
-        -String image
+        -String imageURL
     }
 
-    class BidTransaction {
-        -String id
-        -LocalDateTime timeStamp
+    class AuctionSession {
+        -int id
+        -int itemId
+        -LocalDateTime startTime
+        -LocalDateTime endTime
         -double currentPrice
         -double bidIncrease
         -String status
     }
 
+    class Bid {
+        -int id
+        -int auctionSessionId
+        -int bidderId
+        -double bidAmount
+        -LocalDateTime bidTime
+    }
+
+    class History {
+        -int id
+        -int auctionSessionId
+        -int winnerId
+        -double finalPrice
+        -LocalDateTime completedAt
+    }
+
     User "1" --> "*" Item : owns
-    BidTransaction "*" --> "1" Item : auctions
+    Item "1" --> "*" AuctionSession : has
+    User "1" --> "*" Bid : places
+    AuctionSession "1" --> "*" Bid : receives
+    User "1" --> "*" History : wins
+    AuctionSession "1" --> "1" History : results in
 
     %% --- PHẦN XỬ LÝ LUỒNG ROLE ĐỘNG ---
     class Participation {
         -String id
-        -User user
-        -BidTransaction transaction
+        -int userId
+        -int sessionId
         -RoleType roleType
         -TransactionRole roleBehavior
-        -LocalDateTime joinedAt
+        +getRoleType() RoleType
         +executeAction() void
     }
 
@@ -76,17 +103,16 @@ classDiagram
     }
 
     class SellerRole {
-        +acceptBid() void
-        +cancelTransaction() void
+        +getRoleType() RoleType
     }
 
     class BidderRole {
+        +getRoleType() RoleType
         +placeBid(double amount) void
-        +retractBid() void
     }
 
     User "1" --> "*" Participation : joins
-    BidTransaction "1" --> "*" Participation : has
+    AuctionSession "1" --> "*" Participation : has
     
     Participation --> "1" RoleType : identifies as
     Participation "*" --> "1" TransactionRole : delegates behavior to
@@ -119,4 +145,5 @@ classDiagram
 | **Phú** | Thiết kế trang Upload Item |80%|
 | **Phú** | Lập trình tầng DAO (Data Access Object) |0% |
 | **Phú** | Xây dựng lớp Database Connection |0% |
-| **Phú** | Thiết kế CSDL (ERD) & Viết file SQL |0% |
+| **Phú** | Thiết kế CSDL (ERD) & Viết file SQL |100% |
+| **Phú** | Vẽ sơ đồ UML |80% |

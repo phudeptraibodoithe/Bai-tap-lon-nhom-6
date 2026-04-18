@@ -6,6 +6,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Main {
     public static List<ClientHandler> clients = new CopyOnWriteArrayList<>();
+    public static int currentPrice = 0;
+    public static String winner = "";
 
     public static void main(String[] args) {
         int port = 8888; // Cổng kết nối tự chọn
@@ -23,7 +25,6 @@ public class Main {
                 clients.add(handler);
                 new Thread(handler).start();
                 broadcast("Nguoi choi moi: " + handler.hashCode() +" vua tham gia.");
-
             }
         } catch (IOException e) {
             System.err.println("Loi Server: " + e.getMessage());
@@ -34,5 +35,13 @@ public class Main {
         for (ClientHandler client : clients) {
             client.sendmessage(message);
         }
+    }
+
+    public static synchronized boolean updatePrice(int newPrice) {
+        if (newPrice > currentPrice) {
+            currentPrice = newPrice;
+            return true;
+        }
+        else return false;
     }
 }

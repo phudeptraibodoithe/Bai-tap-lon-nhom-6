@@ -28,7 +28,19 @@ class ClientHandler implements Runnable {
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             String inputLine;
             while ((inputLine = in.readLine()) != null) {
-                Main.broadcast("Thong bao tu nguoi dung: " + inputLine);
+                try {
+                    int bid = Integer.parseInt(inputLine.trim());
+
+                    if (Main.updatePrice(bid)) {
+                        Main.broadcast("Gia moi " + Main.currentPrice +" tu nguoi choi " + this.hashCode());
+                    }
+                    else {
+                        this.sendmessage("Gia dau cua ban dat phai cao hon " + Main.currentPrice);
+                    }
+                }
+                catch (NumberFormatException e) {
+                    Main.broadcast("Tu nguoi dung " +this.hashCode()+ ": " + inputLine);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();

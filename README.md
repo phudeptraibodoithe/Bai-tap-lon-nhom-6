@@ -98,10 +98,10 @@ classDiagram
 
  Thành viên | Nội dung nhiệm vụ |  tiến độ |
 | :--- | :--- | :--- |
-| **Phúc** | Thiết kế giao diện trang chủ | 0%|
-| **Phúc** | Thiết kế trang nạp rút | 0% |
+| **Phúc** | Thiết kế giao diện trang chủ | 50%|
+| **Phúc** | Thiết kế trang nạp rút | 50% |
 | **Phúc** | Thiết kế trang đấu giá | 0% |
-| **Phúc** | Thiết kế trang duyệt của admin |0% |
+| **Phúc** | Thiết kế trang duyệt của admin |50% |
 | **Phúc** | Tích hợp với giao diện của Phú | 0% |
 | **Phúc** | Thêm các tính năng mở rộng |0% |
 | **Phúc** | Xử lý cập nhật UI realtime và đọc dữ liệu để hiện thị  | 0%|

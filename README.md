@@ -9,24 +9,25 @@ classDiagram
     %% --- PHẦN CLASS KẾ THỪA CƠ BẢN ---
     class Person {
         <<abstract>>
-        -String account
+        -String accountName
+        -String nickname
         -String password
-        -String username
-        +getUsername() String
+        -double balance
+        +getAccountName() String
+        +getNickname() String
+        +getBalance() double
+        +setBalance(double balance) void
+        +setNickname(String nickname) void
     }
 
     class User {
-        -int id
         -String description
         -String avatarURL
-        -double balance
         +setDescription(String description) void
         +setAvatar(String avatarURL) void
         +deposit(double amount) void
         +withdraw(double amount) void
         +joinSession(AuctionSession session) Participation
-        +setBalance(double balance) void
-        +setUsername(String username) void
     }
 
     class Admin {
@@ -40,7 +41,7 @@ classDiagram
     %% --- PHẦN ENTITY CỐT LÕI ---
     class Item {
         -int id
-        -int sellerId
+        -String sellerAccount
         -String type
         -String name
         -String description
@@ -60,15 +61,14 @@ classDiagram
     class Bid {
         -int id
         -int auctionSessionId
-        -int bidderId
+        -String bidderAccount
         -double bidAmount
         -LocalDateTime bidTime
     }
 
     class History {
-        -int id
         -int auctionSessionId
-        -int winnerId
+        -String winnerAccount
         -double finalPrice
         -LocalDateTime completedAt
     }
@@ -83,7 +83,7 @@ classDiagram
     %% --- PHẦN XỬ LÝ LUỒNG ROLE ĐỘNG ---
     class Participation {
         -String id
-        -int userId
+        -String userAccount
         -int sessionId
         -RoleType roleType
         -TransactionRole roleBehavior
@@ -116,7 +116,7 @@ classDiagram
     
     Participation --> "1" RoleType : identifies as
     Participation "*" --> "1" TransactionRole : delegates behavior to
-    
+
     TransactionRole <|.. SellerRole : implements
     TransactionRole <|.. BidderRole : implements
 ```
@@ -144,6 +144,5 @@ classDiagram
 | **Phú** | Thiết kế trang lịch sử | 100% |
 | **Phú** | Thiết kế trang Upload Item |80%|
 | **Phú** | Lập trình tầng DAO (Data Access Object) |0% |
-| **Phú** | Xây dựng lớp Database Connection |0% |
-| **Phú** | Thiết kế CSDL (ERD) & Viết file SQL |100% |
-| **Phú** | Vẽ sơ đồ UML |80% |
+| **Phú** | Thiết kế CSDL (ERD) & Viết file SQL & Xây dựng lớp Database Connection |100% |
+| **Phú** | Vẽ sơ đồ UML |100% |

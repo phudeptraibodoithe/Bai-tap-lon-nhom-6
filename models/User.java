@@ -2,45 +2,35 @@ package models;
 
 public class User extends Person {
     // Attributes
-    private int id;
     private String description;
     private String avatarURL;
-    private double balance;
 
     // Constructor
-    public User(String account, String password, String username) {
-        super(account, password, username);
-        this.balance = 0.0;
+    public User(String accountName, String password, String nickname) {
+        super(accountName, password, nickname);
     }
 
-    // Methods
+    // Setters
     public void setDescription(String description) {
         this.description = description;
     }
-
     public void setAvatar(String avatarURL) {
         this.avatarURL = avatarURL;
     }
+    
+    // Getters
+    public String getDescription() {
+        return description;
+    }
+    public String getAvatarURL() {
+        return avatarURL;
+    }
 
+    // Methods
     public void deposit(double amount) {
         if (amount > 0) {
             this.balance += amount;
         }
-    }
-
-    public void withdraw(double amount) {
-        if (amount > 0 && this.balance >= amount) {
-            this.balance -= amount;
-        }
-    }
-
-    public void setBalance(double balance) {
-        this.balance = balance;
-    }
-
-    @Override
-    public void setUsername(String username) {
-        super.setUsername(username);
     }
 
     // Hàm này trả về một đối tượng Participation (Hồ sơ tham gia phiên đấu giá)

@@ -2,17 +2,17 @@ package models;
 
 public class Admin extends Person {
 
-    public Admin(String account, String password, String username) {
-        super(account, password, username);
-    }
-
+    accountName = "AdminNo.1";
+    password = "adminno1";
+    nickname = "Adminitrator";
+    
     public void censorSession(AuctionSession session) {
         // Code duyệt sản phẩm
-        System.out.println("Sản phẩm đã được duyệt!");
+        System.out.println("The product has been approved!");
     }
 
     public void ban(User user) {
         // Code ban tài khoản
-        System.out.println("Đã khóa tài khoản: " + user.username);
+        System.out.println("The account has been banned: " + user.getAccountName());
     }
 }

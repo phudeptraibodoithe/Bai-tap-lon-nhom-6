@@ -1,4 +1,4 @@
-package com.example.giaodiendau;
+package controllers;
 
 import javafx.animation.PauseTransition;
 import javafx.event.ActionEvent;

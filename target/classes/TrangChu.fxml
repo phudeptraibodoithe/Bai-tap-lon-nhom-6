@@ -34,7 +34,7 @@
                 <Button fx:id="btnPostItem" mnemonicParsing="false" onAction="#switchToPostItem" style="-fx-background-color: transparent; -fx-cursor: hand;" text="Đăng sản phẩm" textFill="#0A1128">
                     <font><Font size="14.0" /></font>
                 </Button>
-            <Button fx:id="btnHistory1" mnemonicParsing="false" onAction="#switchToHistory" style="-fx-background-color: transparent; -fx-cursor: hand;" text="Profile" textFill="#0A1128">
+            <Button fx:id="btnHistory1" mnemonicParsing="false" onAction="#switchToProfile" style="-fx-background-color: transparent; -fx-cursor: hand;" text="Profile" textFill="#0A1128">
                <font>
                   <Font size="14.0" />
                </font>

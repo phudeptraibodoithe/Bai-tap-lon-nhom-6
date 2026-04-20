@@ -1,4 +1,4 @@
-package com.example.giaodiendau;
+package controllers;
 
 public class AppLauncher {
     public static void main(String[] args) {

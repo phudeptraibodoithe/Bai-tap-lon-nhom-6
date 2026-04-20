@@ -1,6 +1,6 @@
 package controllers;
 
-import com.example.giaodiendau.BaseController;
+import controllers.BaseController;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;

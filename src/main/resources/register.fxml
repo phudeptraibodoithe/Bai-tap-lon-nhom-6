@@ -12,7 +12,7 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.text.Font?>
 
-<StackPane maxHeight="600.0" maxWidth="800.0" minHeight="600.0" minWidth="800.0" prefWidth="800.0" style="-fx-background-color: #A2B5BB;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.giaodiendau.ControllerRegister">
+<StackPane maxHeight="600.0" maxWidth="800.0" minHeight="600.0" minWidth="800.0" prefWidth="800.0" style="-fx-background-color: #A2B5BB;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controllers.ControllerRegister">
    <children>
       <AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="800.0" style="-fx-background-color: #A2B5BB;">
           <children>

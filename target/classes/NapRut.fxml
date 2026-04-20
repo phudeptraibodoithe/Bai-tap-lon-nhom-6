@@ -21,11 +21,11 @@
             <children>
             <ImageView fitHeight="53.0" fitWidth="103.0" pickOnBounds="true" preserveRatio="true">
                <image>
-                  <Image url="@../../../../../../Downloads/Gemini_Generated_Image_fokgtxfokgtxfokg.png" />
+                  <Image url="@logo.png" />
                </image>
             </ImageView>
                 <Button mnemonicParsing="false" style="-fx-background-color: transparent;" text="Trang chủ" />
-                <Button mnemonicParsing="false" style="-fx-background-color: transparent;" text="Lịch sử" />
+                <Button mnemonicParsing="false" onAction="#switchToHistory" style="-fx-background-color: transparent;" text="Lịch sử" />
             <Button mnemonicParsing="false" style="-fx-background-color: transparent;" text="Đăng sản phẩm" />
             <Label style="-fx-background-color: transparent;" text="Profile" />
                 <Button mnemonicParsing="false" style="-fx-background-color: #d1e9ff; -fx-padding: 8 15; -fx-background-radius: 15;" text="Nạp/Rút tiền" textFill="#0056b3">

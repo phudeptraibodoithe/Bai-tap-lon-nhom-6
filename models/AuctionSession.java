@@ -18,4 +18,10 @@ public class AuctionSession {
     }
     
     // To be continue
+
+
+
+
+
+    
 }

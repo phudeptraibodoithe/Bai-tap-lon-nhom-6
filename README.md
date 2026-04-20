@@ -16,8 +16,9 @@ classDiagram
         +getAccountName() String
         +getNickname() String
         +getBalance() double
-        +setBalance(double balance) void
         +setNickname(String nickname) void
+        +deposit(double amount) void
+        +withdraw(double amount) void
     }
 
     class User {
@@ -25,8 +26,6 @@ classDiagram
         -String avatarURL
         +setDescription(String description) void
         +setAvatar(String avatarURL) void
-        +deposit(double amount) void
-        +withdraw(double amount) void
         +joinSession(AuctionSession session) Participation
     }
 
@@ -143,6 +142,6 @@ classDiagram
 | **Phú** | Thiết kế trang Profile |100% |
 | **Phú** | Thiết kế trang lịch sử | 100% |
 | **Phú** | Thiết kế trang Upload Item |80%|
-| **Phú** | Lập trình tầng DAO (Data Access Object) |0% |
+| **Phú** | Lập trình tầng DAO (Data Access Object) |30% |
 | **Phú** | Thiết kế CSDL (ERD) & Viết file SQL & Xây dựng lớp Database Connection |100% |
-| **Phú** | Vẽ sơ đồ UML |100% |
+| **Phú** | Vẽ sơ đồ UML |90% |

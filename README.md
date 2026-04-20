@@ -135,8 +135,8 @@ classDiagram
 | **Tâm** | Xử lý Logic Broadcast (Gửi dữ liệu thời gian thực tới tất cả Client trong phòng) |20% |
 | **Tâm** | Xây dựng Giao thức truyền tin | 0% |
 | **Tâm** | Xử lý Đa luồng | 20% |
-| **Thái** | Thiết kế các lớp Java thuần (User, Item,...) | 75% |
-| **Thái** | Xử lý Validation dữ liệu & Bắt lỗi Ngoại lệ (Exception) | 0%|
+| **Thái** | Thiết kế các lớp Java thuần (User, Item,...) | 85% |
+| **Thái** | Xử lý Validation dữ liệu & Bắt lỗi Ngoại lệ (Exception) | 10%|
 | **Thái** | Code logic Trả giá & Xử lý đồng bộ (Synchronized chống trùng lặp) |0%|
 | **Thái** | Code logic Bộ đếm thời gian (Timer) & Tự động chốt phiên đấu giá |0%|
 | **Phú** | Thiết kế giao diện đăng nhập, đăng ký | 100%|

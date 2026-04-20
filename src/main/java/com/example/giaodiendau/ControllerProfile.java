@@ -32,7 +32,7 @@ public class ControllerProfile extends BaseController implements Initializable {
     private Parent root;
     private String imagePath;
 
-    private static final double CIRCLE_RADIUS = 150.0;
+    private static final double CIRCLE_RADIUS = 110.0;
 
     @FXML private ImageView myImageView;
 

@@ -12,7 +12,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox prefHeight="650.0" prefWidth="950.0" style="-fx-background-color: #f4f7f6;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+<VBox prefHeight="650.0" prefWidth="950.0" style="-fx-background-color: #f4f7f6;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controllers.NapRutController">
     <children>
         <HBox alignment="CENTER_LEFT" prefHeight="60.0" spacing="20.0" style="-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;">
             <padding>
@@ -24,15 +24,15 @@
                   <Image url="@logo.png" />
                </image>
             </ImageView>
-                <Button mnemonicParsing="false" style="-fx-background-color: transparent;" text="Trang chủ" />
+                <Button mnemonicParsing="false" onAction="#switchToMenu" style="-fx-background-color: transparent;" text="Trang chủ" />
                 <Button mnemonicParsing="false" onAction="#switchToHistory" style="-fx-background-color: transparent;" text="Lịch sử" />
-            <Button mnemonicParsing="false" style="-fx-background-color: transparent;" text="Đăng sản phẩm" />
-            <Label style="-fx-background-color: transparent;" text="Profile" />
-                <Button mnemonicParsing="false" style="-fx-background-color: #d1e9ff; -fx-padding: 8 15; -fx-background-radius: 15;" text="Nạp/Rút tiền" textFill="#0056b3">
-                    <font>
-                        <Font name="System Bold" size="13.0" />
-                    </font>
-                </Button>
+            <Button mnemonicParsing="false" onAction="#switchToPostItem" style="-fx-background-color: transparent;" text="Đăng sản phẩm" />
+            <Button mnemonicParsing="false" onAction="#switchToProfile" style="-fx-background-color: transparent;" text="Profile" />
+            <Button fx:id="btnHome" mnemonicParsing="false" style="-fx-background-color: #F0F4FF; -fx-padding: 8 18; -fx-background-radius: 8; -fx-cursor: hand;" text="Nạp/Rút" textFill="#0A1128">
+               <font>
+                  <Font name="System Bold" size="14.0" />
+               </font>
+            </Button>
                 <Region HBox.hgrow="ALWAYS" />
                 <Label text="Xin chào, User" />
             </children>

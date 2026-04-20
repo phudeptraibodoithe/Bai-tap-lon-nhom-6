@@ -34,6 +34,11 @@
                 <Button fx:id="btnPostItem" mnemonicParsing="false" onAction="#switchToPostItem" style="-fx-background-color: transparent; -fx-cursor: hand;" text="Đăng sản phẩm" textFill="#0A1128">
                     <font><Font size="14.0" /></font>
                 </Button>
+            <Button fx:id="btnHistory1" mnemonicParsing="false" onAction="#switchToHistory" style="-fx-background-color: transparent; -fx-cursor: hand;" text="Profile" textFill="#0A1128">
+               <font>
+                  <Font size="14.0" />
+               </font>
+            </Button>
                 <Region HBox.hgrow="ALWAYS" />
                 <Label text="Hello User" textFill="#0A1128">
                     <font><Font name="System Bold" size="14.0" /></font>
@@ -111,11 +116,6 @@
                                                 <Insets bottom="25.0" left="25.0" right="25.0" top="20.0" />
                                             </padding>
                                             <children>
-                                                <Label text="FINE ART • LOT 422" textFill="#9DA3B4">
-                                                    <font>
-                                                        <Font name="System Bold" size="11.0" />
-                                                    </font>
-                                                </Label>
 
                                                 <Label prefHeight="55.0" text="Neo-Expressionist Study, 1982" textFill="#0A1128" wrapText="true">
                                                     <font>

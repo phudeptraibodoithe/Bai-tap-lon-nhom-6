@@ -1,0 +1,34 @@
+# --- IDE (IntelliJ, Eclipse, VS Code) ---
+.idea/
+*.iml
+*.iws
+.project
+.settings/
+.classpath
+.factorypath
+
+# --- Build & Output (Rất quan trọng) ---
+target/
+bin/
+out/
+
+# --- Java & Compiled files ---
+*.class
+*.jar
+*.war
+*.ear
+
+# --- Log files ---
+*.log
+
+# --- OS rác ---
+.DS_Store
+Thumbs.db
+
+# --- Của bạn cũ (giữ lại) ---
+/shelf/
+/workspace.xml
+/queries/
+/dataSources/
+/dataSources.local.xml
+/httpRequests/

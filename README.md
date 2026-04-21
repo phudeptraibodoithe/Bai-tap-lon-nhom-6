@@ -6,6 +6,16 @@ làm hệ thống đấu giá
 
 ```mermaid
 classDiagram
+    %% --- PHẦN ENUM ---
+    class StatusOfAuction {
+        <<enumeration>>
+        NOT_STARTED
+        ONGOING
+        ENDED
+        PENDING
+        CANCELED
+    }
+
     %% --- PHẦN CLASS KẾ THỪA CƠ BẢN ---
     class Person {
         <<abstract>>
@@ -38,8 +48,13 @@ classDiagram
     Person <|-- Admin
 
     %% --- PHẦN ENTITY CỐT LÕI ---
-    class Item {
+    class AuctionSession {
         -int id
+        -LocalDateTime startTime
+        -LocalDateTime endTime
+        -double currentPrice
+        -double bidIncrease
+        -StatusOfAuction statusOfAuction
         -String sellerAccount
         -String type
         -String name
@@ -47,15 +62,8 @@ classDiagram
         -String imageURL
     }
 
-    class AuctionSession {
-        -int id
-        -int itemId
-        -LocalDateTime startTime
-        -LocalDateTime endTime
-        -double currentPrice
-        -double bidIncrease
-        -String status
-    }
+    %% Kết nối AuctionSession với Enum Status
+    AuctionSession --> StatusOfAuction : has status
 
     class Bid {
         -int id
@@ -72,8 +80,7 @@ classDiagram
         -LocalDateTime completedAt
     }
 
-    User "1" --> "*" Item : owns
-    Item "1" --> "*" AuctionSession : has
+    User "1" -- "*" AuctionSession : creates/owns
     User "1" --> "*" Bid : places
     AuctionSession "1" --> "*" Bid : receives
     User "1" --> "*" History : wins
@@ -142,6 +149,6 @@ classDiagram
 | **Phú** | Thiết kế trang Profile |100% |
 | **Phú** | Thiết kế trang lịch sử | 100% |
 | **Phú** | Thiết kế trang Upload Item |80%|
-| **Phú** | Lập trình tầng DAO (Data Access Object) |30% |
+| **Phú** | Lập trình tầng DAO (Data Access Object) |90% |
 | **Phú** | Thiết kế CSDL (ERD) & Viết file SQL & Xây dựng lớp Database Connection |100% |
 | **Phú** | Vẽ sơ đồ UML |90% |

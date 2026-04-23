@@ -20,12 +20,16 @@
                 <Insets left="30.0" right="30.0" />
             </padding>
             <children>
-                <ImageView fitHeight="77.0" fitWidth="103.0" pickOnBounds="true" preserveRatio="true">
-                    <image>
+            <Button mnemonicParsing="false" onAction="#switchToMenu" style="-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;">
+               <graphic>
+                  <ImageView fitHeight="59.0" fitWidth="129.0" pickOnBounds="true" preserveRatio="true">
+                     <image>
                         <Image url="@logo.png" />
-                    </image>
-                </ImageView>
-                <Button fx:id="btnHome" mnemonicParsing="false" style="-fx-background-color: #F0F4FF; -fx-padding: 8 18; -fx-background-radius: 8; -fx-cursor: hand;" text="Trang chủ" textFill="#0A1128">
+                     </image>
+                  </ImageView>
+               </graphic>
+            </Button>
+                <Button fx:id="btnHome" mnemonicParsing="false" onAction="#switchToMenu" style="-fx-background-color: #F0F4FF; -fx-padding: 8 18; -fx-background-radius: 8; -fx-cursor: hand;" text="Trang chủ" textFill="#0A1128">
                     <font><Font name="System Bold" size="14.0" /></font>
                 </Button>
                 <Button fx:id="btnHistory" mnemonicParsing="false" onAction="#switchToHistory" style="-fx-background-color: transparent; -fx-cursor: hand;" text="Lịch sử" textFill="#0A1128">
@@ -88,21 +92,23 @@
                                 <Insets bottom="20.0" left="10.0" right="10.0" top="10.0" />
                             </padding>
                             <children>
-
+      
                                 <VBox prefWidth="300.0" style="-fx-background-color: white; -fx-background-radius: 20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 20, 0, 0, 5);">
                                     <children>
-
+      
                                         <StackPane prefHeight="240.0" style="-fx-background-color: #E8E8E8; -fx-background-radius: 20 20 0 0;">
                                             <children>
                                                 <ImageView fitHeight="240.0" fitWidth="300.0" pickOnBounds="true" preserveRatio="true" />
-
+      
                                                 <Button mnemonicParsing="false" style="-fx-background-color: rgba(255,255,255,0.3); -fx-background-radius: 50; -fx-min-width: 35; -fx-min-height: 35; -fx-cursor: hand;" text="🤍" textFill="WHITE" StackPane.alignment="TOP_RIGHT">
                                                     <StackPane.margin>
                                                         <Insets right="15.0" top="15.0" />
                                                     </StackPane.margin>
-                                                    <font><Font size="14.0" /></font>
+                                                    <font>
+                                          <Font size="14.0" />
+                                       </font>
                                                 </Button>
-
+                  
                                                 <HBox spacing="8.0" StackPane.alignment="TOP_LEFT">
                                                     <StackPane.margin>
                                                         <Insets left="15.0" top="15.0" />
@@ -110,45 +116,53 @@
                                                 </HBox>
                                             </children>
                                         </StackPane>
-
+      
                                         <VBox spacing="15.0">
                                             <padding>
                                                 <Insets bottom="25.0" left="25.0" right="25.0" top="20.0" />
                                             </padding>
                                             <children>
-
+      
                                                 <Label prefHeight="55.0" text="Neo-Expressionist Study, 1982" textFill="#0A1128" wrapText="true">
                                                     <font>
                                                         <Font name="System Bold" size="20.0" />
                                                     </font>
                                                 </Label>
-
+      
                                                 <HBox spacing="10.0">
                                                     <children>
                                                         <VBox alignment="CENTER_LEFT" prefHeight="65.0" spacing="3.0" style="-fx-background-color: #F4F5F7; -fx-background-radius: 12; -fx-padding: 10 15;" HBox.hgrow="ALWAYS">
                                                             <children>
                                                                 <Label text="CURRENT BID" textFill="#9DA3B4">
-                                                                    <font><Font name="System Bold" size="10.0" /></font>
+                                                                    <font>
+                                                      <Font name="System Bold" size="10.0" />
+                                                   </font>
                                                                 </Label>
                                                                 <Label text="\$850,000" textFill="#0A1128">
-                                                                    <font><Font name="System Bold" size="18.0" /></font>
+                                                                    <font>
+                                                      <Font name="System Bold" size="18.0" />
+                                                   </font>
                                                                 </Label>
                                                             </children>
                                                         </VBox>
-
+      
                                                         <VBox alignment="CENTER_LEFT" prefHeight="65.0" spacing="3.0" style="-fx-background-color: #F4F5F7; -fx-background-radius: 12; -fx-padding: 10 15;" HBox.hgrow="ALWAYS">
                                                             <children>
                                                                 <Label text="TIME LEFT" textFill="#9DA3B4">
-                                                                    <font><Font name="System Bold" size="10.0" /></font>
+                                                                    <font>
+                                                      <Font name="System Bold" size="10.0" />
+                                                   </font>
                                                                 </Label>
                                                                 <Label text="12:04:11" textFill="#FF6B00">
-                                                                    <font><Font name="System Bold" size="18.0" /></font>
+                                                                    <font>
+                                                      <Font name="System Bold" size="18.0" />
+                                                   </font>
                                                                 </Label>
                                                             </children>
                                                         </VBox>
                                                     </children>
                                                 </HBox>
-
+      
                                                 <Button maxWidth="Infinity" mnemonicParsing="false" prefHeight="45.0" style="-fx-background-color: #08103F; -fx-background-radius: 10; -fx-cursor: hand;" text="PLACE BID" textFill="WHITE">
                                                     <font>
                                                         <Font name="System Bold" size="14.0" />
@@ -156,7 +170,7 @@
                                                 </Button>
                                             </children>
                                         </VBox>
-
+      
                                     </children>
                                 </VBox>
                             </children>

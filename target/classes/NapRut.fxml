@@ -19,11 +19,15 @@
                 <Insets left="20.0" right="20.0" />
             </padding>
             <children>
-            <ImageView fitHeight="53.0" fitWidth="103.0" pickOnBounds="true" preserveRatio="true">
-               <image>
-                  <Image url="@logo.png" />
-               </image>
-            </ImageView>
+            <Button mnemonicParsing="false" onAction="#switchToMenu" style="-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;">
+               <graphic>
+                  <ImageView fitHeight="59.0" fitWidth="129.0" pickOnBounds="true" preserveRatio="true">
+                     <image>
+                        <Image url="@logo.png" />
+                     </image>
+                  </ImageView>
+               </graphic>
+            </Button>
                 <Button mnemonicParsing="false" onAction="#switchToMenu" style="-fx-background-color: transparent;" text="Trang chủ" />
                 <Button mnemonicParsing="false" onAction="#switchToHistory" style="-fx-background-color: transparent;" text="Lịch sử" />
             <Button mnemonicParsing="false" onAction="#switchToPostItem" style="-fx-background-color: transparent;" text="Đăng sản phẩm" />

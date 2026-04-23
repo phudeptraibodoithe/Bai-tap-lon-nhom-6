@@ -34,6 +34,13 @@ public class ControllerLogin extends BaseController {
             err.setText("Vui lòng điền đầy đủ thông tin!");
             return;
         }
+        if(username.trim().equals("1") && password.trim().equals("1")){
+            root = FXMLLoader.load(getClass().getResource("/Admin.fxml"));
+            scene = ((Node) event.getSource()).getScene();
+            scene.getStylesheets().clear();
+            scene.getStylesheets().add(getClass().getResource("/Button.css").toExternalForm());
+            scene.setRoot(root);
+        }
         if(username.trim().equals("user") && password.trim().equals("user")){
             root = FXMLLoader.load(getClass().getResource("/profile.fxml"));
             scene = ((Node) event.getSource()).getScene();

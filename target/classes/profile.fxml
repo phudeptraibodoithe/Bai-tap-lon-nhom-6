@@ -21,11 +21,15 @@
                 <Insets left="30.0" right="30.0" />
             </padding>
             <children>
-                <ImageView fitHeight="59.0" fitWidth="129.0" pickOnBounds="true" preserveRatio="true">
-                    <image>
+            <Button mnemonicParsing="false" onAction="#switchToMenu" style="-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;">
+               <graphic>
+                  <ImageView fitHeight="59.0" fitWidth="129.0" pickOnBounds="true" preserveRatio="true">
+                     <image>
                         <Image url="@logo.png" />
-                    </image>
-                </ImageView>
+                     </image>
+                  </ImageView>
+               </graphic>
+            </Button>
                 <Button mnemonicParsing="false" onAction="#switchToMenu" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Trang chủ">
                     <font><Font size="14.0" /></font>
                 </Button>
@@ -96,6 +100,11 @@
                                         <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#switchToWallet" prefHeight="45.0" style="-fx-background-color: #08103F; -fx-background-radius: 10; -fx-cursor: hand; -fx-text-fill: WHITE;" text="Ví TBOAT - Quản lý số dư 💳">
                                             <font><Font name="System Bold" size="14.0" /></font>
                                         </Button>
+                              <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#switchToMyItems" prefHeight="45.0" style="-fx-background-color: #08103F; -fx-background-radius: 10; -fx-cursor: hand; -fx-text-fill: WHITE;" text="Quản lý sản phẩm">
+                                 <font>
+                                    <Font name="System Bold" size="14.0" />
+                                 </font>
+                              </Button>
 
                                         <Region VBox.vgrow="ALWAYS" />
 

@@ -10,6 +10,7 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.net.URL;
 
 public abstract class BaseController {
 
@@ -19,12 +20,34 @@ public abstract class BaseController {
 
     private void changeScene(ActionEvent event, String fxmlFileName) {
         try {
-            root = FXMLLoader.load(getClass().getResource("/" + fxmlFileName));
+            System.out.println("Đang thử load trang: /" + fxmlFileName);
+
+            // 1. Load giao diện FXML
+            URL fxmlUrl = getClass().getResource("/" + fxmlFileName);
+            if (fxmlUrl == null) {
+                System.err.println("LỖI NGHIÊM TRỌNG: Không tìm thấy file /" + fxmlFileName);
+                return; // Dừng luôn nếu không thấy file FXML
+            }
+            root = FXMLLoader.load(fxmlUrl);
             scene = ((Node) event.getSource()).getScene();
+
+            // 2. Clear CSS cũ
             scene.getStylesheets().clear();
-            scene.getStylesheets().add(getClass().getResource("/Button.css").toExternalForm());
+
+            // 3. Load CSS mới (Có kiểm tra Null để chống lỗi)
+            URL cssUrl = getClass().getResource("/Button.css");
+            if (cssUrl != null) {
+                scene.getStylesheets().add(cssUrl.toExternalForm());
+            } else {
+                System.out.println("CẢNH BÁO: Không tìm thấy file /Button.css (bỏ qua bước load CSS)");
+            }
+
+            // 4. Hiển thị giao diện mới
             scene.setRoot(root);
+            System.out.println("=> Chuyển trang thành công!");
+
         } catch (Exception e) {
+            System.err.println("Lỗi ngoại lệ khi chuyển sang trang: " + fxmlFileName);
             e.printStackTrace();
         }
     }
@@ -51,5 +74,10 @@ public abstract class BaseController {
     @FXML
     public void switchToProfile(ActionEvent event) {
         changeScene(event, "profile.fxml");
+    }
+
+    @FXML
+    public void switchToMyItems(ActionEvent event) {
+        changeScene(event, "myitems.fxml");
     }
 }

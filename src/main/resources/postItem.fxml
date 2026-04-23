@@ -24,11 +24,15 @@
                 <Insets left="30.0" right="30.0" />
             </padding>
             <children>
-                <ImageView fitHeight="59.0" fitWidth="129.0" pickOnBounds="true" preserveRatio="true">
-                    <image>
+            <Button mnemonicParsing="false" onAction="#switchToMenu" style="-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;">
+               <graphic>
+                  <ImageView fitHeight="59.0" fitWidth="129.0" pickOnBounds="true" preserveRatio="true">
+                     <image>
                         <Image url="@logo.png" />
-                    </image>
-                </ImageView>
+                     </image>
+                  </ImageView>
+               </graphic>
+            </Button>
                 <Button mnemonicParsing="false" onAction="#switchToMenu" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Trang chủ">
                     <font><Font size="14.0" /></font>
                 </Button>

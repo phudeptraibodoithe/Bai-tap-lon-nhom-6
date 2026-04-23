@@ -22,13 +22,17 @@
                 <Insets left="30.0" right="30.0" />
             </padding>
             <children>
-                <ImageView fitHeight="50.0" fitWidth="120.0" onMouseClicked="#switchToMenu" pickOnBounds="true" preserveRatio="true">
-                    <image>
+            <Button mnemonicParsing="false" onAction="#switchToMenu" style="-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;">
+               <graphic>
+                  <ImageView fitHeight="59.0" fitWidth="129.0" pickOnBounds="true" preserveRatio="true">
+                     <image>
                         <Image url="@logo.png" />
-                    </image>
-                </ImageView>
+                     </image>
+                  </ImageView>
+               </graphic>
+            </Button>
 
-                <Button fx:id="btnHome" mnemonicParsing="false" onAction="#switchToHome" style="-fx-background-color: #e6f0ff; -fx-padding: 8 18; -fx-background-radius: 5; -fx-cursor: hand;" text="Trang chủ " textFill="#0a1a3a" wrapText="true">
+                <Button fx:id="btnHome" mnemonicParsing="false" onAction="#switchToMenu" style="-fx-background-color: #e6f0ff; -fx-padding: 8 18; -fx-background-radius: 5; -fx-cursor: hand;" text="Trang chủ " textFill="#0a1a3a" wrapText="true">
                     <font>
                         <Font name="System Bold" size="14.0" />
                     </font>

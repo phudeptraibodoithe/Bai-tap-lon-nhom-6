@@ -1,4 +1,4 @@
-# --- IDE (IntelliJ, Eclipse, VS Code) ---
+# --- IDE ---
 .idea/
 *.iml
 *.iws
@@ -7,25 +7,33 @@
 .classpath
 .factorypath
 
-# --- Build & Output (Rất quan trọng) ---
+# --- Build & Output ---
 target/
 bin/
 out/
+build/
 
-# --- Java & Compiled files ---
+# --- Java Compiled ---
 *.class
 *.jar
 *.war
 *.ear
 
-# --- Log files ---
-*.log
+# --- AI & IDE Junk ---
+.ai/
+.idea_modules/
 
-# --- OS rác ---
+# --- Logs & OS ---
+*.log
 .DS_Store
 Thumbs.db
 
-# --- Của bạn cũ (giữ lại) ---
+# --- Database & Secrets (Quan trọng cho Socket App) ---
+*.env
+config.local.properties
+database_pass.txt
+
+# --- Cấu hình IntelliJ cũ ---
 /shelf/
 /workspace.xml
 /queries/

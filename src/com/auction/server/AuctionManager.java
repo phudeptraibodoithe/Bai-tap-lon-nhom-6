@@ -16,7 +16,7 @@ public class AuctionManager {
     }
 
     public AuctionRoom getRoom(String roomName) {
-        // Tự động tạo phòng mới nếu chưa tồn tại (Hỗ trợ 3.1.2)
+        // Tự động tạo phòng mới nếu chưa tồn tại
         return activeRooms.computeIfAbsent(roomName, name -> new AuctionRoom(name, 0));
     }
 }

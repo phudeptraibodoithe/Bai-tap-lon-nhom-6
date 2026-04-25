@@ -42,7 +42,7 @@
                             <Insets />
                         </opaqueInsets>
                     </Label>
-                    <TextField fx:id="signText" layoutX="21.0" layoutY="238.0" prefHeight="25.0" prefWidth="314.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-highlight-fill: #E95C20;" />
+                    <TextField fx:id="accountNameText" layoutX="21.0" layoutY="238.0" prefHeight="25.0" prefWidth="314.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-highlight-fill: #E95C20;" />
                     <Label layoutX="374.0" layoutY="213.0" prefHeight="17.0" prefWidth="104.0" text="Mật Khẩu">
                         <font>
                             <Font size="16.0" />
@@ -78,7 +78,7 @@
                         <Insets />
                      </opaqueInsets>
                   </Label>
-                  <TextField fx:id="usernameText" layoutX="21.0" layoutY="300.0" prefHeight="25.0" prefWidth="314.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-highlight-fill: #E95C20;" />
+                  <TextField fx:id="nicknameText" layoutX="21.0" layoutY="300.0" prefHeight="25.0" prefWidth="314.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-highlight-fill: #E95C20;" />
                </children>
             </AnchorPane>
           </children>

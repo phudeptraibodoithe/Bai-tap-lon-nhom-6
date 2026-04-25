@@ -1,12 +1,10 @@
 package com.tboat.controllers;
 
-
-import com.tboat.models.User;
-import javafx.animation.PauseTransition;
+import com.tboat.socket.SocketManager;
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
@@ -14,90 +12,115 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
-import javafx.util.Duration;
-
-
 import java.io.IOException;
 
 public class ControllerRegister {
 
-    @FXML private TextField signText;
-    @FXML private TextField emailText;
-    @FXML private PasswordField passText;
-    @FXML private PasswordField repassText;
-    @FXML private TextField phoneText;
+    @FXML private TextField nicknameText, accountNameText, emailText, phoneText;
+    @FXML private PasswordField passText, repassText;
     @FXML private Label err;
-    @FXML private TextField usernameText;
 
+    @FXML
+    public void initialize() {
+        // ĐĂNG KÝ NHẬN TIN: Thay thế hoàn toàn hàm listenToServer() cũ
+        SocketManager.getInstance().setOnMessageReceived(this::handleServerResponse);
 
-    private Stage stage;
-    private Scene scene;
-    private Parent root;
-    private String username,phone,email,password,account;
-    private User user=new User("","","",0.0,null,null);
+        if (!SocketManager.getInstance().isConnected()) {
+            err.setText("Cảnh báo: Chưa có kết nối Socket!");
+        }
+    }
 
-    public void submit(ActionEvent event)throws IOException{
+    @FXML
+    public void submit(ActionEvent event) {
+        // 1. Reset UI
         err.setStyle("-fx-text-fill: red;");
         err.setText("");
-        username=usernameText.getText();
-        account=signText.getText();
-        password=passText.getText();
-        email=emailText.getText();
-        phone=phoneText.getText();
-        if (username.trim().isEmpty() || password.trim().isEmpty() || repassText.getText().trim().isEmpty() ||
-                email.trim().isEmpty() || phone.trim().isEmpty() || account.trim().isEmpty()) {
+
+        // 2. Lấy dữ liệu
+        String accountName = accountNameText.getText().trim();
+        String nickname = nicknameText.getText().trim();
+        String password = passText.getText().trim();
+        String email = emailText.getText().trim();
+        String phone = phoneText.getText().trim();
+
+        // 3. Validate nhanh
+        if (accountName.isEmpty() || password.isEmpty() || nickname.isEmpty() || email.isEmpty() || phone.isEmpty()) {
             err.setText("Vui lòng điền đầy đủ thông tin!");
             return;
         }
-        if(!email.endsWith("@gmail.com")){
-            err.setText("Email không hợp lệ");
-            return;
-        }
-        if(!password.equals(repassText.getText())){
-            err.setText("Mật khẩu phải trùng nhau");
-            return;
-        }
-        if (!phone.matches("\\d{10}")) {
-            err.setText("Số điện thoại không hợp lệ");
+
+        if (!email.endsWith("@gmail.com")) {
+            err.setText("Email phải có đuôi @gmail.com!");
             return;
         }
 
-        username=username.toString();
-        password=password.toString();
-        account=account.toString();
-//        if(user.register(username,password,account)) {
-//            err.setStyle("-fx-text-fill: green;");
-//            err.setText("Đăng ký thành công!");
-//        }
-//        else {
-//            err.setStyle("-fx-text-fill: red;");
-//            err.setText("Tên tài khoản đã tồn tại!");
-//        }
+        if (!password.equals(repassText.getText())) {
+            err.setText("Mật khẩu xác nhận không khớp!");
+            return;
+        }
 
-        PauseTransition delay = new PauseTransition(Duration.seconds(2));
-        delay.setOnFinished(e -> {
-            try {
-                switchToLogin(event);
-            } catch (Exception ex) {
-                err.setText("Vui lòng đăng nhập lại");
+        // 4. Gửi lệnh qua SocketManager
+        String command = "REGISTER " + accountName + " " + password + " " + nickname;
+        SocketManager.getInstance().send(command);
+
+        err.setStyle("-fx-text-fill: blue;");
+        err.setText("Đang gửi yêu cầu đăng ký...");
+    }
+
+    private void handleServerResponse(String response) {
+        // Luôn chạy trong Platform.runLater để an toàn cho UI
+        Platform.runLater(() -> {
+            switch (response) {
+                case "REG_SUCCESS":
+                    err.setStyle("-fx-text-fill: green;");
+                    err.setText("Đăng ký thành công! Đang chuyển hướng...");
+
+                    // Delay một chút để người dùng kịp thấy chữ "Thành công" (Tùy chọn)
+                    try {
+                        loadScene("/views/login.fxml");
+                    } catch (IOException e) {
+                        err.setText("Lỗi khi chuyển màn hình Login!");
+                    }
+                    break;
+
+                case "REG_EXISTED":
+                    err.setStyle("-fx-text-fill: red;");
+                    err.setText("Tên tài khoản đã tồn tại trên hệ thống!");
+                    break;
+
+                case "REG_ERROR":
+                    err.setText("Máy chủ gặp sự cố khi xử lý!");
+                    break;
+
+                default:
+                    break;
             }
         });
-        delay.play();
     }
-    @FXML
-    public void switchToLogin(ActionEvent e)throws IOException {
-        root = FXMLLoader.load(getClass().getResource("/views/login.fxml"));
-        scene = ((Node) e.getSource()).getScene();
-        scene.getStylesheets().clear();
-        scene.getStylesheets().add(getClass().getResource("/styles/Button.css").toExternalForm());
-        scene.setRoot(root);
+
+    private void loadScene(String fxmlPath) throws IOException {
+        if (err.getScene() == null) return;
+
+        Parent root = FXMLLoader.load(getClass().getResource(fxmlPath));
+        Stage stage = (Stage) err.getScene().getWindow();
+        Scene scene = new Scene(root);
+
+        var cssResource = getClass().getResource("/styles/Button.css");
+        if (cssResource != null) {
+            scene.getStylesheets().add(cssResource.toExternalForm());
+        }
+
+        stage.setScene(scene);
+        stage.show();
     }
+
     @FXML
-    public void switchToStart(MouseEvent e)throws IOException {
-        root = FXMLLoader.load(getClass().getResource("/views/start.fxml"));
-        scene = ((Node) e.getSource()).getScene();
-        scene.getStylesheets().clear();
-        scene.getStylesheets().add(getClass().getResource("/styles/Button.css").toExternalForm());
-        scene.setRoot(root);
+    public void switchToLogin(ActionEvent e) throws IOException {
+        loadScene("/views/login.fxml");
+    }
+
+    @FXML
+    public void switchToStart(MouseEvent e) throws IOException {
+        loadScene("/views/start.fxml");
     }
 }

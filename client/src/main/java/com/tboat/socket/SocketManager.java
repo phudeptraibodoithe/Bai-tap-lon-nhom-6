@@ -11,12 +11,12 @@ public class SocketManager {
     private PrintWriter out;
     private BufferedReader in;
 
-    // Listener để các Controller đăng ký nhận tin nhắn
+    // Listener duy nhất để Controller hiện tại đăng ký nhận tin nhắn
     private Consumer<String> messageListener;
 
     private SocketManager() {}
 
-    public static SocketManager getInstance() {
+    public static synchronized SocketManager getInstance() {
         if (instance == null) {
             instance = new SocketManager();
         }
@@ -28,17 +28,14 @@ public class SocketManager {
             this.socket = new Socket(ip, port);
             this.out = new PrintWriter(socket.getOutputStream(), true);
             this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            System.out.println("DA KET NOI DEN SERVER: " + ip);
+            System.out.println("[SocketManager] Đã kết nối đến Server: " + ip + ":" + port);
 
-            // KHỞI CHẠY LUỒNG LẮNG NGHE DUY NHẤT CHO TOÀN APP
+            // Bắt đầu lắng nghe tin nhắn từ Server
             startListening();
         }
     }
 
-    /**
-     * Mỗi Controller khi mở lên sẽ gọi hàm này để "đăng ký" nhận tin nhắn.
-     * Khi gọi hàm này, Listener cũ sẽ bị ghi đè, giúp tin nhắn chỉ gửi đến màn hình hiện tại.
-     */
+
     public void setOnMessageReceived(Consumer<String> listener) {
         this.messageListener = listener;
     }
@@ -47,30 +44,29 @@ public class SocketManager {
         Thread thread = new Thread(() -> {
             try {
                 String response;
-                // Chỉ có DUY NHẤT luồng này được phép gọi readLine()
                 while (in != null && (response = in.readLine()) != null) {
                     final String msg = response;
                     System.out.println("[Server -> Client]: " + msg);
 
-                    // Gửi tin nhắn về cho Controller đang đăng ký xử lý (trên UI Thread)
+                    // Đẩy tin nhắn về luồng giao diện (JavaFX Application Thread)
                     if (messageListener != null) {
                         Platform.runLater(() -> messageListener.accept(msg));
                     }
                 }
             } catch (IOException e) {
-                System.err.println("Mất kết nối với Server.");
+                System.err.println("[SocketManager] Mất kết nối với Server.");
+                close();
             }
         });
-        thread.setDaemon(true);
+        thread.setDaemon(true); // Tự động đóng luồng khi tắt App
         thread.start();
     }
 
-    /**
-     * Hàm gửi tin nhắn tập trung
-     */
     public void send(String msg) {
         if (out != null) {
             out.println(msg);
+        } else {
+            System.err.println("[SocketManager] Chưa kết nối, không thể gửi tin nhắn!");
         }
     }
 
@@ -83,6 +79,7 @@ public class SocketManager {
             if (in != null) in.close();
             if (out != null) out.close();
             if (socket != null) socket.close();
+            socket = null;
         } catch (IOException e) {
             e.printStackTrace();
         }

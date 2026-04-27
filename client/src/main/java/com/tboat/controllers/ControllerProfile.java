@@ -1,5 +1,8 @@
 package com.tboat.controllers;
 
+import com.tboat.models.User;
+import com.tboat.socket.SocketManager;
+import com.tboat.utilsclient.UserSession;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -7,10 +10,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.DialogPane;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
@@ -28,53 +28,44 @@ import java.util.ResourceBundle;
 public class ControllerProfile extends BaseController implements Initializable {
 
     private Stage stage;
-    private Scene scene;
-    private Parent root;
     private String imagePath;
+    private User user;
 
     private static final double CIRCLE_RADIUS = 110.0;
 
     @FXML private ImageView myImageView;
+    @FXML private Label nickname,balance,err;
+    @FXML private TextArea desc;
 
-    /*public void switchToPostItem(ActionEvent e) throws IOException {
-        root = FXMLLoader.load(getClass().getResource("/postItem.fxml"));
-        scene = ((Node) e.getSource()).getScene();
-        scene.getStylesheets().clear();
-        scene.getStylesheets().add(getClass().getResource("/Button.css").toExternalForm());
-        scene.setRoot(root);
+    @Override public void initialize(URL url, ResourceBundle resourceBundle) {
+        SocketManager.getInstance().setOnMessageReceived(this::handleServerResponse);
+        user = UserSession.getInstance().getUser();
+        imagePath =user.getAvatarURL();
+        loadUserAvatar(imagePath);
+        desc.setText(user.getDescription());
+        nickname.setText(user.getNickname());
+        balance.setText(String.format("%,.0f VNĐ", user.getBalance()));
     }
 
-    public void switchToMenu(ActionEvent e) throws IOException {
-        root = FXMLLoader.load(getClass().getResource("/TrangChu.fxml"));
-        scene = ((Node) e.getSource()).getScene();
-        scene.getStylesheets().clear();
-        scene.getStylesheets().add(getClass().getResource("/Button.css").toExternalForm());
-        scene.setRoot(root);
+    public void updateProfile(ActionEvent e) {
+        String mota = desc.getText() == null ? "" : desc.getText().trim().replace("|", " ");
+        String path = imagePath == null ? "null" : imagePath;
+        String message = "UPDATE_PROFILE " + mota + "|" + path;
+        SocketManager.getInstance().send(message);
     }
 
-    public void switchToHistory(ActionEvent e) throws IOException {
-        root = FXMLLoader.load(getClass().getResource("/history.fxml"));
-        scene = ((Node) e.getSource()).getScene();
-        scene.getStylesheets().clear();
-        scene.getStylesheets().add(getClass().getResource("/Button.css").toExternalForm());
-        scene.setRoot(root);
-    }
-*/
     public void loadUserAvatar(String pathFromDB) {
-        Image image;
-        if (pathFromDB == null) {
-            image = new Image(getClass().getResource("/images/avtDefault.jpg").toExternalForm());
-        } else {
-            image = new Image(pathFromDB);
+        try {
+            Image image;
+            if (pathFromDB == null || pathFromDB.isEmpty() || pathFromDB.equals("null")) {
+                image = new Image(getClass().getResource("/images/avtDefault.jpg").toExternalForm());
+            } else {
+                image = new Image(pathFromDB, true);
+            }
+            setCircularImage(image);
+        } catch (Exception e) {
+            setCircularImage(new Image(getClass().getResource("/images/avtDefault.jpg").toExternalForm()));
         }
-        setCircularImage(image);
-    }
-
-
-    @Override
-    public void initialize(URL url, ResourceBundle resourceBundle) {
-        String currentAvatarPath =null;
-        loadUserAvatar(currentAvatarPath);
     }
 
     public void signout(ActionEvent e) {
@@ -90,15 +81,8 @@ public class ControllerProfile extends BaseController implements Initializable {
         ButtonType btnNo = new ButtonType("Không", ButtonBar.ButtonData.CANCEL_CLOSE);
         alert.getButtonTypes().setAll(btnYes, btnNo);
         if (alert.showAndWait().orElse(btnNo) == btnYes) {
-            try {
-                root = FXMLLoader.load(getClass().getResource("/views/start.fxml")); // Chú ý chữ P hoa/thường tùy tên file của bạn nhé
-                scene = ((Node) e.getSource()).getScene();
-                scene.getStylesheets().clear();
-                scene.getStylesheets().add(getClass().getResource("/styles/Button.css").toExternalForm());
-                scene.setRoot(root);
-            } catch (IOException event) {
-                event.printStackTrace();
-            }
+            UserSession.getInstance().cleanUserSession();
+            changeScene(myImageView,"start.fxml");
         }
     }
 
@@ -115,15 +99,7 @@ public class ControllerProfile extends BaseController implements Initializable {
         ButtonType btnNo = new ButtonType("Không", ButtonBar.ButtonData.CANCEL_CLOSE);
         alert.getButtonTypes().setAll(btnYes, btnNo);
         if (alert.showAndWait().orElse(btnNo) == btnYes) {
-            try {
-                root = FXMLLoader.load(getClass().getResource("/views/profile.fxml")); // Chú ý chữ P hoa/thường tùy tên file của bạn nhé
-                scene = ((Node) e.getSource()).getScene();
-                scene.getStylesheets().clear();
-                scene.getStylesheets().add(getClass().getResource("/styles/Button.css").toExternalForm());
-                scene.setRoot(root);
-            } catch (IOException event) {
-                event.printStackTrace();
-            }
+            changeScene(myImageView,"profile.fxml");
         }
     }
 
@@ -155,4 +131,18 @@ public class ControllerProfile extends BaseController implements Initializable {
         myImageView.setClip(clipCircle);
     }
 
+    private void handleServerResponse(String response) {
+        javafx.application.Platform.runLater(() -> {
+            if (response.equals("UPDATE_PROFILE_SUCCESS")) {
+                user.setDescription(desc.getText());
+                if (imagePath != null) user.setAvatar(imagePath);
+                err.setStyle("-fx-text-fill: green;");
+                err.setText("Cập nhật hồ sơ thành công!!");
+
+            } else if (response.equals("UPDATE_PROFILE_ERROR")) {
+                err.setStyle("-fx-text-fill: red;");
+                err.setText("Cập nhật hồ sơ thất bại, vui lòng thử lại!");
+            }
+        });
+    }
 }

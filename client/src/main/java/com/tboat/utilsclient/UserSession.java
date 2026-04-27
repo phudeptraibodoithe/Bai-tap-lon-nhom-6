@@ -1,37 +1,45 @@
 package com.tboat.utilsclient;
 
+import com.tboat.models.User;
+
+/**
+ * Quản lý phiên làm việc của người dùng hiện tại (Client-side)
+ * Sử dụng mô hình Singleton để đảm bảo dữ liệu đồng nhất toàn hệ thống.
+ */
 public class UserSession {
     private static UserSession instance;
+    private User currentUser;
 
-    private String username;
-    private String nickname;
-    private double balance;
-
-    // Private constructor để không ai 'new' lung tung được
+    // Private constructor để ngăn chặn khởi tạo từ bên ngoài
     private UserSession() {}
 
-    public static UserSession getInstance() {
+    public static synchronized UserSession getInstance() {
         if (instance == null) {
             instance = new UserSession();
         }
         return instance;
     }
 
-    // Hàm này gọi ngay khi nhận được LOGIN_SUCCESS từ Server
-    public void createUserSession(String username, String nickname, double balance) {
-        this.username = username;
-        this.nickname = nickname;
-        this.balance = balance;
+    /**
+     * Khởi tạo phiên làm việc khi đăng nhập thành công.
+     */
+    public void createUserSession(User user) {
+        this.currentUser = user;
     }
 
-    // Hàm xóa session khi Logout
     public void cleanUserSession() {
-        username = null;
-        nickname = null;
-        balance = 0.0;
+        this.currentUser = null;
     }
 
-    // Các hàm Getter để lấy dữ liệu ở màn hình khác
-    public String getNickname() { return nickname; }
-    public double getBalance() { return balance; }
+    public User getUser() {
+        return currentUser;
+    }
+
+    public String getUsername() {
+        return (currentUser != null) ? currentUser.getAccountName() : null;
+    }
+
+    public double getBalance() {
+        return (currentUser != null) ? currentUser.getBalance() : 0.0;
+    }
 }

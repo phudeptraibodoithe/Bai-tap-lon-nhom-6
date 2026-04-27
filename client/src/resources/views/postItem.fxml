@@ -57,12 +57,8 @@
                     </padding>
                     <children>
                         <Label style="-fx-text-fill: #0A1128;" text="Đăng Sản Phẩm Mới">
-                            <font>
-                                <Font name="System Bold" size="32.0" />
-                            </font>
-                            <VBox.margin>
-                                <Insets bottom="30.0" />
-                            </VBox.margin>
+                            <font><Font name="System Bold" size="32.0" /></font>
+                            <VBox.margin><Insets bottom="30.0" /></VBox.margin>
                         </Label>
 
                         <HBox spacing="40.0">
@@ -90,26 +86,43 @@
                                             </children>
                                         </StackPane>
 
-                                        <HBox spacing="15.0">
+                                        <VBox spacing="8.0">
                                             <children>
-                                                <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                                                <Label style="-fx-text-fill: #0A1128;" text="Thời gian bắt đầu">
+                                                    <font><Font name="System Bold" size="13.0" /></font>
+                                                </Label>
+                                                <DatePicker fx:id="datePickerStart" maxWidth="Infinity" prefHeight="40.0" promptText="Chọn ngày..." style="-fx-background-color: #F4F5F7; -fx-background-radius: 10;" />
+                                                <HBox alignment="CENTER_LEFT" spacing="10.0">
                                                     <children>
-                                                        <Label style="-fx-text-fill: #0A1128;" text="Ngày bắt đầu">
-                                                            <font><Font name="System Bold" size="13.0" /></font>
+                                                        <Spinner fx:id="hourStart" prefHeight="35.0" prefWidth="125.0" style="-fx-background-radius: 8;" />
+                                                        <Label text=":" />
+                                                        <Spinner fx:id="minuteStart" prefHeight="35.0" prefWidth="125.0" style="-fx-background-radius: 8;" />
+                                                        <Label style="-fx-text-fill: #666666;" text="(Giờ : Phút)">
+                                                            <font><Font size="12.0" /></font>
                                                         </Label>
-                                                        <DatePicker fx:id="datePickerStart" maxWidth="Infinity" prefHeight="40.0" promptText="Chọn ngày..." style="-fx-background-color: #F4F5F7; -fx-background-radius: 10;" />
                                                     </children>
-                                                </VBox>
-                                                <VBox spacing="8.0" HBox.hgrow="ALWAYS">
-                                                    <children>
-                                                        <Label style="-fx-text-fill: #0A1128;" text="Ngày kết thúc">
-                                                            <font><Font name="System Bold" size="13.0" /></font>
-                                                        </Label>
-                                                        <DatePicker fx:id="datePickerEnd" maxWidth="Infinity" prefHeight="40.0" promptText="Chọn ngày..." style="-fx-background-color: #F4F5F7; -fx-background-radius: 10;" />
-                                                    </children>
-                                                </VBox>
+                                                </HBox>
                                             </children>
-                                        </HBox>
+                                        </VBox>
+
+                                        <VBox spacing="8.0">
+                                            <children>
+                                                <Label style="-fx-text-fill: #0A1128;" text="Thời gian kết thúc">
+                                                    <font><Font name="System Bold" size="13.0" /></font>
+                                                </Label>
+                                                <DatePicker fx:id="datePickerEnd" maxWidth="Infinity" prefHeight="40.0" promptText="Chọn ngày..." style="-fx-background-color: #F4F5F7; -fx-background-radius: 10;" />
+                                                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                                    <children>
+                                                        <Spinner fx:id="hourEnd" prefHeight="35.0" prefWidth="125.0" style="-fx-background-radius: 8;" />
+                                                        <Label text=":" />
+                                                        <Spinner fx:id="minuteEnd" prefHeight="35.0" prefWidth="125.0" style="-fx-background-radius: 8;" />
+                                                        <Label style="-fx-text-fill: #666666;" text="(Giờ : Phút)">
+                                                            <font><Font size="12.0" /></font>
+                                                        </Label>
+                                                    </children>
+                                                </HBox>
+                                            </children>
+                                        </VBox>
                                     </children>
                                 </VBox>
 
@@ -136,7 +149,7 @@
                                                 <Label style="-fx-text-fill: #0A1128;" text="Mô tả chi tiết">
                                                     <font><Font name="System Bold" size="13.0" /></font>
                                                 </Label>
-                                                <TextArea fx:id="inforItem" prefHeight="130.0" promptText="Thông tin sản phẩm, tình trạng..." style="-fx-control-inner-background: #F4F5F7; -fx-background-radius: 10; -fx-background-color: transparent; -fx-padding: 5;" wrapText="true">
+                                                <TextArea fx:id="inforItem" prefHeight="198.0" prefWidth="506.0" promptText="Thông tin sản phẩm, tình trạng..." style="-fx-control-inner-background: #F4F5F7; -fx-background-radius: 10; -fx-background-color: transparent; -fx-padding: 5;" wrapText="true">
                                                     <font><Font size="14.0" /></font>
                                                 </TextArea>
                                             </children>
@@ -178,9 +191,7 @@
                                                     <font><Font name="System Bold" size="14.0" /></font>
                                                 </Button>
                                             </children>
-                                            <VBox.margin>
-                                                <Insets top="10.0" />
-                                            </VBox.margin>
+                                            <VBox.margin><Insets top="10.0" /></VBox.margin>
                                         </HBox>
                                     </children>
                                 </VBox>

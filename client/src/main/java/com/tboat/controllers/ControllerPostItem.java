@@ -23,24 +23,172 @@ import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ResourceBundle;
 
 public class ControllerPostItem extends BaseController implements Initializable {
     @FXML private TextField nameItem;
     @FXML private TextArea inforItem;
-    @FXML private Button submit,cancle;
+    @FXML private Button submit, cancle;
     @FXML private Label thongbao;
     @FXML private ImageView myImageView;
-    @FXML private Spinner<Double> priceSpinner,jumpSpinner;
-    @FXML private DatePicker datePickerStart,datePickerEnd;
+    @FXML private Spinner<Double> priceSpinner, jumpSpinner;
+    @FXML private DatePicker datePickerStart, datePickerEnd;
+    @FXML private Spinner<Integer> hourStart, minuteStart, hourEnd, minuteEnd;
 
     private Stage stage;
     private Scene scene;
     private Parent root;
-    private String infor,name;
-    private LocalDate dateStart,dateEnd;
-    private double price,jump;
-    private String imagePath=null;
+    private String imagePath = null;
+
+    @Override
+    public void initialize(URL url, ResourceBundle resourceBundle) {
+        setupPriceSpinners();
+        setupDateTimeLogic();
+    }
+
+    private void setupPriceSpinners() {
+        SpinnerValueFactory.DoubleSpinnerValueFactory valueFactory1 = new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, 0.0, 10000.0);
+        SpinnerValueFactory.DoubleSpinnerValueFactory valueFactory2 = new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 0.0, 0.0, 10000.0);
+        DecimalFormat formatter = new DecimalFormat("#,###");
+
+        StringConverter<Double> converter = new StringConverter<>() {
+            @Override public String toString(Double v) { return v == null ? "0" : formatter.format(v) + " VNĐ"; }
+            @Override public Double fromString(String s) {
+                try { return s == null || s.isEmpty() ? 0.0 : Double.parseDouble(s.replaceAll("[^\\d.]", "")); }
+                catch (Exception e) { return 0.0; }
+            }
+        };
+
+        valueFactory1.setConverter(converter);
+        valueFactory2.setConverter(converter);
+        priceSpinner.setValueFactory(valueFactory1);
+        jumpSpinner.setValueFactory(valueFactory2);
+        priceSpinner.setEditable(true);
+        jumpSpinner.setEditable(true);
+
+        priceSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                double maxJump = newVal * 0.5;
+                valueFactory2.setMax(maxJump);
+                if (jumpSpinner.getValue() > maxJump) {
+                    valueFactory2.setValue(maxJump);
+                }
+            }
+        });
+    }
+
+    private void setupDateTimeLogic() {
+        // --- 1. ĐỊNH DẠNG HIỂN THỊ (CÓ CHỮ GIỜ/PHÚT) ---
+        StringConverter<Integer> hourConverter = createTimeConverter(" giờ");
+        StringConverter<Integer> minuteConverter = createTimeConverter(" phút");
+
+        // --- 2. KHỞI TẠO GIÁ TRỊ BAN ĐẦU ---
+        LocalTime nowTime = LocalTime.now();
+
+        // Bắt đầu: Giờ hiện tại
+        configureSpinner(hourStart, 0, 23, nowTime.getHour(), hourConverter);
+        configureSpinner(minuteStart, 0, 59, nowTime.getHour(), minuteConverter);
+
+        // Kết thúc: Giờ hiện tại + 1
+        configureSpinner(hourEnd, 0, 23, nowTime.plusHours(1).getHour(), hourConverter);
+        configureSpinner(minuteEnd, 0, 59, nowTime.getMinute(), minuteConverter);
+
+        // --- 3. LOGIC DATEPICKER (VÔ HIỆU HÓA NGÀY CŨ) ---
+        LocalDate today = LocalDate.now();
+        datePickerStart.setDayCellFactory(p -> new DateCell() {
+            @Override public void updateItem(LocalDate item, boolean empty) {
+                super.updateItem(item, empty);
+                if (item.isBefore(today)) {
+                    setDisable(true);
+                    setStyle("-fx-background-color: #eeeeee;");
+                }
+            }
+        });
+
+        // Khi ngày bắt đầu thay đổi, cập nhật giới hạn cho ngày kết thúc
+        datePickerStart.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                datePickerEnd.setDayCellFactory(p -> new DateCell() {
+                    @Override public void updateItem(LocalDate item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (item.isBefore(newVal)) {
+                            setDisable(true);
+                            setStyle("-fx-background-color: #eeeeee;");
+                        }
+                    }
+                });
+                if (datePickerEnd.getValue() != null && datePickerEnd.getValue().isBefore(newVal)) {
+                    datePickerEnd.setValue(null);
+                }
+            }
+        });
+    }
+    private StringConverter<Integer> createTimeConverter(String suffix) {
+        return new StringConverter<>() {
+            @Override
+            public String toString(Integer value) {
+                return (value == null) ? "00" + suffix : String.format("%02d%s", value, suffix);
+            }
+
+            @Override
+            public Integer fromString(String string) {
+                try {
+                    if (string == null || string.isEmpty()) return 0;
+                    return Integer.parseInt(string.replace(suffix, "").trim());
+                } catch (Exception e) {
+                    return 0;
+                }
+            }
+        };
+    }
+
+    private void configureSpinner(Spinner<Integer> s, int min, int max, int init, StringConverter<Integer> conv) {
+        s.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(min, max, init));
+        s.getValueFactory().setConverter(conv);
+        s.setEditable(true);
+        // Đảm bảo cập nhật giá trị khi mất focus hoặc gõ phím
+        s.getEditor().focusedProperty().addListener((obs, oldV, newV) -> {
+            if (!newV) s.increment(0);
+        });
+    }
+
+    public void postItem(ActionEvent e) {
+        String name = nameItem.getText();
+        String infor = inforItem.getText();
+
+        // Kiểm tra cơ bản
+        if (name.isEmpty() || infor.isEmpty() || imagePath == null || datePickerStart.getValue() == null || datePickerEnd.getValue() == null) {
+            showError("Vui lòng điền đầy đủ thông tin!");
+            return;
+        }
+
+        // Lấy thời gian đầy đủ
+        LocalDateTime startDT = datePickerStart.getValue().atTime(hourStart.getValue(), minuteStart.getValue());
+        LocalDateTime endDT = datePickerEnd.getValue().atTime(hourEnd.getValue(), minuteEnd.getValue());
+        LocalDateTime now = LocalDateTime.now();
+
+        // RÀNG BUỘC 1: Bắt đầu phải cách hiện tại ít nhất 10 phút
+        if (startDT.isBefore(now.plusMinutes(10))) {
+            showError("Thời gian bắt đầu phải sau hiện tại ít nhất 10 phút!");
+            return;
+        }
+
+        // RÀNG BUỘC 2: Kết thúc phải cách bắt đầu ít nhất 10 phút
+        if (endDT.isBefore(startDT.plusMinutes(10))) {
+            showError("Thời gian kết thúc phải cách thời gian bắt đầu ít nhất 10 phút!");
+            return;
+        }
+
+        thongbao.setStyle("-fx-text-fill: green;");
+        thongbao.setText("Sản phẩm đã được đăng thành công!");
+    }
+
+    private void showError(String msg) {
+        thongbao.setStyle("-fx-text-fill: red;");
+        thongbao.setText(msg);
+    }
 
     public void uploadImage(MouseEvent event)throws IOException {
         FileChooser fileChooser = new FileChooser();
@@ -63,26 +211,6 @@ public class ControllerPostItem extends BaseController implements Initializable 
             myImageView.setClip(clip);
             myImageView.setImage(image);
         }
-    }
-
-    public void postItem(ActionEvent e)throws IOException {
-        infor=inforItem.getText();
-        name=nameItem.getText();
-        price=priceSpinner.getValue();
-        jump=jumpSpinner.getValue();
-        dateEnd=datePickerEnd.getValue();
-        dateStart=datePickerStart.getValue();
-        if (infor.trim().isEmpty() || name.trim().isEmpty() || price<=0 ||
-                jump<=0 || dateStart==null || dateEnd==null || imagePath==null) {
-            thongbao.setStyle("-fx-text-fill: red;");
-            thongbao.setText("Vui lòng điền đầy đủ thông tin!");
-            return;
-        }
-
-
-        thongbao.setStyle("-fx-text-fill: green;");
-        thongbao.setText("Sản phẩm đã được đăng và đang chờ duyệt!");
-
     }
 
     public void canclePost(ActionEvent e) {
@@ -109,89 +237,4 @@ public class ControllerPostItem extends BaseController implements Initializable 
             }
         }
     }
-
-    @Override
-    public void initialize(URL url, ResourceBundle resourceBundle) {
-        SpinnerValueFactory<Double> valueFactory1 =
-                new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, 0.0, 10000.0);
-        SpinnerValueFactory<Double> valueFactory2 =
-                new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, 0.0, 10000.0);
-        DecimalFormat formatter = new DecimalFormat("#,###");
-        valueFactory1.setConverter(new StringConverter<Double>() {
-            @Override
-            public String toString(Double value) {
-                if (value == null) return "0";
-                return formatter.format(value) + " VNĐ";
-            }
-
-            @Override
-            public Double fromString(String string) {
-                try {
-                    if (string == null || string.trim().isEmpty()) return 0.0;
-                    String cleanString = string.replaceAll("[^\\d.]", "");
-                    return Double.parseDouble(cleanString);
-                } catch (Exception e) {
-                    return 0.0;
-                }
-            }
-        });
-        valueFactory2.setConverter(new StringConverter<Double>() {
-            @Override
-            public String toString(Double value) {
-                if (value == null) return "0";
-                return formatter.format(value) + " VNĐ";
-            }
-
-            @Override
-            public Double fromString(String string) {
-                try {
-                    if (string == null || string.trim().isEmpty()) return 0.0;
-                    String cleanString = string.replaceAll("[^\\d.]", "");
-                    return Double.parseDouble(cleanString);
-                } catch (Exception e) {
-                    return 0.0;
-                }
-            }
-        });
-        priceSpinner.setValueFactory(valueFactory1);
-        jumpSpinner.setValueFactory(valueFactory2);
-
-        LocalDate today = LocalDate.now();
-
-        // Vô hiệu hóa các ngày trước ngày hôm nay cho datePickerStart
-        datePickerStart.setDayCellFactory(picker -> new DateCell() {
-            @Override
-            public void updateItem(LocalDate item, boolean empty) {
-                super.updateItem(item, empty);
-
-                // Nếu ngày trong lịch (item) trước ngày hôm nay (today)
-                if (item.isBefore(today)) {
-                    setDisable(true);
-                    setStyle("-fx-background-color: #eeeeee;"); // Làm xám các ngày cũ
-                }
-            }
-        });
-
-        datePickerStart.valueProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue != null) {
-                // Cập nhật luật cho datePickerEnd khi datePickerStart thay đổi
-                datePickerEnd.setDayCellFactory(picker -> new DateCell() {
-                    @Override
-                    public void updateItem(LocalDate item, boolean empty) {
-                        super.updateItem(item, empty);
-
-                        if (item.isBefore(newValue)) {
-                            setDisable(true);
-                            setStyle("-fx-background-color: #eeeeee;");
-                        }
-                    }
-                });
-
-                if (datePickerEnd.getValue() != null && datePickerEnd.getValue().isBefore(newValue)) {
-                    datePickerEnd.setValue(null);
-                }
-            }
-        });
-    }
-
 }

@@ -78,7 +78,7 @@
                                             </children>
                                         </StackPane>
 
-                                        <Label fx:id="username" style="-fx-text-fill: #0A1128;" text="Tên tài khoản">
+                                        <Label fx:id="nickname" style="-fx-text-fill: #0A1128;" text="Tên tài khoản">
                                             <font><Font name="System Bold" size="24.0" /></font>
                                         </Label>
 
@@ -87,7 +87,7 @@
                                                 <Label style="-fx-text-fill: #666666;" text="Số dư hiện tại">
                                                     <font><Font name="System Bold" size="14.0" /></font>
                                                 </Label>
-                                                <Label style="-fx-text-fill: #4CAF50;" text="0 VNĐ">
+                                                <Label fx:id="balance" style="-fx-text-fill: #4CAF50;" text="0 VNĐ">
                                                     <font><Font name="System Bold" size="24.0" /></font>
                                                 </Label>
                                             </children>
@@ -114,10 +114,10 @@
 
                                         <VBox spacing="8.0">
                                             <children>
-                                                <Label style="-fx-text-fill: #666666;" text="Email liên hệ">
+                                                <Label style="-fx-text-fill: #666666;" text="Tên đăng nhập">
                                                     <font><Font name="System Bold" size="13.0" /></font>
                                                 </Label>
-                                                <Label style="-fx-text-fill: #0A1128; -fx-background-color: #F4F5F7; -fx-background-radius: 10; -fx-padding: 12 15; -fx-pref-width: 100%;" text="user@example.com">
+                                                <Label prefHeight="44.0" prefWidth="521.0" style="-fx-text-fill: #0A1128; -fx-background-color: #F4F5F7; -fx-background-radius: 10; -fx-padding: 12 15; -fx-pref-width: 100%;" text="user@example.com">
                                                     <font><Font size="14.0" /></font>
                                                 </Label>
                                             </children>
@@ -139,7 +139,7 @@
                                                 <Label style="-fx-text-fill: #666666;" text="Mô tả bản thân">
                                                     <font><Font name="System Bold" size="13.0" /></font>
                                                 </Label>
-                                                <TextArea fx:id="inforItem" prefHeight="150.0" promptText="Giới thiệu đôi nét về bạn..." style="-fx-control-inner-background: #F4F5F7; -fx-background-radius: 10; -fx-background-color: transparent; -fx-padding: 5;" wrapText="true" VBox.vgrow="ALWAYS">
+                                                <TextArea fx:id="desc" prefHeight="150.0" promptText="Giới thiệu đôi nét về bạn..." style="-fx-control-inner-background: #F4F5F7; -fx-background-radius: 10; -fx-background-color: transparent; -fx-padding: 5;" wrapText="true" VBox.vgrow="ALWAYS">
                                                     <font><Font size="14.0" /></font>
                                                 </TextArea>
                                             </children>
@@ -152,11 +152,15 @@
                                                 <Label fx:id="thongbao" style="-fx-text-fill: #4CAF50;" wrapText="true" HBox.hgrow="ALWAYS">
                                                     <font><Font name="System Bold" size="14.0" /></font>
                                                 </Label>
-                                                <Region HBox.hgrow="ALWAYS" />
+                                    <Label fx:id="err" prefHeight="35.0" prefWidth="228.0" textFill="#00ff22">
+                                       <font>
+                                          <Font size="15.0" />
+                                       </font>
+                                    </Label>
                                                 <Button mnemonicParsing="false" onAction="#canclePost" prefHeight="45.0" prefWidth="140.0" style="-fx-background-color: #FFF0F0; -fx-background-radius: 10; -fx-cursor: hand; -fx-text-fill: #E63946;" text="HỦY THAY ĐỔI">
                                                     <font><Font name="System Bold" size="14.0" /></font>
                                                 </Button>
-                                                <Button mnemonicParsing="false" prefHeight="45.0" prefWidth="140.0" style="-fx-background-color: #08103F; -fx-background-radius: 10; -fx-cursor: hand; -fx-text-fill: WHITE;" text="CẬP NHẬT">
+                                                <Button mnemonicParsing="false" onAction="#updateProfile" prefHeight="45.0" prefWidth="140.0" style="-fx-background-color: #08103F; -fx-background-radius: 10; -fx-cursor: hand; -fx-text-fill: WHITE;" text="CẬP NHẬT">
                                                     <font><Font name="System Bold" size="14.0" /></font>
                                                 </Button>
                                             </children>

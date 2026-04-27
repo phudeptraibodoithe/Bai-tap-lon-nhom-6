@@ -14,15 +14,12 @@ import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
 import java.io.IOException;
 
-public class ControllerRegister {
+public class ControllerRegister extends BaseController{
 
     @FXML private TextField nicknameText, accountNameText, emailText, phoneText;
     @FXML private PasswordField passText, repassText;
     @FXML private Label err;
-
-    @FXML
-    public void initialize() {
-        // ĐĂNG KÝ NHẬN TIN: Thay thế hoàn toàn hàm listenToServer() cũ
+    @FXML public void initialize() {
         SocketManager.getInstance().setOnMessageReceived(this::handleServerResponse);
 
         if (!SocketManager.getInstance().isConnected()) {
@@ -30,20 +27,16 @@ public class ControllerRegister {
         }
     }
 
-    @FXML
-    public void submit(ActionEvent event) {
-        // 1. Reset UI
+    @FXML public void submit(ActionEvent event) {
         err.setStyle("-fx-text-fill: red;");
         err.setText("");
 
-        // 2. Lấy dữ liệu
         String accountName = accountNameText.getText().trim();
         String nickname = nicknameText.getText().trim();
         String password = passText.getText().trim();
         String email = emailText.getText().trim();
         String phone = phoneText.getText().trim();
 
-        // 3. Validate nhanh
         if (accountName.isEmpty() || password.isEmpty() || nickname.isEmpty() || email.isEmpty() || phone.isEmpty()) {
             err.setText("Vui lòng điền đầy đủ thông tin!");
             return;
@@ -59,7 +52,6 @@ public class ControllerRegister {
             return;
         }
 
-        // 4. Gửi lệnh qua SocketManager
         String command = "REGISTER " + accountName + " " + password + " " + nickname;
         SocketManager.getInstance().send(command);
 
@@ -68,19 +60,12 @@ public class ControllerRegister {
     }
 
     private void handleServerResponse(String response) {
-        // Luôn chạy trong Platform.runLater để an toàn cho UI
         Platform.runLater(() -> {
             switch (response) {
                 case "REG_SUCCESS":
                     err.setStyle("-fx-text-fill: green;");
                     err.setText("Đăng ký thành công! Đang chuyển hướng...");
-
-                    // Delay một chút để người dùng kịp thấy chữ "Thành công" (Tùy chọn)
-                    try {
-                        loadScene("/views/login.fxml");
-                    } catch (IOException e) {
-                        err.setText("Lỗi khi chuyển màn hình Login!");
-                    }
+                    changeScene(err,"login.fxml");
                     break;
 
                 case "REG_EXISTED":
@@ -96,31 +81,5 @@ public class ControllerRegister {
                     break;
             }
         });
-    }
-
-    private void loadScene(String fxmlPath) throws IOException {
-        if (err.getScene() == null) return;
-
-        Parent root = FXMLLoader.load(getClass().getResource(fxmlPath));
-        Stage stage = (Stage) err.getScene().getWindow();
-        Scene scene = new Scene(root);
-
-        var cssResource = getClass().getResource("/styles/Button.css");
-        if (cssResource != null) {
-            scene.getStylesheets().add(cssResource.toExternalForm());
-        }
-
-        stage.setScene(scene);
-        stage.show();
-    }
-
-    @FXML
-    public void switchToLogin(ActionEvent e) throws IOException {
-        loadScene("/views/login.fxml");
-    }
-
-    @FXML
-    public void switchToStart(MouseEvent e) throws IOException {
-        loadScene("/views/start.fxml");
     }
 }

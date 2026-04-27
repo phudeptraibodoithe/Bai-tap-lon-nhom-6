@@ -1,6 +1,8 @@
 package com.tboat.socket;
 
+import com.tboat.dao.HistoryBidDAO;
 import com.tboat.dao.UserDAO;
+import com.tboat.models.History;
 import com.tboat.models.User;
 import com.tboat.service.AuctionManager;
 import com.tboat.service.AuctionRoom;
@@ -9,13 +11,16 @@ import com.tboat.utils.ResponseCode;
 
 import java.io.*;
 import java.net.*;
+import java.util.List;
 
 public class ClientHandler implements Runnable {
     private Socket socket;
     private PrintWriter out;
     private AuctionRoom currentRoom;
     private String clientId;
+    private ResponseCode result;
     private UserDAO userDAO;
+    private HistoryBidDAO historyBidDAO;
     private String pass,nick,account;
     private String[] data;
     private UserManager userManager;
@@ -25,6 +30,7 @@ public class ClientHandler implements Runnable {
         this.clientId = "Bidder-" + this.hashCode();
         this.userManager = new UserManager();
         this.userDAO = new UserDAO();
+        this.historyBidDAO=new HistoryBidDAO();
     }
 
     @Override
@@ -48,72 +54,99 @@ public class ClientHandler implements Runnable {
         String action = parts[0].toUpperCase();
 
         switch (action) {
-            // Bên trong hàm handleCommand của ClientHandler.java
-            // Trong file ClientHandler.java (Server)
             case "REGISTER":
-                data = parts[1].split(" ",3);
+                data = parts[1].split(" ", 3);
                 account = data[0];
-                pass    = data[1];
-                nick    = data[2];
+                pass = data[1];
+                nick = data[2];
 
-                // Gọi qua UserManager thay vì UserDAO trực tiếp
-                ResponseCode result = userManager.register(account, pass, nick);
-
-                // Gửi phản hồi chính xác về cho Client
-                out.println("REG_" + result.name()); // Sẽ gửi về REG_SUCCESS, REG_EXISTED, hoặc REG_ERROR
+                result = userManager.register(account, pass, nick);
+                out.println("REG_" + result.name());
                 break;
 
             case "LOGIN":
-                // Giả sử lệnh gửi lên là: LOGIN account password
-                data = parts[1].split(" ");
-                account = data[0];
-                pass = data[1];
+                data = parts[1].split(" ", 2);
+                this.account = data[0];
+                this.pass = data[1];
 
-                // Gọi UserManager để kiểm tra (UserManager đã được viết ở các bước trước)
-                ResponseCode loginRes = userManager.login(account, pass, this);
-
-                if (loginRes == ResponseCode.SUCCESS) {
-                    // Lấy thông tin user để gửi về cho Client lưu trữ
+                result = userManager.login(account, pass, this);
+                if (result == ResponseCode.SUCCESS) {
                     User user = userDAO.getUser(account);
-                    // Gửi: LOGIN_SUCCESS | Nickname | Balance
-                    out.println("LOGIN_SUCCESS|" + user.getNickname() + "|" + user.getBalance());
+                    out.println(String.format("LOGIN_SUCCESS|%s|%.0f|%s|%s",
+                            user.getNickname(), user.getBalance(),
+                            user.getDescription(), user.getAvatarURL()));
                 } else {
-                    // Gửi: LOGIN_WRONG_PASSWORD hoặc LOGIN_NOT_FOUND
-                    out.println("LOGIN_" + loginRes.name());
+                    out.println("LOGIN_" + result.name());
                 }
+                break;
+
+            case "UPDATE_PROFILE":
+                // Kiểm tra xem có phần dữ liệu sau lệnh không
+                if (parts.length < 2 || parts[1].trim().isEmpty()) {
+                    out.println("UPDATE_PROFILE_ERROR|MISSING_DATA");
+                    break;
+                }
+                data = parts[1].split("\\|", -1);
+                // Kiểm tra xem có đủ 2 phần (mô tả và ảnh) không
+                if (data.length < 2) {
+                    out.println("UPDATE_PROFILE_ERROR|INVALID_FORMAT");
+                    break;
+                }
+                String newDesc = data[0];
+                String newAvt = data[1];
+
+                User user = userDAO.getUser(this.account);
+                if (user != null) {
+                    user.setDescription(newDesc);
+                    user.setAvatar(newAvt);
+
+                    if (userDAO.updateUser(user)) {
+                        out.println("UPDATE_PROFILE_SUCCESS");
+                    } else {
+                        out.println("UPDATE_PROFILE_ERROR");
+                    }
+                }
+                break;
+
+            case "GET_HISTORY":
+                String targetAccount = (parts.length > 1) ? parts[1] : this.account;
+                List<History> historyList = historyBidDAO.getHistoryByAccount(targetAccount);
+
+                StringBuilder sb = new StringBuilder("HISTORY_RES");
+                for (History h : historyList) {
+                    sb.append("|").append(h.getAuctionSessionId())
+                            .append(";").append(h.getFinalPrice())
+                            .append(";").append(h.getCompletedAt().toString());
+                }
+                out.println(sb.toString());
                 break;
 
             case "JOIN":
                 if (parts.length < 2) return;
-
-                //logic chuyen phong khi dang o phong A JOIN sang phong B
-                //hoac khi 1 nguoi choi ket noi nhung chua vao phong nao da ngat ket noi
                 if (currentRoom != null) currentRoom.removeSubscriber(this);
-
-                //khai bao AuctionRoom moi neu chua co va them client vao
                 currentRoom = AuctionManager.getInstance().getRoom(parts[1]);
                 currentRoom.addSubscriber(this);
-                out.println("Đa vao phong đau gia: " + parts[1]);
+                out.println("DA_VAO_PHONG|" + parts[1]);
                 break;
 
             case "BID":
                 if (currentRoom == null || parts.length < 2) {
-                    out.println("Loi: Hay tham gia phong truoc (JOIN <room>)");
+                    out.println("ERR_JOIN_REQUIRED");
                     return;
                 }
                 try {
                     double price = Double.parseDouble(parts[1]);
-                    if (currentRoom.placeBid(price, clientId)) {
-                        currentRoom.broadcast("GIA MOI: " + price + " (Dat boi " + clientId + ")");
+                    if (currentRoom.placeBid(price, this.account)) {
+                        currentRoom.broadcast("GIA_MOI|" + price + "|" + this.account);
                     } else {
-                        out.println("Gia khong hop le (Phai cao hơn " + currentRoom.getCurrentPrice() + ")");
+                        out.println("BID_INVALID|" + currentRoom.getCurrentPrice());
                     }
-                } catch (NumberFormatException e) { out.println("Gia phai là mot so!"); }
+                } catch (NumberFormatException e) { out.println("ERR_NUMBER_FORMAT"); }
                 break;
 
             default:
-                if (currentRoom != null) currentRoom.broadcast(clientId + ": " + input);
-                else out.println("Lenh khong ro. Hay JOIN mot phong de bat đau.");
+                if (currentRoom != null) currentRoom.broadcast(this.account + ": " + input);
+                else out.println("ERR_UNKNOWN_COMMAND");
         }
     }
 

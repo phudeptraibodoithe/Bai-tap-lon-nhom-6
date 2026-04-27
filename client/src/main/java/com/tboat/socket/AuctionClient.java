@@ -11,7 +11,7 @@ public class AuctionClient {
         // Cho phép nhập IP để linh hoạt khi ghép nối nhóm
         System.out.print("Nhap IP Server (mac dinh 192.168.1.21): ");
         String serverIp = scanner.nextLine().trim();
-        if (serverIp.isEmpty()) serverIp = "192.168.1.253";
+        if (serverIp.isEmpty()) serverIp = "192.168.1.27";
 
         try (Socket socket = new Socket(serverIp, 8888);
              PrintWriter out = new PrintWriter(socket.getOutputStream(), true);

@@ -11,7 +11,6 @@ public class AuctionSession {
     private double currentPrice;
     private double bidIncrease; 
     private String status; 
-    private Item item;
     private StatusOfAuction statusOfAuction;
 
     // Getters
@@ -30,6 +29,16 @@ public class AuctionSession {
     public LocalDateTime getEndTime() {
         return endTime;
     }
+    public double getCurrentPrice() {
+        return currentPrice;
+    }
+    public double getBidIncrease() {
+        return bidIncrease;
+    }
+    public String getStatus() {
+        return status;
+    }
+
 
 
     // Setters

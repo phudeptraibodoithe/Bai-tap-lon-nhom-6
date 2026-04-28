@@ -2,14 +2,14 @@ package models;
 
 public class Participation {
     private String id;
-    private int userId;
+    private String userAccountName;
     private int sessionId;
     private RoleType roleType;
     private TransactionRole roleBehavior; // Chứa logic tương ứng với Role
 
-    public Participation(String id, int userId, int sessionId, TransactionRole roleBehavior) {
+    public Participation(String id, String userAccountName, int sessionId, TransactionRole roleBehavior) {
         this.id = id;
-        this.userId = userId;
+        this.userAccountName = userAccountName;
         this.sessionId = sessionId;
         this.roleBehavior = roleBehavior;
         this.roleType = roleBehavior.getRoleType(); // Lấy trực tiếp từ behavior
@@ -23,11 +23,10 @@ public class Participation {
         // Delegate (ủy quyền) hành vi thực thi xuống cho interface
         // Nếu roleBehavior là BidderRole, nó có thể ép kiểu để gọi hàm placeBid()
         if (roleBehavior instanceof BidderRole) {
-            System.out.println("Người này là Bidder, chuẩn bị đặt giá...");
+            System.out.println("Set price: ");
             // Ép kiểu để gọi hàm riêng của BidderRole
-            // ((BidderRole) roleBehavior).placeBid(100.0);
         } else if (roleBehavior instanceof SellerRole) {
-            System.out.println("Người này là Seller, đang theo dõi phiên đấu giá...");
+            System.out.println("Observation only!");
         }
     }
 }

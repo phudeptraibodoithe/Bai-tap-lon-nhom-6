@@ -6,8 +6,10 @@ public class User extends Person {
     private String avatarURL;
 
     // Constructor
-    public User(String accountName, String password, String nickname) {
+    public User(String accountName, String password, String nickname,String description,String avatarURL) {
         super(accountName, password, nickname);
+        this.avatarURL=avatarURL;
+        this.description=description;
     }
 
     // Setters
@@ -30,6 +32,9 @@ public class User extends Person {
     public void deposit(double amount) {
         if (amount > 0) {
             this.balance += amount;
+        }
+        else {
+            System.out.println("Invalid!");
         }
     }
 

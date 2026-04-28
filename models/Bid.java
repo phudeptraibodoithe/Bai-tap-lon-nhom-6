@@ -9,8 +9,7 @@ public class Bid {
     private double bidAmount;
     private LocalDateTime bidTime;
 
-    public Bid(int id, int auctionSessionId, int bidderId, double bidAmount) {
-        this.id = id;
+    public Bid(int auctionSessionId, int bidderId, double bidAmount) {
         this.auctionSessionId = auctionSessionId;
         this.bidderId = bidderId;
         this.bidAmount = bidAmount;

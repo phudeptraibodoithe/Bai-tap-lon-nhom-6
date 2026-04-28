@@ -11,8 +11,8 @@ public class Admin extends Person {
         System.out.println("The product has been approved!");
     }
 
-    public void ban(User user) {
+    /*public void ban(User user) {
         // Code ban tài khoản
         System.out.println("The account has been banned: " + user.getAccountName());
-    }
+    }*/
 }

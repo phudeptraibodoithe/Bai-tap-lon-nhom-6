@@ -9,6 +9,5 @@ public class BidderRole implements TransactionRole {
 
     public void placeBid(double amount) {
         // Code đặt giá
-        System.out.println("Đặt giá thành công!");
     }
 }

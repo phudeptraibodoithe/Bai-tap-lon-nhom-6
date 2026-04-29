@@ -29,28 +29,19 @@ public class User extends Person {
     }
 
     // Methods
-//    public boolean register(String username,String password,String account){
-//        if(userDAO.getUser(username)!=null){
-//            return false;
-//        }
-//        userDAO.addUser(username,password,account);
-//        return true;
-//    }
-//
-//    public boolean login(String accountName, String password) {
-//        return userDAO.checkLogin(accountName, password);
-//    }
-//
-//    public void deposit(double amount) {
-//        if (amount > 0) {
-//            this.balance += amount;
-//        }
-//    }
-//
-//    // Hàm này trả về một đối tượng Participation (Hồ sơ tham gia phiên đấu giá)
-//    public Participation joinSession(AuctionSession session) {
-//        // Logic thực tế sẽ tạo và trả về đối tượng Participation ở đây
-//        // Ví dụ tạm thời trả về null để không báo lỗi cú pháp
-//        return null;
-//    }
+    public void deposit(double amount) {
+        if (amount > 0) {
+            this.balance += amount;
+        }
+        else {
+            System.out.println("Invalid!");
+        }
+    }
+
+    // Hàm này trả về một đối tượng Participation (Hồ sơ tham gia phiên đấu giá)
+    public Participation joinSession(AuctionSession session) {
+        // Logic thực tế sẽ tạo và trả về đối tượng Participation ở đây
+        // Ví dụ tạm thời trả về null để không báo lỗi cú pháp
+        return null;
+    }
 }

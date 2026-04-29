@@ -14,7 +14,7 @@ import com.tboat.utils.ResponseCode;
 public class HistoryBidDAO {
 
     public boolean addHistory(History history) {
-        String sql = "INSERT INTO history (auctionSessionId, winnerAccount, finalPrice, completedAt) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO history (auctionSessionId, winnerAccountName, finalPrice, completedAt) VALUES (?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -64,11 +64,11 @@ public class HistoryBidDAO {
         return list;
     }
 
-    public ResponseCode updateBidLeader(int sessionId, String bidderAccount, double newPrice,double bidIncrease) {
+    public ResponseCode updateBidLeader(int sessionId, String bidderAccount, double newPrice) {
         UserDAO userDAO = new UserDAO();
         double currentBalance = userDAO.getBalance(bidderAccount);
 
-        if (currentBalance < newPrice+bidIncrease) {
+        if (currentBalance <newPrice) {
             return ResponseCode.INVALID_INPUT;
         }
 

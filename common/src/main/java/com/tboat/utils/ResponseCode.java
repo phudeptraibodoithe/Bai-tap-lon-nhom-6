@@ -5,6 +5,7 @@ public enum ResponseCode {
     EXISTED("Tài khoản đã tồn tại"),
     NOT_FOUND("Không tìm thấy tài khoản"),
     WRONG_PASSWORD("Mật khẩu không chính xác"),
+    ALREADY_LOGGED_IN("Tài khoản đang đăng nhập ở nơi khác"),
     ERROR("Lỗi hệ thống không xác định"),
     INVALID_INPUT("Dữ liệu nhập vào không hợp lệ");
 

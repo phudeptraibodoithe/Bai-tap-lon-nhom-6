@@ -1,5 +1,6 @@
 package com.tboat.controllers;
 
+import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -14,18 +15,11 @@ import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
 import java.io.IOException;
 
-public class ControllerRegister extends BaseController{
+public class ControllerRegister extends BaseController implements SocketListener {
 
     @FXML private TextField nicknameText, accountNameText, emailText, phoneText;
     @FXML private PasswordField passText, repassText;
     @FXML private Label err;
-    @FXML public void initialize() {
-        SocketManager.getInstance().setOnMessageReceived(this::handleServerResponse);
-
-        if (!SocketManager.getInstance().isConnected()) {
-            err.setText("Cảnh báo: Chưa có kết nối Socket!");
-        }
-    }
 
     @FXML public void submit(ActionEvent event) {
         err.setStyle("-fx-text-fill: red;");
@@ -52,14 +46,14 @@ public class ControllerRegister extends BaseController{
             return;
         }
 
-        String command = "REGISTER " + accountName + " " + password + " " + nickname;
+        String command = "REGISTER|" + accountName + " " + password + " " + nickname;
         SocketManager.getInstance().send(command);
 
         err.setStyle("-fx-text-fill: blue;");
         err.setText("Đang gửi yêu cầu đăng ký...");
     }
 
-    private void handleServerResponse(String response) {
+    public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             switch (response) {
                 case "REG_SUCCESS":

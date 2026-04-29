@@ -68,13 +68,15 @@ public class UserDAO {
         return ck;
     }
 
-    public boolean updateBalance(String accountName, double balance) {
-        String sql = "UPDATE user SET balance = ? WHERE accountName = ?";
+    public boolean updateBalance(String accountName, double amount) {
+        String sql = "UPDATE user SET balance = balance + ? WHERE accountName = ? AND (balance + ?) >= 0";
+
         try (Connection c = DatabaseConnection.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
-            ps.setDouble(1, balance);
+            ps.setDouble(1, amount);
             ps.setString(2, accountName);
+            ps.setDouble(3, amount);
 
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -143,25 +145,4 @@ public class UserDAO {
         } catch (Exception e) { e.printStackTrace(); }
         return 0;
     }
-
-
-//    public boolean deleteUser(String accountName){
-//        // xóa user, true nếu xóa thành công
-//        String update = "delete from user WHERE accountName = ?";
-//        boolean ck = false;
-//        try (Connection c = DatabaseConnection.getConnection();
-//             PreparedStatement ps = c.prepareStatement(update)) {
-//            ps.setString(1, accountName);
-//            int af = ps.executeUpdate();
-//            if (af > 0) {
-//                ck = true;
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//        return ck;
-//    }
-
-//    cái code delete đang gặp vấn đề. neếu xoóa user thì k xoóa đượcvifif mắc khóa ngoại
-//     liệu có nêndđặt trạng thái cho user, xoa thì trạng thái chuyển sang banned hoặc delete
 }

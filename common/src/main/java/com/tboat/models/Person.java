@@ -26,6 +26,9 @@ public abstract class Person {
     public void setNickname(String nickname) {
         this.nickname = nickname;
     }
+    public void setBalance(double balance) {
+        this.balance = balance;
+    }
 
     // Getters
     public String getAccountName() {
@@ -39,15 +42,5 @@ public abstract class Person {
     }
     public String getPassword() {
         return password;
-    }
-
-    // Methods
-    public void withdraw(double amount) {
-        if (amount > 0 && this.balance >= amount) {
-            this.balance -= amount;
-        }
-        else { 
-            System.out.println("Invalid!");
-        }
     }
 }

@@ -1,5 +1,6 @@
 package com.tboat.controllers;
 
+import com.tboat.socket.SocketListener;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.fxml.FXML;
@@ -17,8 +18,19 @@ public abstract class BaseController {
     private Parent root;
 
     public void changeScene(Node node, String fxmlFileName) {
+        if (this instanceof SocketListener) {
+            ((SocketListener) this).unregisterSocket();
+            System.out.println("[System] Đã tự động hủy đăng ký Socket cho: " + this.getClass().getSimpleName());
+        }
+
         try {
-            root = FXMLLoader.load(getClass().getResource("/views/" + fxmlFileName));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/" + fxmlFileName));
+            root = loader.load();
+            Object nextController = loader.getController();
+            if (nextController instanceof SocketListener) {
+                ((SocketListener) nextController).registerSocket();
+                System.out.println("[System] Đã tự động đăng ký Socket cho Controller mới: " + nextController.getClass().getSimpleName());
+            }
             scene = node.getScene();
             scene.getStylesheets().clear();
             scene.getStylesheets().add(getClass().getResource("/styles/Button.css").toExternalForm());

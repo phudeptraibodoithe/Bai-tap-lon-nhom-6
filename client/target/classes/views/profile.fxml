@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.Cursor?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefHeight="750.0" prefWidth="1100.0" style="-fx-background-color: #F8F9FA;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.ControllerRegister">
+    <children>
+        <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="20.0" style="-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;">
+            <padding>
+                <Insets left="30.0" right="30.0" />
+            </padding>
+            <children>
+                <Button mnemonicParsing="false" onAction="#switchToMenu" style="-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;">
+                    <graphic>
+                        <ImageView fitHeight="59.0" fitWidth="129.0" pickOnBounds="true" preserveRatio="true">
+                            <image>
+                                <Image url="@../images/logo.png" />
+                            </image>
+                        </ImageView>
+                    </graphic>
+                </Button>
+                <Button mnemonicParsing="false" onAction="#switchToMenu" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Trang chủ">
+                    <font><Font size="14.0" /></font>
+                </Button>
+                <Button mnemonicParsing="false" onAction="#switchToHistory" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Lịch sử ">
+                    <font><Font size="14.0" /></font>
+                </Button>
+                <Button mnemonicParsing="false" onAction="#switchToPostItem" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Đăng sản phẩm ">
+                    <font><Font size="14.0" /></font>
+                </Button>
+                <Button mnemonicParsing="false" style="-fx-background-color: #F0F4FF; -fx-padding: 8 18; -fx-background-radius: 8; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Profile ">
+                    <font><Font name="System Bold" size="14.0" /></font>
+                </Button>
+                <Region HBox.hgrow="ALWAYS" />
+                <Label style="-fx-text-fill: #0A1128;" text="User?">
+                    <font><Font name="System Bold" size="14.0" /></font>
+                </Label>
+                <ImageView fitHeight="40.0" fitWidth="40.0" pickOnBounds="true" preserveRatio="true" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);" />
+            </children>
+        </HBox>
+
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" style="-fx-background-color: transparent; -fx-background: transparent;" VBox.vgrow="ALWAYS">
+            <content>
+                <VBox>
+                    <padding>
+                        <Insets bottom="40.0" left="40.0" right="40.0" top="30.0" />
+                    </padding>
+                    <children>
+                        <Label style="-fx-text-fill: #0A1128;" text="Hồ Sơ Của Tôi">
+                            <font>
+                                <Font name="System Bold" size="32.0" />
+                            </font>
+                            <VBox.margin>
+                                <Insets bottom="30.0" />
+                            </VBox.margin>
+                        </Label>
+
+                        <HBox spacing="40.0">
+                            <children>
+                                <VBox alignment="TOP_CENTER" prefWidth="350.0" spacing="20.0" style="-fx-background-color: white; -fx-background-radius: 20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 15, 0, 0, 5); -fx-padding: 35 25;">
+                                    <children>
+                                        <StackPane maxHeight="220.0" maxWidth="220.0" minHeight="220.0" minWidth="220.0" style="-fx-background-color: #F4F5F7; -fx-background-radius: 200; -fx-border-color: #e0e0e0; -fx-border-radius: 200; -fx-border-width: 2;">
+                                            <children>
+                                                <Label style="-fx-text-fill: #9DA3B4;" text="📷 Chạm để đổi" StackPane.alignment="BOTTOM_CENTER">
+                                                    <font><Font size="12.0" /></font>
+                                                    <StackPane.margin><Insets bottom="20.0" /></StackPane.margin>
+                                                </Label>
+                                                <ImageView fx:id="myImageView" fitHeight="220.0" fitWidth="220.0" onMouseClicked="#uploadImage" pickOnBounds="true" preserveRatio="true">
+                                                    <cursor><Cursor fx:constant="HAND" /></cursor>
+                                                </ImageView>
+                                            </children>
+                                        </StackPane>
+
+                                        <Label fx:id="username" style="-fx-text-fill: #0A1128;" text="Tên tài khoản">
+                                            <font><Font name="System Bold" size="24.0" /></font>
+                                        </Label>
+
+                                        <VBox alignment="CENTER" spacing="5.0" style="-fx-background-color: #F0F4FF; -fx-background-radius: 15; -fx-padding: 15; -fx-pref-width: 100%;">
+                                            <children>
+                                                <Label style="-fx-text-fill: #666666;" text="Số dư hiện tại">
+                                                    <font><Font name="System Bold" size="14.0" /></font>
+                                                </Label>
+                                                <Label style="-fx-text-fill: #4CAF50;" text="0 VNĐ">
+                                                    <font><Font name="System Bold" size="24.0" /></font>
+                                                </Label>
+                                            </children>
+                                        </VBox>
+
+                                        <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#switchToWallet" prefHeight="45.0" style="-fx-background-color: #08103F; -fx-background-radius: 10; -fx-cursor: hand; -fx-text-fill: WHITE;" text="Ví TBOAT - Quản lý số dư 💳">
+                                            <font><Font name="System Bold" size="14.0" /></font>
+                                        </Button>
+                                        <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#switchToMyItems" prefHeight="45.0" style="-fx-background-color: #08103F; -fx-background-radius: 10; -fx-cursor: hand; -fx-text-fill: WHITE;" text="Quản lý sản phẩm">
+                                            <font>
+                                                <Font name="System Bold" size="14.0" />
+                                            </font>
+                                        </Button>
+
+                                        <Region VBox.vgrow="ALWAYS" />
+
+                                        <Button mnemonicParsing="false" onAction="#signout" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #E63946;" text="Đăng xuất ">
+                                            <font><Font name="System Bold" size="14.0" /></font>
+                                        </Button>
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="25.0" style="-fx-background-color: white; -fx-background-radius: 20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 15, 0, 0, 5); -fx-padding: 35 30;" HBox.hgrow="ALWAYS">
+                                    <children>
+                                        <Label style="-fx-text-fill: #0A1128;" text="Thông tin cơ bản">
+                                            <font><Font name="System Bold" size="20.0" /></font>
+                                            <VBox.margin><Insets bottom="5.0" /></VBox.margin>
+                                        </Label>
+
+                                        <VBox spacing="8.0">
+                                            <children>
+                                                <Label style="-fx-text-fill: #666666;" text="Email liên hệ">
+                                                    <font><Font name="System Bold" size="13.0" /></font>
+                                                </Label>
+                                                <Label style="-fx-text-fill: #0A1128; -fx-background-color: #F4F5F7; -fx-background-radius: 10; -fx-padding: 12 15; -fx-pref-width: 100%;" text="user@example.com">
+                                                    <font><Font size="14.0" /></font>
+                                                </Label>
+                                            </children>
+                                        </VBox>
+
+                                        <VBox spacing="8.0">
+                                            <children>
+                                                <Label style="-fx-text-fill: #666666;" text="Số điện thoại">
+                                                    <font><Font name="System Bold" size="13.0" /></font>
+                                                </Label>
+                                                <Label style="-fx-text-fill: #0A1128; -fx-background-color: #F4F5F7; -fx-background-radius: 10; -fx-padding: 12 15; -fx-pref-width: 100%;" text="+84 123 456 789">
+                                                    <font><Font size="14.0" /></font>
+                                                </Label>
+                                            </children>
+                                        </VBox>
+
+                                        <VBox spacing="8.0" VBox.vgrow="ALWAYS">
+                                            <children>
+                                                <Label style="-fx-text-fill: #666666;" text="Mô tả bản thân">
+                                                    <font><Font name="System Bold" size="13.0" /></font>
+                                                </Label>
+                                                <TextArea fx:id="inforItem" prefHeight="150.0" promptText="Giới thiệu đôi nét về bạn..." style="-fx-control-inner-background: #F4F5F7; -fx-background-radius: 10; -fx-background-color: transparent; -fx-padding: 5;" wrapText="true" VBox.vgrow="ALWAYS">
+                                                    <font><Font size="14.0" /></font>
+                                                </TextArea>
+                                            </children>
+                                        </VBox>
+
+                                        <Region VBox.vgrow="ALWAYS" />
+
+                                        <HBox alignment="CENTER_RIGHT" spacing="15.0">
+                                            <children>
+                                                <Label fx:id="thongbao" style="-fx-text-fill: #4CAF50;" wrapText="true" HBox.hgrow="ALWAYS">
+                                                    <font><Font name="System Bold" size="14.0" /></font>
+                                                </Label>
+                                                <Region HBox.hgrow="ALWAYS" />
+                                                <Button mnemonicParsing="false" onAction="#canclePost" prefHeight="45.0" prefWidth="140.0" style="-fx-background-color: #FFF0F0; -fx-background-radius: 10; -fx-cursor: hand; -fx-text-fill: #E63946;" text="HỦY THAY ĐỔI">
+                                                    <font><Font name="System Bold" size="14.0" /></font>
+                                                </Button>
+                                                <Button mnemonicParsing="false" prefHeight="45.0" prefWidth="140.0" style="-fx-background-color: #08103F; -fx-background-radius: 10; -fx-cursor: hand; -fx-text-fill: WHITE;" text="CẬP NHẬT">
+                                                    <font><Font name="System Bold" size="14.0" /></font>
+                                                </Button>
+                                            </children>
+                                            <VBox.margin>
+                                                <Insets top="10.0" />
+                                            </VBox.margin>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </children>
+</VBox>

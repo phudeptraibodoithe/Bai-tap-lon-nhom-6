@@ -1,0 +1,14 @@
+com\tboat\models\AuctionSession.class
+com\tboat\models\StatusOfAuction.class
+com\tboat\models\TransactionRole.class
+com\tboat\models\Bid.class
+services\UserManager.class
+com\tboat\models\Person.class
+com\tboat\models\RoleType.class
+com\tboat\models\History.class
+com\tboat\models\Participation.class
+com\tboat\models\SellerRole.class
+com\tboat\models\User.class
+module-info.class
+com\tboat\models\BidderRole.class
+com\tboat\utils\ResponseCode.class

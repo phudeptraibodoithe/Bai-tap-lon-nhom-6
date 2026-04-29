@@ -14,7 +14,7 @@ import com.tboat.utils.ResponseCode;
 public class HistoryBidDAO {
 
     public boolean addHistory(History history) {
-        String sql = "INSERT INTO history (auctionSessionId, winnerAccount, finalPrice, completedAt) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO history (auctionSessionId, winnerAccountName, finalPrice, completedAt) VALUES (?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -64,33 +64,45 @@ public class HistoryBidDAO {
         return list;
     }
 
-    public ResponseCode updateBidLeader(int sessionId, String bidderAccount, double newPrice,double bidIncrease) {
-        UserDAO userDAO = new UserDAO();
-        double currentBalance = userDAO.getBalance(bidderAccount);
-
-        if (currentBalance < newPrice+bidIncrease) {
-            return ResponseCode.INVALID_INPUT;
-        }
-
-        String sqlUpdateSession = "UPDATE auction_session SET currentPrice = ? WHERE id = ?";
+    public ResponseCode updateBidLeader(int sessionId, String bidderAccount, double newPrice, String previousBidder, double previousPrice) {
+        String sqlUpdateSession = "UPDATE auction_session SET currentPrice = ?, highestBidderAccount = ? WHERE id = ?";
         String sqlInsertBid = "INSERT INTO bid (auctionSessionId, bidderAccount, bidAmount, bidTime) VALUES (?, ?, ?, NOW())";
+        String sqlRefund = "UPDATE user SET balance = balance + ? WHERE accountName = ?";
+        String sqlCharge = "UPDATE user SET balance = balance - ? WHERE accountName = ?";
 
         Connection conn = null;
         try {
             conn = DatabaseConnection.getConnection();
-            conn.setAutoCommit(false);
+            conn.setAutoCommit(false); // BẮT BUỘC: Bắt đầu Transaction
 
-            // 2. Cập nhật giá mới nhất cho phiên
-            try (PreparedStatement psUpdate = conn.prepareStatement(sqlUpdateSession)) {
-                psUpdate.setDouble(1, newPrice);
-                psUpdate.setInt(2, sessionId);
-                if (psUpdate.executeUpdate() == 0) {
+            // Bước 1: Trừ tiền người mới (Kiểm tra số dư bằng DB constraint: balance >= 0)
+            try (PreparedStatement psCharge = conn.prepareStatement(sqlCharge)) {
+                psCharge.setDouble(1, newPrice);
+                psCharge.setString(2, bidderAccount);
+                if (psCharge.executeUpdate() == 0) {
                     conn.rollback();
-                    return ResponseCode.NOT_FOUND;
+                    return ResponseCode.INSUFFICIENT_BALANCE; // Không đủ tiền
                 }
             }
 
-            // 3. Ghi lại lịch sử lượt đặt
+            // Bước 2: Hoàn tiền cho người cũ (Nếu có và không phải chính mình)
+            if (previousBidder != null && !previousBidder.equals(bidderAccount)) {
+                try (PreparedStatement psRefund = conn.prepareStatement(sqlRefund)) {
+                    psRefund.setDouble(1, previousPrice);
+                    psRefund.setString(2, previousBidder);
+                    psRefund.executeUpdate();
+                }
+            }
+
+            // Bước 3: Cập nhật phiên đấu giá
+            try (PreparedStatement psUpdate = conn.prepareStatement(sqlUpdateSession)) {
+                psUpdate.setDouble(1, newPrice);
+                psUpdate.setString(2, bidderAccount);
+                psUpdate.setInt(3, sessionId);
+                psUpdate.executeUpdate();
+            }
+
+            // Bước 4: Lưu lịch sử đặt giá
             try (PreparedStatement psInsert = conn.prepareStatement(sqlInsertBid)) {
                 psInsert.setInt(1, sessionId);
                 psInsert.setString(2, bidderAccount);
@@ -98,28 +110,29 @@ public class HistoryBidDAO {
                 psInsert.executeUpdate();
             }
 
-            conn.commit();
+            conn.commit(); // Hoàn tất toàn bộ các bước trên
             return ResponseCode.SUCCESS;
 
         } catch (SQLException e) {
-            if (conn != null) {
-                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
-            }
+            if (conn != null) try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
             e.printStackTrace();
             return ResponseCode.ERROR;
         } finally {
-            // Đóng kết nối an toàn như code cũ
+            // Đóng connection an toàn (Try-with-resources hoặc finally)
+            if (conn != null) {
+                try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+            }
         }
     }
 
     public String getLeadBidder(int sessionId) {
-        String sql = "SELECT bidderAccount FROM bid WHERE auctionSessionId = ? ORDER BY bidAmount DESC LIMIT 1";
+        String sql = "SELECT highestBidderAccount FROM auction_session WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, sessionId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getString("bidderAccount");
+                    return rs.getString("highestBidderAccount");
                 }
             }
         } catch (SQLException e) {

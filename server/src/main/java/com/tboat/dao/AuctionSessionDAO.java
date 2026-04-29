@@ -12,32 +12,38 @@ import com.tboat.models.User;
 
 
 public class AuctionSessionDAO {
-    public boolean addAuctionSession (AuctionSession session) {
-        String sql = "INSERT INTO auction_session (startTime, endTime, currentPrice, bidIncrease, status, sellerAccount, type, name, description, imageURL) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    public int addAuctionSession(AuctionSession session) {
+        String sql = "INSERT INTO auction_session (startTime, endTime, currentPrice, bidIncrease, status, sellerAccount, type, name, description, imageURL, highestBidderAccount) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        // Thêm Statement.RETURN_GENERATED_KEYS để lấy ID tự động tăng từ MySQL
         try (Connection c = DatabaseConnection.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
+             PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             ps.setTimestamp(1, Timestamp.valueOf(session.getStartTime()));
             ps.setTimestamp(2, Timestamp.valueOf(session.getEndTime()));
             ps.setDouble(3, session.getCurrentPrice());
             ps.setDouble(4, session.getBidIncrease());
-            ps.setString(5, session.getStatusOfAuction().toString()); // Thường là PENDING
+            ps.setString(5, session.getStatusOfAuction().toString());
             ps.setString(6, session.getSellerAccountName());
             ps.setString(7, session.getType());
             ps.setString(8, session.getName());
             ps.setString(9, session.getDescription());
             ps.setString(10, session.getImageURL());
+            ps.setString(11, session.getHighestBidderAccount());
 
-            return ps.executeUpdate() > 0;
+            int affectedRows = ps.executeUpdate();
+            if (affectedRows > 0) {
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) return rs.getInt(1); // Trả về ID vừa tạo
+                }
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            return false;
         }
+        return -1; // Thất bại
     }
 
     private AuctionSession mapResultSetToAuctionSession(ResultSet rs) throws SQLException {
-        // Nó lấy dữ liệu từ dòng hiện tại của ResultSet và tạo ra một Object AuctionSession
         return new AuctionSession(
                 rs.getInt("id"),
                 rs.getTimestamp("startTime").toLocalDateTime(),
@@ -49,7 +55,8 @@ public class AuctionSessionDAO {
                 rs.getString("type"),
                 rs.getString("name"),
                 rs.getString("description"),
-                rs.getString("imageURL")
+                rs.getString("imageURL"),
+                rs.getString("highestBidderAccount")
         );
     }
 
@@ -159,6 +166,20 @@ public class AuctionSessionDAO {
         }
         return null;
     }
+    public boolean updateHighestBidder(int sessionId, double newPrice, String bidderAccount) {
+        String sql = "UPDATE auction_session SET currentPrice = ?, highestBidderAccount = ? WHERE id = ?";
+        try (Connection c = DatabaseConnection.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
 
+            ps.setDouble(1, newPrice);
+            ps.setString(2, bidderAccount);
+            ps.setInt(3, sessionId);
+
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 
 }

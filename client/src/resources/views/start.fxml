@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.Cursor?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.text.Text?>
+
+<GridPane prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.ControllerStart">
+    <columnConstraints>
+        <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" percentWidth="50.0" />
+        <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" percentWidth="50.0" />
+    </columnConstraints>
+    <rowConstraints>
+        <RowConstraints minHeight="10.0" vgrow="ALWAYS" />
+    </rowConstraints>
+    <children>
+
+        <VBox alignment="CENTER" spacing="30.0" style="-fx-background-color: #A2B5BB;" GridPane.columnIndex="0">
+            <padding>
+                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+            </padding>
+            <children>
+                <ImageView fitHeight="255.0" fitWidth="350.0" pickOnBounds="true" preserveRatio="true">
+                    <image>
+                        <Image url="@../images/logo.png" />
+                    </image>
+                </ImageView>
+
+                <Text fill="#151ebf" strokeType="OUTSIDE" strokeWidth="0.0" style="-fx-font-weight: BOLD;" text="CHÀO MỪNG ĐẾN VỚI TBOAT" textAlignment="CENTER" wrappingWidth="350.0">
+                    <font>
+                        <Font size="35.0" />
+                    </font>
+                </Text>
+
+                <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Nền Tảng Đấu Giá Đỉnh Cao Bậc Nhất Châu Lục" textAlignment="CENTER" wrappingWidth="300.0">
+                    <font>
+                        <Font size="23.0" />
+                    </font>
+                </Text>
+            </children>
+        </VBox>
+
+        <VBox alignment="CENTER" spacing="25.0" style="-fx-background-color: white;" GridPane.columnIndex="1">
+            <children>
+                <Text strokeType="OUTSIDE" strokeWidth="0.0" style="-fx-font-weight: BOLD;" text="BẮT ĐẦU NGAY!!!" textAlignment="CENTER">
+                    <font>
+                        <Font size="30.0" />
+                    </font>
+                </Text>
+
+                <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Vui Lòng Chọn Thao Tác Để Tiếp Tục" textAlignment="CENTER">
+                    <font>
+                        <Font size="20.0" />
+                    </font>
+                    <VBox.margin>
+                        <Insets bottom="20.0" />
+                    </VBox.margin>
+                </Text>
+
+                <Button mnemonicParsing="false" onAction="#switchToRegister" prefHeight="50.0" prefWidth="200.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-background-color: #F4A460; -fx-border-color: BLACK; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);" text="ĐĂNG KÝ">
+                    <font>
+                        <Font name="System Bold" size="20.0" />
+                    </font>
+                    <cursor>
+                        <Cursor fx:constant="HAND" />
+                    </cursor>
+                </Button>
+
+                <Button mnemonicParsing="false" onAction="#switchToLogin" prefHeight="50.0" prefWidth="200.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-background-color: #FFCC99; -fx-border-color: BLACK; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);" text="ĐĂNG NHẬP">
+                    <font>
+                        <Font name="System Bold" size="20.0" />
+                    </font>
+                    <cursor>
+                        <Cursor fx:constant="HAND" />
+                    </cursor>
+                </Button>
+            </children>
+        </VBox>
+
+    </children>
+</GridPane>

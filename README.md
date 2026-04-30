@@ -16,6 +16,12 @@ classDiagram
         CANCELED
     }
 
+    class RoleType {
+        <<enumeration>>
+        SELLER
+        BIDDER
+    }
+
     %% --- PHẦN CLASS KẾ THỪA CƠ BẢN ---
     class Person {
         <<abstract>>
@@ -36,7 +42,7 @@ classDiagram
         -String avatarURL
         +setDescription(String description) void
         +setAvatar(String avatarURL) void
-        +joinSession(AuctionSession session) Participation
+        +joinSession(AuctionSession session, RoleType role) Participation
     }
 
     class Admin {
@@ -62,7 +68,7 @@ classDiagram
         -String imageURL
     }
 
-    %% Kết nối AuctionSession với Enum Status
+    %% Kết nối AuctionSession với Status
     AuctionSession --> StatusOfAuction : has status
 
     class Bid {
@@ -86,7 +92,7 @@ classDiagram
     User "1" --> "*" History : wins
     AuctionSession "1" --> "1" History : results in
 
-    %% --- PHẦN XỬ LÝ LUỒNG ROLE ĐỘNG ---
+    %% --- PHẦN XỬ LÝ LUỒNG ROLE ĐỘNG (ĐÃ TỐI ƯU ĐA HÌNH) ---
     class Participation {
         -String id
         -String userAccount
@@ -94,29 +100,26 @@ classDiagram
         -RoleType roleType
         -TransactionRole roleBehavior
         +getRoleType() RoleType
-        +executeAction() void
-    }
-
-    class RoleType {
-        <<enumeration>>
-        SELLER
-        BIDDER
+        +executeAction(AuctionSession session, User user, Object[] args) void
     }
 
     class TransactionRole {
         <<Interface>>
         +getRoleType() RoleType
+        +performAction(AuctionSession session, User user, Object[] args) void
     }
 
     class SellerRole {
         +getRoleType() RoleType
+        +performAction(AuctionSession session, User user, Object[] args) void
     }
 
     class BidderRole {
         +getRoleType() RoleType
-        +placeBid(double amount) void
+        +performAction(AuctionSession session, User user, Object[] args) void
     }
 
+    %% Mối quan hệ của Participation
     User "1" --> "*" Participation : joins
     AuctionSession "1" --> "*" Participation : has
     
@@ -130,25 +133,26 @@ classDiagram
 
  Thành viên | Nội dung nhiệm vụ |  tiến độ |
 | :--- | :--- | :--- |
+|  | Ghép nối code của cả nhóm |30% |
 | **Phúc** | Thiết kế giao diện trang chủ | 80%|
 | **Phúc** | Thiết kế trang nạp rút | 100% |
 | **Phúc** | Thiết kế trang đấu giá | 50% |
 | **Phúc** | Thiết kế trang duyệt của admin |50% |
 | **Phúc** | Tích hợp với giao diện của Phú | 80% |
-| **Phúc** | Thêm các tính năng mở rộng |0% |
+| **Phúc** | Thêm các tính năng mở rộng |50% |
 | **Phúc** | Xử lý cập nhật UI realtime và đọc dữ liệu để hiện thị  | 0%|
-| **Tâm** | Thiết kế kiến trúc Socket (Server/Client)  |50% |
+| **Tâm** | Thiết kế kiến trúc Socket (Server/Client)  |80% |
 | **Tâm** | Xử lý Logic Broadcast (Gửi dữ liệu thời gian thực tới tất cả Client trong phòng) |50% |
-| **Tâm** | Xây dựng Giao thức truyền tin | 20% |
-| **Tâm** | Xử lý Đa luồng | 30% |
-| **Thái** | Thiết kế các lớp Java thuần (User, Item,...) | 85% |
-| **Thái** | Xử lý Validation dữ liệu & Bắt lỗi Ngoại lệ (Exception) | 10%|
-| **Thái** | Code logic Trả giá & Xử lý đồng bộ (Synchronized chống trùng lặp) |0%|
-| **Thái** | Code logic Bộ đếm thời gian (Timer) & Tự động chốt phiên đấu giá |0%|
+| **Tâm** | Xây dựng Giao thức truyền tin | 80% |
+| **Tâm** | Xử lý Đa luồng | 50% |
+| **Thái** | Thiết kế các lớp Java thuần (User, Item,...) | 100% |
+| **Thái** | Xử lý Validation dữ liệu & Bắt lỗi Ngoại lệ (Exception) | 50%|
+| **Thái** | Code logic Trả giá & Xử lý đồng bộ (Synchronized chống trùng lặp) |50%|
+| **Thái** | Code logic Bộ đếm thời gian (Timer) & Tự động chốt phiên đấu giá |30%|
 | **Phú** | Thiết kế giao diện đăng nhập, đăng ký | 100%|
 | **Phú** | Thiết kế trang Profile |100% |
 | **Phú** | Thiết kế trang lịch sử | 100% |
-| **Phú** | Thiết kế trang Upload Item |80%|
-| **Phú** | Lập trình tầng DAO (Data Access Object) |90% |
+| **Phú** | Thiết kế trang Upload Item |100%|
+| **Phú** | Lập trình tầng DAO (Data Access Object) |100% |
 | **Phú** | Thiết kế CSDL (ERD) & Viết file SQL & Xây dựng lớp Database Connection |100% |
-| **Phú** | Vẽ sơ đồ UML |90% |
+| **Phú** | Vẽ sơ đồ UML |100% |

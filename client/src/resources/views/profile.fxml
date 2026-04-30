@@ -99,7 +99,7 @@
 
                                         <Region VBox.vgrow="ALWAYS" />
 
-                                        <Button mnemonicParsing="false" onAction="#signout" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #E63946;" text="Đăng xuất ">
+                                        <Button mnemonicParsing="false" onAction="#logout" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #E63946;" text="Đăng xuất ">
                                             <font><Font name="System Bold" size="14.0" /></font>
                                         </Button>
                                     </children>
@@ -152,7 +152,7 @@
                                                 <Label fx:id="thongbao" style="-fx-text-fill: #4CAF50;" wrapText="true" HBox.hgrow="ALWAYS">
                                                     <font><Font name="System Bold" size="14.0" /></font>
                                                 </Label>
-                                    <Label fx:id="err" prefHeight="35.0" prefWidth="228.0" textFill="#00ff22">
+                                    <Label fx:id="err" textFill="#00ff22" wrapText="true">
                                        <font>
                                           <Font size="15.0" />
                                        </font>

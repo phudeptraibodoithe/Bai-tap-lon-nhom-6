@@ -1,22 +1,31 @@
 package com.tboat.service;
 
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class AuctionManager {
-    private static AuctionManager instance;
-    private Map<String, AuctionRoom> activeRooms = new ConcurrentHashMap<>();
-
+    private static volatile AuctionManager instance;
+    private final Map<String, AuctionRoom> activeRooms = new ConcurrentHashMap<>();
     private AuctionManager() {}
-
-    //Mau Singleton
-    public static synchronized AuctionManager getInstance() {
-        if (instance == null) instance = new AuctionManager();
+    public static AuctionManager getInstance() {
+        if (instance == null) { // Kiểm tra lần 1 không cần khóa (nhanh)
+            synchronized (AuctionManager.class) {
+                if (instance == null) { // Kiểm tra lần 2 có khóa (an toàn)
+                    instance = new AuctionManager();
+                }
+            }
+        }
         return instance;
     }
 
     public AuctionRoom getRoom(String roomName) {
-        // Tự động tạo phòng mới nếu chưa tồn tại (Hỗ trợ 3.1.2)
-        return activeRooms.computeIfAbsent(roomName, name -> new AuctionRoom(name, 0));
+        return activeRooms.get(roomName);
+    }
+    public void createRoom(String roomName, double initialPrice) {
+        activeRooms.putIfAbsent(roomName, new AuctionRoom(roomName, initialPrice));
+    }
+    public void removeRoom(String roomName) {
+        activeRooms.remove(roomName);
+        System.out.println("[AuctionManager]: Đã giải phóng phòng " + roomName + " khỏi bộ nhớ.");
     }
 }

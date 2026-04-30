@@ -1,5 +1,7 @@
 package com.tboat.controllers;
 
+import com.tboat.socket.SocketListener;
+import com.tboat.socket.SocketManager;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -27,15 +29,15 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ResourceBundle;
 
-public class ControllerPostItem extends BaseController implements Initializable {
+public class ControllerPostItem extends BaseController implements Initializable, SocketListener {
     @FXML private TextField nameItem;
     @FXML private TextArea inforItem;
-    @FXML private Button submit, cancle;
     @FXML private Label thongbao;
     @FXML private ImageView myImageView;
     @FXML private Spinner<Double> priceSpinner, jumpSpinner;
     @FXML private DatePicker datePickerStart, datePickerEnd;
     @FXML private Spinner<Integer> hourStart, minuteStart, hourEnd, minuteEnd;
+    @FXML private ComboBox<String> typeComboBox;
 
     private Stage stage;
     private Scene scene;
@@ -46,6 +48,7 @@ public class ControllerPostItem extends BaseController implements Initializable 
     public void initialize(URL url, ResourceBundle resourceBundle) {
         setupPriceSpinners();
         setupDateTimeLogic();
+        typeComboBox.getItems().addAll("Điện tử", "Thời trang", "Đồ gia dụng", "Trang sức", "Sách", "Khác");
     }
 
     private void setupPriceSpinners() {
@@ -157,17 +160,15 @@ public class ControllerPostItem extends BaseController implements Initializable 
     public void postItem(ActionEvent e) {
         String name = nameItem.getText();
         String infor = inforItem.getText();
-
-        // Kiểm tra cơ bản
-        if (name.isEmpty() || infor.isEmpty() || imagePath == null || datePickerStart.getValue() == null || datePickerEnd.getValue() == null) {
-            showError("Vui lòng điền đầy đủ thông tin!");
-            return;
-        }
-
-        // Lấy thời gian đầy đủ
+        String type=typeComboBox.getValue();
         LocalDateTime startDT = datePickerStart.getValue().atTime(hourStart.getValue(), minuteStart.getValue());
         LocalDateTime endDT = datePickerEnd.getValue().atTime(hourEnd.getValue(), minuteEnd.getValue());
         LocalDateTime now = LocalDateTime.now();
+
+        if (name.isEmpty() || infor.isEmpty() || imagePath == null || startDT == null || endDT == null || type==null) {
+            showError("Vui lòng điền đầy đủ thông tin!");
+            return;
+        }
 
         // RÀNG BUỘC 1: Bắt đầu phải cách hiện tại ít nhất 10 phút
         if (startDT.isBefore(now.plusMinutes(10))) {
@@ -181,8 +182,20 @@ public class ControllerPostItem extends BaseController implements Initializable 
             return;
         }
 
-        thongbao.setStyle("-fx-text-fill: green;");
-        thongbao.setText("Sản phẩm đã được đăng thành công!");
+        double startPrice = priceSpinner.getValue();
+        double bidInc = jumpSpinner.getValue();
+
+        // 2. Tính toán tổng thời gian diễn ra (giây) theo đúng format Server yêu cầu
+        long durationSeconds = java.time.Duration.between(startDT, endDT).getSeconds();
+
+        // 3. Ghép chuỗi lệnh
+        String message = String.format("POST_ITEM|%s|%s|%s|%s|%s|%s|%d",
+                name, infor, type, imagePath, startPrice, bidInc, durationSeconds);
+        SocketManager.getInstance().send(message);
+
+        // Cập nhật giao diện chờ
+        thongbao.setStyle("-fx-text-fill: blue;");
+        thongbao.setText("Đang xử lý, vui lòng đợi...");
     }
 
     private void showError(String msg) {
@@ -236,5 +249,26 @@ public class ControllerPostItem extends BaseController implements Initializable 
                 event.printStackTrace();
             }
         }
+    }
+
+    @Override
+    public void handleServerResponse(String response) {
+        javafx.application.Platform.runLater(() -> {
+            String[] parts = response.split("\\|", -1);
+            String command = parts[0];
+            switch (command) {
+                case "POST_SUCCESS":
+                    thongbao.setStyle("-fx-text-fill: green;");
+                    thongbao.setText("Đăng bán thành công! ID Phiên: " + parts[1]);
+                    changeScene(thongbao,"TrangChu.fxml");
+                    break;
+                case "ERROR":
+                    String errorMsg = (parts.length > 1) ? parts[1] : "Lỗi hệ thống khi đăng tải!";
+                    showError(errorMsg);
+                    break;
+                default:
+                    break;
+            }
+        });
     }
 }

@@ -15,7 +15,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox prefHeight="650.0" prefWidth="1000.0" spacing="0.0" style="-fx-background-color: #f4f7f6;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.ItemController">
+<VBox prefHeight="650.0" prefWidth="1000.0" spacing="0.0" style="-fx-background-color: #f4f7f6;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.ControllerHistory">
     <children>
         <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="20.0" style="-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;">
             <padding>
@@ -27,8 +27,13 @@
                         <Image url="@../images/logo.png" />
                     </image>
                 </ImageView>
+            <Button fx:id="btnHome" mnemonicParsing="false" onAction="#switchToMenu" style="-fx-background-color: transparent; -fx-cursor: hand;" text="Trang chủ" textFill="#0a1a3a">
+               <font>
+                  <Font size="14.0" />
+               </font>
+            </Button>
 
-                <Button fx:id="btnHome" mnemonicParsing="false"  style="-fx-background-color: #e6f0ff; -fx-padding: 8 18; -fx-background-radius: 5; -fx-cursor: hand;" text="Trang chủ " textFill="#0a1a3a" wrapText="true">
+                <Button fx:id="btnAuction" mnemonicParsing="false" style="-fx-background-color: #e6f0ff; -fx-padding: 8 18; -fx-background-radius: 5; -fx-cursor: hand;" text="Trang đấu giá" textFill="#0a1a3a" wrapText="true">
                     <font>
                         <Font name="System Bold" size="14.0" />
                     </font>
@@ -165,7 +170,7 @@
                                         <HBox spacing="15.0">
                                             <children>
                                                 <TextField fx:id="BidAmount" prefHeight="55.0" promptText="Nhập mức giá bạn muốn trả..." style="-fx-font-size: 16px; -fx-background-radius: 5; -fx-border-color: #cccccc; -fx-border-radius: 5;" HBox.hgrow="ALWAYS" />
-                                                <Button fx:id="btnBid" mnemonicParsing="false"  prefHeight="55.0" prefWidth="180.0" style="-fx-background-color: #0a1a3a; -fx-background-radius: 5; -fx-cursor: hand;" text="Place Bid" textFill="WHITE">
+                                                <Button fx:id="btnBid" mnemonicParsing="false" prefHeight="55.0" prefWidth="180.0" style="-fx-background-color: #0a1a3a; -fx-background-radius: 5; -fx-cursor: hand;" text="Place Bid" textFill="WHITE">
                                                     <font>
                                                         <Font name="System Bold" size="18.0" />
                                                     </font>

@@ -1,12 +1,20 @@
 package com.tboat.controllers;
 
+import com.tboat.socket.SocketListener;
+import com.tboat.socket.SocketManager;
+import com.tboat.utilsclient.UserSession;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 
-public class NapRutController extends BaseController {
+import java.net.URL;
+import java.util.ResourceBundle;
+
+public class NapRutController extends BaseController implements Initializable, SocketListener {
 
     @FXML private Label lblBalance;
     @FXML private Button btnTabDeposit;
@@ -16,28 +24,17 @@ public class NapRutController extends BaseController {
     @FXML private Button btnSubmit;
 
 
-    private double currentBalance = 15000000; // Số dư hiện tại: 15 triệu
+    private double currentBalance = UserSession.getInstance().getBalance();
     private final String CORRECT_PIN = "123456"; // Mã PIN đúng để test
-
-    // Biến này để nhớ xem người dùng đang ở chế độ Nạp hay Rút
     private boolean isDepositMode = true;
-
-    // 3. Hàm khởi tạo (Chạy khi mở màn hình)
-    @FXML
-    public void initialize() {
-        // Cập nhật số dư ban đầu lên màn hình
+    @Override
+    public void initialize(URL url, ResourceBundle resourceBundle){
         updateBalanceLabel();
-
-        // Cài đặt sự kiện khi bấm 2 nút chuyển Tab
+        txtPin.setText("123456");
         btnTabDeposit.setOnAction(event -> switchToDepositMode());
         btnTabWithdraw.setOnAction(event -> switchToWithdrawMode());
-
-        // Cài đặt sự kiện khi bấm nút XÁC NHẬN to đùng ở dưới
         btnSubmit.setOnAction(event -> handleTransaction());
     }
-
-    // ================= CÁC HÀM XỬ LÝ GIAO DIỆN =================
-
     private void switchToDepositMode() {
         isDepositMode = true;
         btnTabDeposit.setStyle("-fx-background-color: #4CAF50; -fx-background-radius: 5; -fx-text-fill: white; -fx-cursor: hand;");
@@ -60,8 +57,6 @@ public class NapRutController extends BaseController {
     private void updateBalanceLabel() {
         lblBalance.setText(String.format("%,.0f", currentBalance));
     }
-
-    // ================= HÀM XỬ LÝ LOGIC TIỀN BẠC (QUAN TRỌNG) =================
 
     private void handleTransaction() {
         String amountText = txtAmount.getText();
@@ -87,31 +82,33 @@ public class NapRutController extends BaseController {
                 showAlert(Alert.AlertType.ERROR, "Lỗi số tiền", "Số tiền giao dịch phải lớn hơn 0!");
                 return;
             }
-
-            // 3. Phân nhánh logic: Nạp hoặc Rút
-            if (isDepositMode) {
-                // LOGIC NẠP TIỀN
-                currentBalance += amount;
-                showAlert(Alert.AlertType.INFORMATION, "Nạp tiền thành công", "Bạn đã nạp " + String.format("%,.0f VNĐ", amount) + " vào ví.");
-            } else {
-                // LOGIC RÚT TIỀN (Phải kiểm tra số dư)
-                if (amount > currentBalance) {
-                    showAlert(Alert.AlertType.ERROR, "Số dư không đủ", "Bạn không thể rút số tiền lớn hơn số dư hiện có trong ví!");
-                    return; // Chặn lại ngay lập tức
-                }
-                currentBalance -= amount;
-                showAlert(Alert.AlertType.INFORMATION, "Rút tiền thành công", "Bạn đã rút " + String.format("%,.0f VNĐ", amount) + " về ngân hàng.");
-            }
-
-            // 4. Cập nhật lại giao diện và xóa trắng form
-            updateBalanceLabel();
-            txtAmount.clear();
-            txtPin.clear();
+            btnSubmit.setDisable(true);
+            double amountToSend = isDepositMode ? amount : -amount;
+            String message = "TRANSACTION|" + amountToSend;
+            SocketManager.getInstance().send(message);
 
         } catch (NumberFormatException e) {
             showAlert(Alert.AlertType.ERROR, "Lỗi nhập liệu", "Vui lòng chỉ nhập số vào ô Số tiền.");
         }
     }
+    @Override
+    public void handleServerResponse(String response) {
+        Platform.runLater(() -> {
+            btnSubmit.setDisable(false);
+            String[] parts = response.split("\\|");
+            if (parts[0].equals("TRANSACTION_SUCCESS")) {
+                double changedAmount = Double.parseDouble(parts[1]);
+                double newBalance = UserSession.getInstance().getUser().getBalance() + changedAmount;
+                UserSession.getInstance().getUser().setBalance(newBalance);
+                currentBalance = newBalance;
+                updateBalanceLabel();
+                showAlert(Alert.AlertType.INFORMATION, "Thành công", "Giao dịch đã được xử lý!");
+            } else if (parts[0].equals("TRANSACTION_FAILED")) {
+                showAlert(Alert.AlertType.ERROR, "Thất bại", parts[1]);
+            }
+        });
+    }
+
     private void showAlert(Alert.AlertType type, String title, String message) {
         Alert alert = new Alert(type);
         alert.setTitle(title);

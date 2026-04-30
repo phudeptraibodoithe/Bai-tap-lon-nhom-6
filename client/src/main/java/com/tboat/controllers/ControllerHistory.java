@@ -1,5 +1,6 @@
 package com.tboat.controllers;
 
+import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
@@ -15,23 +16,22 @@ import javafx.scene.layout.VBox;
 import java.net.URL;
 import java.util.ResourceBundle;
 
-public class ControllerHistory extends BaseController implements Initializable {
+public class ControllerHistory extends BaseController implements Initializable, SocketListener {
 
     @FXML VBox lichsu;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        SocketManager.getInstance().setOnMessageReceived(this::handleServerResponse);
         loadlichsu();
     }
 
     public void loadlichsu() {
         lichsu.getChildren().clear();
         String username = UserSession.getInstance().getUsername();
-        SocketManager.getInstance().send("GET_HISTORY " + username);
+        SocketManager.getInstance().send("GET_HISTORY|" + username);
     }
 
-    private void handleServerResponse(String response) {
+    public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             String[] parts = response.split("\\|");
 

@@ -40,7 +40,6 @@ public class TrangChuController extends BaseController{
     // ==============================================
     // XỬ LÝ SỰ KIỆN TÌM KIẾM & LỌC DANH MỤC
     // ==============================================
-
     @FXML
     void handleCategorySelect(ActionEvent event) {
         // Lấy MenuItem mà người dùng vừa bấm vào

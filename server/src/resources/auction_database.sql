@@ -7,7 +7,7 @@ CREATE TABLE `user` (
   `password` varchar(50) NOT NULL,
   `balance` double DEFAULT '0',
   `description` varchar(500) DEFAULT NULL,
-  `avatarURL` varchar(255) DEFAULT NULL,
+  `avatarURL` MEDIUMTEXT DEFAULT NULL,
   PRIMARY KEY (`accountName`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -21,8 +21,9 @@ CREATE TABLE `auction_session` (
   `sellerAccount` varchar(50) NOT NULL, -- Khóa ngoại trỏ về User
   `type` varchar(50) NOT NULL,
   `name` varchar(100) NOT NULL,
+  `highestBidderAccount` varchar(100) DEFAULT NULL,
   `description` text DEFAULT NULL,
-  `imageURL` varchar(255) DEFAULT NULL,
+  `imageURL` MEDIUMTEXT DEFAULT NULL,
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_session_seller` FOREIGN KEY (`sellerAccount`) REFERENCES `user` (`accountName`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

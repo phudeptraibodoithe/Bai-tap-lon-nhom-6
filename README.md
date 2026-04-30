@@ -60,6 +60,7 @@ classDiagram
         -String name
         -String description
         -String imageURL
+        -String highestBidderAccount
     }
 
     %% Kết nối AuctionSession với Enum Status

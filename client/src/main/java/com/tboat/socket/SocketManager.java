@@ -3,7 +3,8 @@ package com.tboat.socket;
 import javafx.application.Platform;
 import java.io.*;
 import java.net.Socket;
-import java.util.function.Consumer;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class SocketManager {
     private static SocketManager instance;
@@ -11,8 +12,8 @@ public class SocketManager {
     private PrintWriter out;
     private BufferedReader in;
 
-    // Listener duy nhất để Controller hiện tại đăng ký nhận tin nhắn
-    private Consumer<String> messageListener;
+    // Danh sách an toàn cho đa luồng để chứa các người nhận tin
+    private final List<SocketListener> listeners = new CopyOnWriteArrayList<>();
 
     private SocketManager() {}
 
@@ -28,60 +29,65 @@ public class SocketManager {
             this.socket = new Socket(ip, port);
             this.out = new PrintWriter(socket.getOutputStream(), true);
             this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            System.out.println("[SocketManager] Đã kết nối đến Server: " + ip + ":" + port);
+            System.out.println("[SocketManager] Kết nối thành công đến " + ip + ":" + port);
 
-            // Bắt đầu lắng nghe tin nhắn từ Server
             startListening();
         }
     }
 
+    public void subscribe(SocketListener listener) {
+        if (listener != null && !listeners.contains(listener)) {
+            listeners.add(listener);
+        }
+    }
 
-    public void setOnMessageReceived(Consumer<String> listener) {
-        this.messageListener = listener;
+    public void unsubscribe(SocketListener listener) {
+        listeners.remove(listener);
     }
 
     private void startListening() {
         Thread thread = new Thread(() -> {
             try {
                 String response;
-                while (in != null && (response = in.readLine()) != null) {
+                while (socket != null && !socket.isClosed() && (response = in.readLine()) != null) {
                     final String msg = response;
-                    System.out.println("[Server -> Client]: " + msg);
 
-                    // Đẩy tin nhắn về luồng giao diện (JavaFX Application Thread)
-                    if (messageListener != null) {
-                        Platform.runLater(() -> messageListener.accept(msg));
-                    }
+                    // Duyệt danh sách và gửi tin nhắn cho mọi Subscriber
+                    // Platform.runLater đảm bảo cập nhật UI JavaFX an toàn từ thread khác
+                    Platform.runLater(() -> {
+                        for (SocketListener listener : listeners) {
+                            listener.handleServerResponse(msg);
+                        }
+                    });
                 }
             } catch (IOException e) {
-                System.err.println("[SocketManager] Mất kết nối với Server.");
+                System.err.println("[SocketManager] Mất kết nối server.");
                 close();
             }
         });
-        thread.setDaemon(true); // Tự động đóng luồng khi tắt App
+        thread.setDaemon(true);
         thread.start();
     }
 
     public void send(String msg) {
         if (out != null) {
             out.println(msg);
-        } else {
-            System.err.println("[SocketManager] Chưa kết nối, không thể gửi tin nhắn!");
+            out.flush();
         }
-    }
-
-    public boolean isConnected() {
-        return socket != null && !socket.isClosed();
     }
 
     public void close() {
         try {
-            if (in != null) in.close();
-            if (out != null) out.close();
-            if (socket != null) socket.close();
-            socket = null;
+            if (socket != null) {
+                socket.close();
+                socket = null;
+            }
+            listeners.clear();
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+    public boolean isConnected() {
+        return socket != null && socket.isConnected() && !socket.isClosed();
     }
 }

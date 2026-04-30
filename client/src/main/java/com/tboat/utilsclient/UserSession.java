@@ -2,10 +2,6 @@ package com.tboat.utilsclient;
 
 import com.tboat.models.User;
 
-/**
- * Quản lý phiên làm việc của người dùng hiện tại (Client-side)
- * Sử dụng mô hình Singleton để đảm bảo dữ liệu đồng nhất toàn hệ thống.
- */
 public class UserSession {
     private static UserSession instance;
     private User currentUser;

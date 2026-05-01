@@ -25,10 +25,7 @@ public class AdminController extends BaseController implements Initializable, So
     // Khớp 100% với các fx:id và kiểu dữ liệu mới của bạn
     @FXML private TextField txtSearch;
     @FXML private TableView<AuctionSession> tableSessions;
-
-    // Đã đổi String thành Integer ở đây
-    @FXML private TableColumn<AuctionSession, Integer> colId;
-
+    @FXML private TableColumn<AuctionSession, String> colId;
     @FXML private TableColumn<AuctionSession, String> colName;
     @FXML private TableColumn<AuctionSession, Double> colStartPrice;
     @FXML private TableColumn<AuctionSession, Double> colJump;
@@ -45,9 +42,9 @@ public class AdminController extends BaseController implements Initializable, So
         // 1. Map các cột với thuộc tính của AuctionSession
         this.colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         this.colName.setCellValueFactory(new PropertyValueFactory<>("name"));
-        this.colStartPrice.setCellValueFactory(new PropertyValueFactory<>("startPrice")); // Đã khớp với hàm khởi tạo 5 tham số
-        this.colJump.setCellValueFactory(new PropertyValueFactory<>("bidIncrease")); // Đã sửa "jump" thành "bidIncrease" để khớp model
-        this.colSeller.setCellValueFactory(new PropertyValueFactory<>("sellerAccountName")); // Sửa "seller" thành "sellerAccountName"
+        this.colStartPrice.setCellValueFactory(new PropertyValueFactory<>("currentPrice"));
+        this.colJump.setCellValueFactory(new PropertyValueFactory<>("bidIncrease"));
+        this.colSeller.setCellValueFactory(new PropertyValueFactory<>("sellerAccountName"));
 
         // 2. Setup 2 cột hành động (Duyệt / Từ chối) bằng CheckBox
         this.setupActionColumn(this.colApprove, "APPROVE");
@@ -58,8 +55,11 @@ public class AdminController extends BaseController implements Initializable, So
         this.tableSessions.setItems(this.sessionList);
 
         // 4. Xin dữ liệu từ Server khi vừa mở trang
-        SocketManager.getInstance().send("GET_PENDING_ITEMS");
+        Platform.runLater(() -> {
+            SocketManager.getInstance().send("GET_PENDING_ITEMS");
+        });
     }
+
 
     private void setupActionColumn(TableColumn<AuctionSession, Void> column, String actionType) {
         column.setCellFactory((param) -> new TableCell<AuctionSession, Void>() {
@@ -116,13 +116,11 @@ public class AdminController extends BaseController implements Initializable, So
                         if (!parts[i].trim().isEmpty()) {
                             String[] itemData = parts[i].split(",");
                             if (itemData.length >= 5) {
-                                // Đã ép kiểu sang int bằng Integer.parseInt()
                                 int id = Integer.parseInt(itemData[0]);
                                 String name = itemData[1];
                                 double startPrice = Double.parseDouble(itemData[2]);
                                 double jump = Double.parseDouble(itemData[3]);
                                 String seller = itemData[4];
-
                                 sessionList.add(new AuctionSession(id, name, startPrice, jump, seller));
                             }
                         }

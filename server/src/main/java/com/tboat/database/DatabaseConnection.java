@@ -5,7 +5,7 @@ import java.sql.*;
 public class DatabaseConnection {
     public static final String URL = "jdbc:mysql://localhost:3306/auction_db";
     public static final String USER = "root";
-    public static final String PASSWORD = "123456789";
+    public static final String PASSWORD = "123456";
 
     public static Connection getConnection(){
         Connection connection=null;

@@ -49,3 +49,12 @@ CREATE TABLE `history` (
   CONSTRAINT `fk_history_session` FOREIGN KEY (`auctionSessionId`) REFERENCES `auction_session` (`id`),
   CONSTRAINT `fk_history_user` FOREIGN KEY (`winnerAccount`) REFERENCES `user` (`accountName`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `participation` (
+`accountName` varchar(50) NOT NULL,
+`auctionSessionId` int NOT NULL,
+`roleType` varchar(20) NOT NULL,
+PRIMARY KEY (`accountName`, `auctionSessionId`),
+CONSTRAINT `fk_participation_user` FOREIGN KEY (`accountName`) REFERENCES `user` (`accountName`),
+CONSTRAINT `fk_participation_session` FOREIGN KEY (`auctionSessionId`) REFERENCES `auction_session` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

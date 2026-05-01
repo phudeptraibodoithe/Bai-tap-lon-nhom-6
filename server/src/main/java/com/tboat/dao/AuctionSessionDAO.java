@@ -15,7 +15,6 @@ public class AuctionSessionDAO {
     public int addAuctionSession(AuctionSession session) {
         String sql = "INSERT INTO auction_session (startTime, endTime, currentPrice, bidIncrease, status, sellerAccount, type, name, description, imageURL, highestBidderAccount) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        // Thêm Statement.RETURN_GENERATED_KEYS để lấy ID tự động tăng từ MySQL
         try (Connection c = DatabaseConnection.getConnection();
              PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
@@ -40,7 +39,7 @@ public class AuctionSessionDAO {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return -1; // Thất bại
+        return -1;
     }
 
     private AuctionSession mapResultSetToAuctionSession(ResultSet rs) throws SQLException {
@@ -166,20 +165,19 @@ public class AuctionSessionDAO {
         }
         return null;
     }
-    public boolean updateHighestBidder(int sessionId, double newPrice, String bidderAccount) {
-        String sql = "UPDATE auction_session SET currentPrice = ?, highestBidderAccount = ? WHERE id = ?";
+
+    public boolean updateSessionPriceAndHighest(int sessionId, String bidderAccount, double newPrice) {
+        String sql = "UPDATE auction_session SET currentPrice = ?, highestBidderAccount = ? WHERE id = ? AND currentPrice < ?";
         try (Connection c = DatabaseConnection.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
-
             ps.setDouble(1, newPrice);
             ps.setString(2, bidderAccount);
             ps.setInt(3, sessionId);
-
+            ps.setDouble(4, newPrice);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
         }
     }
-
 }

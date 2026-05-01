@@ -14,8 +14,6 @@ public class AuctionSession {
     private String name;
     private String description;
     private String imageURL;
-
-    // Thuộc tính quan trọng bạn vừa thêm
     private String highestBidderAccount;
 
     public AuctionSession(int id, LocalDateTime startTime, LocalDateTime endTime, double currentPrice,
@@ -33,7 +31,7 @@ public class AuctionSession {
         this.name = name;
         this.description = description;
         this.imageURL = imageURL;
-        this.highestBidderAccount = highestBidderAccount; // GÁN Ở ĐÂY
+        this.highestBidderAccount = highestBidderAccount;
     }
 
     public AuctionSession(LocalDateTime startTime, LocalDateTime endTime, double currentPrice,
@@ -50,6 +48,14 @@ public class AuctionSession {
         this.imageURL = imageURL;
         this.highestBidderAccount = null; // Mặc định là chưa có ai
         updateStatusBasedOnTime();
+    }
+
+    public AuctionSession(int id, String name, double currentPrice, double bidIncrease,String sellerAccountName){
+        this.id = id;
+        this.currentPrice = currentPrice;
+        this.bidIncrease = bidIncrease;
+        this.sellerAccountName = sellerAccountName;
+        this.name = name;
     }
 
     public void updateStatusBasedOnTime() {

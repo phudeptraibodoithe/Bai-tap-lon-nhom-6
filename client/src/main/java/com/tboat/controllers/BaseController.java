@@ -60,6 +60,8 @@ public abstract class BaseController {
         changeScene((Node) event.getSource(), "profile.fxml");
     }
 
+    @FXML public void switchToManager(ActionEvent event){changeScene((Node) event.getSource(), "manager.fxml");}
+
     @FXML public void switchToLogin(ActionEvent event) throws IOException {
         changeScene((Node) event.getSource(),"login.fxml");
     }

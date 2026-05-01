@@ -36,6 +36,11 @@
                 <Button mnemonicParsing="false" onAction="#switchToHistory" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Lịch sử ">
                     <font><Font size="14.0" /></font>
                 </Button>
+            <Button mnemonicParsing="false" onAction="#switchToManager" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Quản lý sản phẩm">
+               <font>
+                  <Font size="14.0" />
+               </font>
+            </Button>
                 <Button mnemonicParsing="false" style="-fx-background-color: #F0F4FF; -fx-padding: 8 18; -fx-background-radius: 8; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Đăng sản phẩm ">
                     <font><Font name="System Bold" size="14.0" /></font>
                 </Button>

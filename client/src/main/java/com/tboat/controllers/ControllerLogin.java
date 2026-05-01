@@ -27,23 +27,18 @@ public class ControllerLogin extends BaseController implements SocketListener {
             err.setText("Vui lòng điền đầy đủ thông tin!");
             return;
         }
-
-        if (username.equals("admin") && password.equals("admin")) {
-            changeScene(err, "Admin.fxml");
-        } else {
-            err.setStyle("-fx-text-fill: blue;");
-            err.setText("Đang đăng nhập...");
-            new Thread(() -> {
-                try {
-                    SocketManager.getInstance().send("LOGIN|" + username + "|" + password);
-                } catch (Exception e) {
-                    Platform.runLater(() -> {
-                        err.setStyle("-fx-text-fill: red;");
-                        err.setText("Lỗi kết nối: " + e.getMessage());
-                    });
-                }
-            }).start();
-        }
+        err.setStyle("-fx-text-fill: blue;");
+        err.setText("Đang đăng nhập...");
+        new Thread(() -> {
+            try {
+                SocketManager.getInstance().send("LOGIN|" + username + "|" + password);
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    err.setStyle("-fx-text-fill: red;");
+                    err.setText("Lỗi kết nối: " + e.getMessage());
+                });
+            }
+        }).start();
     }
 
     @Override
@@ -52,7 +47,11 @@ public class ControllerLogin extends BaseController implements SocketListener {
             String[] parts = response.split("\\|", -1);
             String status = parts[0];
 
-            if (status.equals("LOGIN_SUCCESS") && parts.length >= 5) {
+            if (status.equals("LOGIN_ADMIN_SUCCESS")) {
+                changeScene(err, "Admin.fxml");
+
+            }
+            else if (status.equals("LOGIN_SUCCESS") && parts.length >= 5) {
                 User loggedUser = new User(signText.getText(), null, parts[1],
                         Double.parseDouble(parts[2]), parts[4], parts[3]);
                 UserSession.getInstance().createUserSession(loggedUser);

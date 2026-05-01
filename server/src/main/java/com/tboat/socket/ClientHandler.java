@@ -20,8 +20,9 @@ public class ClientHandler implements Runnable {
     private UserDAO userDAO = new UserDAO();
     private HistoryBidDAO historyDAO = new HistoryBidDAO();
     private AuctionSessionDAO auctionDAO = new AuctionSessionDAO();
-    private static final List<String> PUBLIC_ACTIONS = Arrays.asList("LOGIN", "REGISTER", "LIST_AVAILABLE");
-
+    private static final List<String> PUBLIC_ACTIONS = Arrays.asList(
+            "LOGIN", "REGISTER", "LIST_AVAILABLE", "GET_PENDING_ITEMS", "APPROVE_ITEM", "REJECT_ITEM"
+    );
     public ClientHandler(Socket socket) {
         this.socket = socket;
     }
@@ -60,6 +61,11 @@ public class ClientHandler implements Runnable {
                 }
                 String username = parts[1];
                 String password = parts[2];
+                if (username.equals("admin") && password.equals("admin")) {
+                    this.clientId = "admin";
+                    out.println("LOGIN_ADMIN_SUCCESS");
+                    break;
+                }
                 ResponseCode loginRes = userManager.login(username, password, this);
                 switch (loginRes) {
                     case SUCCESS:
@@ -172,7 +178,6 @@ public class ClientHandler implements Runnable {
                     if (res == ResponseCode.SUCCESS) {
                         currentRoom.placeBid(price, clientId);
                         currentRoom.broadcast("NEW_BID|" + price + "|" + clientId);
-                        out.println("BALANCE_UPDATE|" + userDAO.getBalance(clientId));
                         out.println("BID_SUCCESS|Bạn đang dẫn đầu!");
                     } else if (res == ResponseCode.BID_FAILED || res == ResponseCode.BID_FAILED) {
                         out.println("BID_FAILED|Giá của bạn đã bị người khác vượt qua trước. Hãy f5 lại!");
@@ -269,6 +274,44 @@ public class ClientHandler implements Runnable {
                             .append(";").append(h.getCompletedAt().toString());
                 }
                 out.println(sb.toString());
+                break;
+
+            case "GET_PENDING_ITEMS":
+                List<AuctionSession> pendingList = auctionDAO.getPendingAuctions();
+                StringBuilder res = new StringBuilder("PENDING_ITEMS_RESULT");
+
+                for(AuctionSession s : pendingList) {
+                    res.append("|").append(s.getId()).append(",")
+                            .append(s.getName()).append(",")
+                            .append(s.getCurrentPrice()).append(",")
+                            .append(s.getBidIncrease()).append(",")
+                            .append(s.getSellerAccountName()); // Hoặc s.getCreator() tùy cách đặt tên
+                }
+                out.println(res.toString());
+                break;
+
+            case "APPROVE_ITEM":
+                if (parts.length < 2) break;
+                int approveId = Integer.parseInt(parts[1]);
+
+                // Gọi đúng tên hàm và truyền vào Enum của bạn
+                if (auctionDAO.updateSessionStatus(approveId, StatusOfAuction.NOT_STARTED)) {
+                    out.println("APPROVE_SUCCESS|" + approveId);
+                } else {
+                    out.println("ERROR|Lỗi cơ sở dữ liệu khi duyệt sản phẩm");
+                }
+                break;
+
+            case "REJECT_ITEM":
+                if (parts.length < 2) break;
+                int rejectId = Integer.parseInt(parts[1]);
+
+                // Gọi đúng tên hàm và truyền vào Enum của bạn
+                if (auctionDAO.updateSessionStatus(rejectId, StatusOfAuction.CANCELED)) {
+                    out.println("REJECT_SUCCESS|" + rejectId);
+                } else {
+                    out.println("ERROR|Lỗi cơ sở dữ liệu khi từ chối sản phẩm");
+                }
                 break;
 
             case "LOGOUT": // Format: LOGOUT

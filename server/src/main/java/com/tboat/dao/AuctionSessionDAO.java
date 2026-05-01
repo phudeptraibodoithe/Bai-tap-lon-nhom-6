@@ -165,4 +165,19 @@ public class AuctionSessionDAO {
         }
         return null;
     }
+
+    public boolean updateSessionPriceAndHighest(int sessionId, String bidderAccount, double newPrice) {
+        String sql = "UPDATE auction_session SET currentPrice = ?, highestBidderAccount = ? WHERE id = ? AND currentPrice < ?";
+        try (Connection c = DatabaseConnection.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setDouble(1, newPrice);
+            ps.setString(2, bidderAccount);
+            ps.setInt(3, sessionId);
+            ps.setDouble(4, newPrice);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

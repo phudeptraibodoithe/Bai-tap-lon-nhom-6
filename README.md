@@ -16,12 +16,6 @@ classDiagram
         CANCELED
     }
 
-    class RoleType {
-        <<enumeration>>
-        SELLER
-        BIDDER
-    }
-
     %% --- PHẦN CLASS KẾ THỪA CƠ BẢN ---
     class Person {
         <<abstract>>
@@ -66,6 +60,7 @@ classDiagram
         -String name
         -String description
         -String imageURL
+        -String highestBidderAccount
     }
 
     %% Kết nối AuctionSession với Status
@@ -94,36 +89,29 @@ classDiagram
 
     %% --- PHẦN XỬ LÝ LUỒNG ROLE ĐỘNG (ĐÃ TỐI ƯU ĐA HÌNH) ---
     class Participation {
-        -String id
         -String userAccount
         -int sessionId
-        -RoleType roleType
         -TransactionRole roleBehavior
-        +getRoleType() RoleType
-        +executeAction(AuctionSession session, User user, Object[] args) void
+        +executeAction(User user, AuctionSession session, double amount) void
     }
 
     class TransactionRole {
         <<Interface>>
-        +getRoleType() RoleType
-        +performAction(AuctionSession session, User user, Object[] args) void
+        +execute(User user,AuctionSession session, double amount) boolean
     }
 
     class SellerRole {
-        +getRoleType() RoleType
-        +performAction(AuctionSession session, User user, Object[] args) void
+        +execute(User user,AuctionSession session, double amount) boolean
     }
 
     class BidderRole {
-        +getRoleType() RoleType
-        +performAction(AuctionSession session, User user, Object[] args) void
+        +execute(User user,AuctionSession session, double amount) boolean
     }
 
     %% Mối quan hệ của Participation
     User "1" --> "*" Participation : joins
     AuctionSession "1" --> "*" Participation : has
     
-    Participation --> "1" RoleType : identifies as
     Participation "*" --> "1" TransactionRole : delegates behavior to
 
     TransactionRole <|.. SellerRole : implements
@@ -134,7 +122,7 @@ classDiagram
  Thành viên | Nội dung nhiệm vụ |  tiến độ |
 | :--- | :--- | :--- |
 |  | Ghép nối code của cả nhóm |30% |
-| **Phúc** | Thiết kế giao diện trang chủ | 80%|
+| **Phúc** | Thiết kế giao diện trang chủ | 50%|
 | **Phúc** | Thiết kế trang nạp rút | 100% |
 | **Phúc** | Thiết kế trang đấu giá | 50% |
 | **Phúc** | Thiết kế trang duyệt của admin |50% |
@@ -153,6 +141,6 @@ classDiagram
 | **Phú** | Thiết kế trang Profile |100% |
 | **Phú** | Thiết kế trang lịch sử | 100% |
 | **Phú** | Thiết kế trang Upload Item |100%|
-| **Phú** | Lập trình tầng DAO (Data Access Object) |100% |
-| **Phú** | Thiết kế CSDL (ERD) & Viết file SQL & Xây dựng lớp Database Connection |100% |
-| **Phú** | Vẽ sơ đồ UML |100% |
+| **Phú** | Lập trình tầng DAO (Data Access Object) |80% |
+| **Phú** | Thiết kế CSDL (ERD) & Viết file SQL & Xây dựng lớp Database Connection |80% |
+| **Phú** | Vẽ sơ đồ UML |90% |

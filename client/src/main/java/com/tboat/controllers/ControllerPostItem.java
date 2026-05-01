@@ -1,7 +1,11 @@
 package com.tboat.controllers;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -13,20 +17,20 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.StackPane;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
 
-import java.net.URL;
-
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Files;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Base64;
 import java.util.ResourceBundle;
 
 public class ControllerPostItem extends BaseController implements Initializable, SocketListener {
@@ -42,7 +46,11 @@ public class ControllerPostItem extends BaseController implements Initializable,
     private Stage stage;
     private Scene scene;
     private Parent root;
-    private String imagePath = null;
+
+    // Thêm biến lưu file ảnh thực tế để chuyển đổi sang Base64
+    private File selectedFile;
+
+    private Gson gson = new Gson(); // Khởi tạo Gson
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -83,22 +91,15 @@ public class ControllerPostItem extends BaseController implements Initializable,
     }
 
     private void setupDateTimeLogic() {
-        // --- 1. ĐỊNH DẠNG HIỂN THỊ (CÓ CHỮ GIỜ/PHÚT) ---
         StringConverter<Integer> hourConverter = createTimeConverter(" giờ");
         StringConverter<Integer> minuteConverter = createTimeConverter(" phút");
-
-        // --- 2. KHỞI TẠO GIÁ TRỊ BAN ĐẦU ---
         LocalTime nowTime = LocalTime.now();
 
-        // Bắt đầu: Giờ hiện tại
         configureSpinner(hourStart, 0, 23, nowTime.getHour(), hourConverter);
         configureSpinner(minuteStart, 0, 59, nowTime.getHour(), minuteConverter);
-
-        // Kết thúc: Giờ hiện tại + 1
         configureSpinner(hourEnd, 0, 23, nowTime.plusHours(1).getHour(), hourConverter);
         configureSpinner(minuteEnd, 0, 59, nowTime.getMinute(), minuteConverter);
 
-        // --- 3. LOGIC DATEPICKER (VÔ HIỆU HÓA NGÀY CŨ) ---
         LocalDate today = LocalDate.now();
         datePickerStart.setDayCellFactory(p -> new DateCell() {
             @Override public void updateItem(LocalDate item, boolean empty) {
@@ -110,7 +111,6 @@ public class ControllerPostItem extends BaseController implements Initializable,
             }
         });
 
-        // Khi ngày bắt đầu thay đổi, cập nhật giới hạn cho ngày kết thúc
         datePickerStart.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 datePickerEnd.setDayCellFactory(p -> new DateCell() {
@@ -128,6 +128,7 @@ public class ControllerPostItem extends BaseController implements Initializable,
             }
         });
     }
+
     private StringConverter<Integer> createTimeConverter(String suffix) {
         return new StringConverter<>() {
             @Override
@@ -151,7 +152,6 @@ public class ControllerPostItem extends BaseController implements Initializable,
         s.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(min, max, init));
         s.getValueFactory().setConverter(conv);
         s.setEditable(true);
-        // Đảm bảo cập nhật giá trị khi mất focus hoặc gõ phím
         s.getEditor().focusedProperty().addListener((obs, oldV, newV) -> {
             if (!newV) s.increment(0);
         });
@@ -160,23 +160,28 @@ public class ControllerPostItem extends BaseController implements Initializable,
     public void postItem(ActionEvent e) {
         String name = nameItem.getText();
         String infor = inforItem.getText();
-        String type=typeComboBox.getValue();
+        String type = typeComboBox.getValue();
+
+        // Kiểm tra DatePicker null trước khi lấy giá trị thời gian
+        if(datePickerStart.getValue() == null || datePickerEnd.getValue() == null) {
+            showError("Vui lòng chọn ngày tháng đầy đủ!");
+            return;
+        }
+
         LocalDateTime startDT = datePickerStart.getValue().atTime(hourStart.getValue(), minuteStart.getValue());
         LocalDateTime endDT = datePickerEnd.getValue().atTime(hourEnd.getValue(), minuteEnd.getValue());
         LocalDateTime now = LocalDateTime.now();
 
-        if (name.isEmpty() || infor.isEmpty() || imagePath == null || startDT == null || endDT == null || type==null) {
-            showError("Vui lòng điền đầy đủ thông tin!");
+        if (name.isEmpty() || infor.isEmpty() || selectedFile == null || type == null) {
+            showError("Vui lòng điền đầy đủ thông tin và chọn ảnh sản phẩm!");
             return;
         }
 
-        // RÀNG BUỘC 1: Bắt đầu phải cách hiện tại ít nhất 10 phút
         if (startDT.isBefore(now.plusMinutes(10))) {
             showError("Thời gian bắt đầu phải sau hiện tại ít nhất 10 phút!");
             return;
         }
 
-        // RÀNG BUỘC 2: Kết thúc phải cách bắt đầu ít nhất 10 phút
         if (endDT.isBefore(startDT.plusMinutes(10))) {
             showError("Thời gian kết thúc phải cách thời gian bắt đầu ít nhất 10 phút!");
             return;
@@ -184,16 +189,27 @@ public class ControllerPostItem extends BaseController implements Initializable,
 
         double startPrice = priceSpinner.getValue();
         double bidInc = jumpSpinner.getValue();
-
-        // 2. Tính toán tổng thời gian diễn ra (giây) theo đúng format Server yêu cầu
         long durationSeconds = java.time.Duration.between(startDT, endDT).getSeconds();
 
-        // 3. Ghép chuỗi lệnh
-        String message = String.format("POST_ITEM|%s|%s|%s|%s|%s|%s|%d",
-                name, infor, type, imagePath, startPrice, bidInc, durationSeconds);
-        SocketManager.getInstance().send(message);
+        // 1. CHUYỂN ẢNH THÀNH BASE64
+        String base64Image = fileToBase64(selectedFile);
 
-        // Cập nhật giao diện chờ
+        // 2. TẠO JSON REQUEST
+        JsonObject request = new JsonObject();
+        request.addProperty("action", "POST_ITEM");
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("name", name);
+        payload.addProperty("description", infor);
+        payload.addProperty("type", type);
+        payload.addProperty("imageURL", base64Image); // Gửi chuỗi ảnh khổng lồ một cách an toàn
+        payload.addProperty("startPrice", startPrice);
+        payload.addProperty("bidIncrease", bidInc);
+        payload.addProperty("durationSeconds", durationSeconds);
+
+        request.add("payload", payload);
+        SocketManager.getInstance().send(gson.toJson(request));
+
         thongbao.setStyle("-fx-text-fill: blue;");
         thongbao.setText("Đang xử lý, vui lòng đợi...");
     }
@@ -203,18 +219,18 @@ public class ControllerPostItem extends BaseController implements Initializable,
         thongbao.setText(msg);
     }
 
-    public void uploadImage(MouseEvent event)throws IOException {
+    public void uploadImage(MouseEvent event) throws IOException {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Chọn ảnh sản phẩm");
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif")
         );
         stage = (Stage) myImageView.getScene().getWindow();
-        File selectedFile = fileChooser.showOpenDialog(stage);
+        selectedFile = fileChooser.showOpenDialog(stage); // Lưu file được chọn
 
         if (selectedFile != null) {
-            imagePath = selectedFile.toURI().toString();
-            Image image = new Image(imagePath);
+            // Chỉ dùng Image(URI) để hiển thị cục bộ trên giao diện
+            Image image = new Image(selectedFile.toURI().toString());
             myImageView.setPreserveRatio(true);
             double width = myImageView.getFitWidth();
             double height = myImageView.getFitHeight();
@@ -240,7 +256,7 @@ public class ControllerPostItem extends BaseController implements Initializable,
         alert.getButtonTypes().setAll(btnYes, btnNo);
         if (alert.showAndWait().orElse(btnNo) == btnYes) {
             try {
-                root = FXMLLoader.load(getClass().getResource("/views/postItem.fxml")); // Chú ý chữ P hoa/thường tùy tên file của bạn nhé
+                root = FXMLLoader.load(getClass().getResource("/views/postItem.fxml"));
                 scene = ((Node) e.getSource()).getScene();
                 scene.getStylesheets().clear();
                 scene.getStylesheets().add(getClass().getResource("/styles/Button.css").toExternalForm());
@@ -251,23 +267,43 @@ public class ControllerPostItem extends BaseController implements Initializable,
         }
     }
 
+    // Hàm chuyển file sang chuỗi Base64
+    public String fileToBase64(File file) {
+        try {
+            byte[] fileContent = Files.readAllBytes(file.toPath());
+            return Base64.getEncoder().encodeToString(fileContent);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    // ====================================================================
+    // LẮNG NGHE PHẢN HỒI JSON TỪ SERVER
+    // ====================================================================
     @Override
     public void handleServerResponse(String response) {
-        javafx.application.Platform.runLater(() -> {
-            String[] parts = response.split("\\|", -1);
-            String command = parts[0];
-            switch (command) {
-                case "POST_SUCCESS":
-                    thongbao.setStyle("-fx-text-fill: green;");
-                    thongbao.setText("Đăng bán thành công! ID Phiên: " + parts[1]);
-                    changeScene(thongbao,"TrangChu.fxml");
-                    break;
-                case "ERROR":
-                    String errorMsg = (parts.length > 1) ? parts[1] : "Lỗi hệ thống khi đăng tải!";
-                    showError(errorMsg);
-                    break;
-                default:
-                    break;
+        Platform.runLater(() -> {
+            try {
+                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+                String status = jsonResponse.get("status").getAsString();
+
+                switch (status) {
+                    case "POST_SUCCESS":
+                        thongbao.setStyle("-fx-text-fill: green;");
+                        String id = jsonResponse.has("data") ? jsonResponse.get("data").getAsString() : "";
+                        thongbao.setText("Đăng bán thành công! ID Phiên: " + id);
+                        changeScene(thongbao, "TrangChu.fxml");
+                        break;
+
+                    case "ERROR":
+                        String errorMsg = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Lỗi hệ thống khi đăng tải!";
+                        showError(errorMsg);
+                        break;
+                }
+            } catch (Exception e) {
+                showError("Lỗi đọc dữ liệu từ server.");
+                System.out.println("❌ KHÔNG THỂ ĐỌC JSON POST ITEM: " + response);
             }
         });
     }

@@ -129,25 +129,24 @@ public class ClientHandler implements Runnable {
                 out.println("AVAILABLE_AUCTIONS|" + (listData.isEmpty() ? "NONE" : listData));
                 break;
 
-            case "JOIN": // Format: JOIN|roomName
-                if (parts.length < 2) {
-                    out.println("ERROR|Thiếu mã phòng.");
-                    break;
-                }
-                String roomName = parts[1];
-                AuctionRoom targetRoom = AuctionManager.getInstance().getRoom(roomName);
+            case "JOIN": // Format: JOIN|sessionId
+                if (parts.length < 2) break;
+                try {
+                    int sessionId = Integer.parseInt(parts[1]); // Parse sang int ngay
+                    AuctionRoom targetRoom = RoomManager.getInstance().getRoom(sessionId);
 
-                if (targetRoom != null) {
-                    if (currentRoom != null) {
-                        currentRoom.removeSubscriber(this);
+                    if (targetRoom != null) {
+                        if (currentRoom != null) currentRoom.removeSubscriber(this);
+                        currentRoom = targetRoom;
+                        currentRoom.addSubscriber(this);
+
+                        out.println("JOIN_SUCCESS|Bạn đã vào phòng: " + sessionId);
+                        out.println("ROOM_INFO|Giá hiện tại: " + currentRoom.getCurrentPrice());
+                    } else {
+                        out.println("ERROR|Phòng " + sessionId + " không tồn tại.");
                     }
-                    currentRoom = targetRoom;
-                    currentRoom.addSubscriber(this);
-
-                    out.println("JOIN_SUCCESS|Bạn đã vào phòng: " + roomName);
-                    out.println("ROOM_INFO|Giá hiện tại: " + currentRoom.getCurrentPrice());
-                } else {
-                    out.println("ERROR|Phòng đấu giá [" + roomName + "] không tồn tại.");
+                } catch (NumberFormatException e) {
+                    out.println("ERROR|Mã phòng phải là số.");
                 }
                 break;
 
@@ -156,35 +155,21 @@ public class ClientHandler implements Runnable {
                     out.println("ERROR|Hãy đăng nhập và tham gia phòng trước.");
                     break;
                 }
-
                 try {
                     double price = Double.parseDouble(parts[1]);
-                    int sId = Integer.parseInt(currentRoom.getRoomName());
+                    int sId = currentRoom.getSessionId(); // Lấy int trực tiếp
 
-                    double currentPriceInMemory = currentRoom.getCurrentPrice();
-                    if (price <= currentPriceInMemory) {
-                        out.println("BID_FAILED|Mức giá phải cao hơn: " + currentPriceInMemory);
-                        break;
-                    }
+                    // 1. Dùng BiddingService (Strategy Pattern) để xử lý DB/Tiền nong
+                    BiddingService biddingService=new BiddingService();
+                    boolean success = biddingService.placeBid(clientId, sId, price);
 
-                    double currentBalance = userDAO.getBalance(clientId);
-                    if (currentBalance < price) {
-                        out.println("BID_FAILED|Số dư không đủ.");
-                        break;
-                    }
-
-                    String prevBidder = currentRoom.getLastBidder();
-                    ResponseCode res = historyDAO.updateBidLeader(sId, clientId, price, prevBidder, currentPriceInMemory);
-                    if (res == ResponseCode.SUCCESS) {
+                    if (success) {
+                        // 2. Nếu DB OK, cập nhật RAM và Broadcast
                         currentRoom.placeBid(price, clientId);
                         currentRoom.broadcast("NEW_BID|" + price + "|" + clientId);
                         out.println("BID_SUCCESS|Bạn đang dẫn đầu!");
-                    } else if (res == ResponseCode.BID_FAILED || res == ResponseCode.BID_FAILED) {
-                        out.println("BID_FAILED|Giá của bạn đã bị người khác vượt qua trước. Hãy f5 lại!");
-                    } else if (res == ResponseCode.INSUFFICIENT_BALANCE) {
-                        out.println("BID_FAILED|Số dư thực tế không đủ.");
                     } else {
-                        out.println("ERROR|Lỗi hệ thống khi ghi nhận mức giá.");
+                        out.println("BID_FAILED|Giá không hợp lệ hoặc số dư không đủ.");
                     }
                 } catch (Exception e) {
                     out.println("ERROR|Lệnh đặt giá không hợp lệ.");
@@ -216,7 +201,7 @@ public class ClientHandler implements Runnable {
                     int generatedId = auctionDAO.addAuctionSession(newSession);
 
                     if (generatedId > 0) {
-                        AuctionManager.getInstance().createRoom(String.valueOf(generatedId), startPrice);
+                        RoomManager.getInstance().createRoom(generatedId, startPrice);
                         out.println("POST_SUCCESS|" + generatedId);
                         System.out.println("[Server]: User " + clientId + " đã mở phiên mới ID: " + generatedId);
                     }

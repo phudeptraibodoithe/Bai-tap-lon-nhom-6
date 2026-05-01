@@ -11,7 +11,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class AuctionRoom {
-    private final String roomName;
+    private final int sessionId;
     private double currentPrice;
     private String lastBidder;
     private final List<ClientHandler> subscribers = new CopyOnWriteArrayList<>();
@@ -23,8 +23,8 @@ public class AuctionRoom {
     private final UserDAO userDAO = new UserDAO();
     private final HistoryBidDAO historyDAO = new HistoryBidDAO();
 
-    public AuctionRoom(String roomName, double startingPrice) {
-        this.roomName = roomName;
+    public AuctionRoom(int sessionId, double startingPrice) {
+        this.sessionId = sessionId;
         this.currentPrice = startingPrice;
         startCountdown();
     }
@@ -78,30 +78,31 @@ public class AuctionRoom {
             if (!isFinished) {
                 isFinished = true;
                 timerExecutor.shutdown();
-                int sId = Integer.parseInt(roomName);
                 if (lastBidder != null) {
-                    com.tboat.models.AuctionSession session = sessionDAO.getAuctionById(sId);
+                    com.tboat.models.AuctionSession session = sessionDAO.getAuctionById(sessionId);
                     if (session != null) {
                         String seller = session.getSellerAccountName();
 
-                        historyDAO.addHistory(new History(sId, lastBidder, currentPrice, java.time.LocalDateTime.now()));
-                        sessionDAO.updateSessionStatus(sId, com.tboat.models.StatusOfAuction.ENDED);
+                        historyDAO.addHistory(new History(sessionId, lastBidder, currentPrice, java.time.LocalDateTime.now()));
+                        sessionDAO.updateSessionStatus(sessionId, com.tboat.models.StatusOfAuction.ENDED);
                         userDAO.updateBalance(seller, currentPrice);
 
-                        System.out.println("[Room " + roomName + "]: Kết thúc. Người thắng: " + lastBidder + ", Người bán: " + seller);
+                        System.out.println("[Room " + sessionId + "]: Kết thúc. Người thắng: " + lastBidder + ", Người bán: " + seller);
                         broadcast("AUCTION_FINISHED|WINNER|" + lastBidder + "|" + currentPrice);
                     }
                 } else {
-                    sessionDAO.updateSessionStatus(sId, com.tboat.models.StatusOfAuction.ENDED);
+                    sessionDAO.updateSessionStatus(sessionId, com.tboat.models.StatusOfAuction.ENDED);
                     broadcast("AUCTION_FINISHED|NO_WINNER");
                 }
                 broadcastExecutor.shutdown();
-                AuctionManager.getInstance().removeRoom(roomName);
+                RoomManager.getInstance().removeRoom(sessionId);
             }
         }
     }
 
     public boolean isFinished() { return isFinished; }
     public String getLastBidder() { return lastBidder; }
-    public String getRoomName() { return roomName; }
+    public int getSessionId() {
+        return sessionId;
+    }
 }

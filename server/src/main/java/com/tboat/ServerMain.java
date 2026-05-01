@@ -1,7 +1,7 @@
 package com.tboat;
 
 import com.tboat.socket.ClientHandler;
-import com.tboat.service.AuctionManager;
+import com.tboat.service.RoomManager;
 import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.models.AuctionSession;
 import java.io.IOException;
@@ -43,7 +43,7 @@ public class ServerMain {
     private static void initAuctionRooms() {
         try {
             AuctionSessionDAO sessionDAO = new AuctionSessionDAO();
-            AuctionManager auctionManager = AuctionManager.getInstance();
+            RoomManager roomManager = RoomManager.getInstance();
 
             // Lấy danh sách từ DB
             List<AuctionSession> availableSessions = sessionDAO.getAvailableAuctions();
@@ -55,11 +55,11 @@ public class ServerMain {
 
             for (AuctionSession session : availableSessions) {
                 // Chuyển ID thành String để làm key cho Map trong AuctionManager
-                String roomId = String.valueOf(session.getId());
+                int roomId = session.getId();
                 double startPrice = session.getCurrentPrice();
 
                 // Tạo phòng vật lý trong bộ nhớ Server
-                auctionManager.createRoom(roomId, startPrice);
+                roomManager.createRoom(roomId, startPrice);
 
                 System.out.println("[Init]: Đã kích hoạt Phòng ID: " + roomId + " | Giá hiện tại: " + startPrice);
             }

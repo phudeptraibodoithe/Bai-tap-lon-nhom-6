@@ -1,19 +1,16 @@
 package com.tboat.controllers;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
-import javafx.scene.input.MouseEvent;
-import javafx.stage.Stage;
-import java.io.IOException;
 
 public class ControllerRegister extends BaseController implements SocketListener {
 
@@ -21,7 +18,10 @@ public class ControllerRegister extends BaseController implements SocketListener
     @FXML private PasswordField passText, repassText;
     @FXML private Label err;
 
-    @FXML public void submit(ActionEvent event) {
+    private Gson gson = new Gson(); // Khởi tạo Gson
+
+    @FXML
+    public void submit(ActionEvent event) {
         err.setStyle("-fx-text-fill: red;");
         err.setText("");
 
@@ -46,33 +46,63 @@ public class ControllerRegister extends BaseController implements SocketListener
             return;
         }
 
-        String command = "REGISTER|" + accountName + " " + password + " " + nickname;
-        SocketManager.getInstance().send(command);
+        // TẠO JSON REQUEST
+        JsonObject request = new JsonObject();
+        request.addProperty("action", "REGISTER");
+
+        // Đóng gói toàn bộ thông tin đăng ký vào payload
+        JsonObject payload = new JsonObject();
+        payload.addProperty("accountName", accountName);
+        payload.addProperty("password", password);
+        payload.addProperty("nickname", nickname);
+        payload.addProperty("email", email);
+        payload.addProperty("phone", phone);
+
+        request.add("payload", payload);
+
+        // Gửi chuỗi JSON qua Socket
+        SocketManager.getInstance().send(gson.toJson(request));
 
         err.setStyle("-fx-text-fill: blue;");
         err.setText("Đang gửi yêu cầu đăng ký...");
     }
 
+    @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
-            switch (response) {
-                case "REG_SUCCESS":
-                    err.setStyle("-fx-text-fill: green;");
-                    err.setText("Đăng ký thành công! Đang chuyển hướng...");
-                    changeScene(err,"login.fxml");
-                    break;
+            try {
+                // Phân tích JSON từ Server
+                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+                String status = jsonResponse.get("status").getAsString();
 
-                case "REG_EXISTED":
-                    err.setStyle("-fx-text-fill: red;");
-                    err.setText("Tên tài khoản đã tồn tại trên hệ thống!");
-                    break;
+                switch (status) {
+                    case "REG_SUCCESS":
+                        err.setStyle("-fx-text-fill: green;");
+                        err.setText("Đăng ký thành công! Đang chuyển hướng...");
+                        changeScene(err, "login.fxml");
+                        break;
 
-                case "REG_ERROR":
-                    err.setText("Máy chủ gặp sự cố khi xử lý!");
-                    break;
+                    case "REG_EXISTED":
+                        err.setStyle("-fx-text-fill: red;");
+                        // Đọc message từ server nếu có, không thì hiển thị mặc định
+                        String existMsg = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Tên tài khoản đã tồn tại trên hệ thống!";
+                        err.setText(existMsg);
+                        break;
 
-                default:
-                    break;
+                    case "REG_ERROR":
+                    case "ERROR":
+                        err.setStyle("-fx-text-fill: red;");
+                        String errorMsg = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Máy chủ gặp sự cố khi xử lý!";
+                        err.setText(errorMsg);
+                        break;
+
+                    default:
+                        break;
+                }
+            } catch (Exception e) {
+                err.setStyle("-fx-text-fill: red;");
+                err.setText("Lỗi đọc dữ liệu từ Server!");
+                System.out.println("❌ KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
             }
         });
     }

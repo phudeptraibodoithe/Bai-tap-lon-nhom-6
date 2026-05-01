@@ -1,16 +1,16 @@
 package com.tboat.controllers;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.tboat.models.User;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import com.tboat.utilsclient.UserSession;
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -25,10 +25,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
-import java.time.LocalDate;
 import java.util.Base64;
 import java.util.ResourceBundle;
-
 
 public class ControllerProfile extends BaseController implements Initializable, SocketListener {
 
@@ -40,11 +38,17 @@ public class ControllerProfile extends BaseController implements Initializable, 
     private static final double CIRCLE_RADIUS = 110.0;
 
     @FXML private ImageView myImageView;
-    @FXML private Label nickname,balance,err;
+    @FXML private Label nickname, balance, err;
     @FXML private TextArea desc;
 
-    @Override public void initialize(URL url, ResourceBundle resourceBundle) {
-        SocketManager.getInstance().send("PROFILE");
+    private Gson gson = new Gson(); // Khởi tạo Gson
+
+    @Override
+    public void initialize(URL url, ResourceBundle resourceBundle) {
+        // TẠO JSON REQUEST GỬI LÊN SERVER (Thay cho "PROFILE")
+        JsonObject request = new JsonObject();
+        request.addProperty("action", "PROFILE");
+        SocketManager.getInstance().send(gson.toJson(request));
 
         // Hiển thị dữ liệu tạm thời từ Session trong khi đợi Server
         user = UserSession.getInstance().getUser();
@@ -61,8 +65,8 @@ public class ControllerProfile extends BaseController implements Initializable, 
     }
 
     public void updateProfile(ActionEvent e) {
-        // 1. Lấy mô tả, xóa bỏ ký tự gạch đứng để tránh lỗi split
-        String mota = desc.getText() == null ? "" : desc.getText().trim().replace("|", " ");
+        // 1. Lấy mô tả (BÂY GIỜ KHÔNG CẦN DÙNG .replace("|", " ") NỮA VÌ ĐÃ CÓ JSON BẢO VỆ)
+        String mota = desc.getText() == null ? "" : desc.getText().trim();
 
         // 2. Xử lý dữ liệu ảnh
         String imageData;
@@ -75,43 +79,41 @@ public class ControllerProfile extends BaseController implements Initializable, 
             }
         }
 
-        // 3. Gửi lệnh
-        String message = "UPDATE_PROFILE|" + mota + "|" + imageData;
-        SocketManager.getInstance().send(message);
+        // 3. TẠO JSON REQUEST GỬI LÊN SERVER
+        JsonObject request = new JsonObject();
+        request.addProperty("action", "UPDATE_PROFILE");
+
+        // Đóng gói payload
+        JsonObject payload = new JsonObject();
+        payload.addProperty("description", mota);
+        payload.addProperty("avatar", imageData);
+        request.add("payload", payload);
+
+        SocketManager.getInstance().send(gson.toJson(request));
     }
 
     public void loadUserAvatar(String pathOrBase64) {
         try {
-            // 1. Kiểm tra trường hợp dữ liệu trống hoặc null
             if (pathOrBase64 == null || pathOrBase64.isEmpty() || pathOrBase64.equals("null")) {
                 loadDefaultAvatar();
                 return;
             }
 
             Image image;
-
-            // 2. Kiểm tra xem đây là chuỗi Base64 hay là Đường dẫn (Path/URL)
-            // Dấu hiệu nhận biết: Path thường bắt đầu bằng "file:/" hoặc "http"
             if (!pathOrBase64.startsWith("file:/") && !pathOrBase64.startsWith("http")) {
-                // Đây là chuỗi Base64 -> Giải mã sang mảng byte
                 byte[] imageBytes = Base64.getDecoder().decode(pathOrBase64);
-                // Chuyển mảng byte thành luồng đầu vào (InputStream) để Image có thể đọc
                 image = new Image(new ByteArrayInputStream(imageBytes));
             } else {
-                // Đây là đường dẫn file hoặc URL cũ
                 image = new Image(pathOrBase64, true);
             }
-
             setCircularImage(image);
 
         } catch (Exception e) {
-            // Nếu có bất kỳ lỗi nào (giải mã lỗi, file không tồn tại), hiện ảnh mặc định
             System.err.println("[Avatar Error]: " + e.getMessage());
             loadDefaultAvatar();
         }
     }
 
-    // Hàm phụ để code sạch hơn
     private void loadDefaultAvatar() {
         String defaultPath = getClass().getResource("/images/avtDefault.jpg").toExternalForm();
         setCircularImage(new Image(defaultPath));
@@ -129,8 +131,13 @@ public class ControllerProfile extends BaseController implements Initializable, 
         ButtonType btnYes = new ButtonType("Có", ButtonBar.ButtonData.OK_DONE);
         ButtonType btnNo = new ButtonType("Không", ButtonBar.ButtonData.CANCEL_CLOSE);
         alert.getButtonTypes().setAll(btnYes, btnNo);
+
         if (alert.showAndWait().orElse(btnNo) == btnYes) {
-            SocketManager.getInstance().send("LOGOUT");
+            // TẠO JSON REQUEST CHO LOGOUT
+            JsonObject request = new JsonObject();
+            request.addProperty("action", "LOGOUT");
+            SocketManager.getInstance().send(gson.toJson(request));
+
             UserSession.getInstance().cleanUserSession();
             changeScene(myImageView,"start.fxml");
         }
@@ -181,56 +188,65 @@ public class ControllerProfile extends BaseController implements Initializable, 
         myImageView.setClip(clipCircle);
     }
 
+    // ====================================================================
+    // LẮNG NGHE PHẢN HỒI TỪ SERVER
+    // ====================================================================
+    @Override
     public void handleServerResponse(String response) {
-        javafx.application.Platform.runLater(() -> {
-            String[] parts = response.split("\\|", -1);
+        Platform.runLater(() -> {
+            try {
+                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+                String status = jsonResponse.get("status").getAsString();
 
-            switch (parts[0]) {
-                case "PROFILE_INFO":
-                    // Server gửi: PROFILE_INFO | accountName | nickname | balance | avatarURL | desc
-                    if (parts.length >= 6) {
-                        nickname.setText(parts[2]);
-                        balance.setText(String.format("%,.0f VNĐ", Double.parseDouble(parts[3])));
-                        user.setNickname(parts[2]);
-                        user.setBalance(Double.parseDouble(parts[3]));
-                        user.setAvatar(parts[4]);
-                        user.setDescription(parts[5]);
-                    }
-                    break;
+                switch (status) {
+                    case "PROFILE_INFO":
+                        JsonObject data = jsonResponse.getAsJsonObject("data");
 
-                case "UPDATE_PROFILE_SUCCESS":
-                    // Cập nhật thông tin cục bộ ngay lập tức
-                    user.setDescription(desc.getText());
-                    if (selectedFile != null) {
-                        user.setAvatar(selectedFile.toURI().toString());
-                    }
+                        String nick = data.has("nickname") ? data.get("nickname").getAsString() : "";
+                        double bal = data.has("balance") ? data.get("balance").getAsDouble() : 0.0;
+                        String avt = data.has("avatarURL") ? data.get("avatarURL").getAsString() : "";
+                        String description = data.has("description") ? data.get("description").getAsString() : "";
 
-                    err.setStyle("-fx-text-fill: green;");
-                    err.setText("Cập nhật hồ sơ thành công!!");
-                    break;
+                        nickname.setText(nick);
+                        balance.setText(String.format("%,.0f VNĐ", bal));
 
-                case "UPDATE_PROFILE_ERROR":
-                    err.setStyle("-fx-text-fill: red;");
-                    err.setText("Lỗi: " + (parts.length > 1 ? parts[1] : "Cập nhật thất bại"));
-                    break;
+                        user.setNickname(nick);
+                        user.setBalance(bal);
+                        user.setAvatar(avt);
+                        user.setDescription(description);
+                        break;
 
-                case "ERROR":
-                    err.setStyle("-fx-text-fill: red;");
-                    err.setText(parts[1]);
-                    break;
+                    case "UPDATE_PROFILE_SUCCESS":
+                        user.setDescription(desc.getText());
+                        if (selectedFile != null) {
+                            user.setAvatar(selectedFile.toURI().toString());
+                        }
 
-                default:
-                    System.out.println("Lệnh không xác định: " + parts[0]);
-                    break;
+                        err.setStyle("-fx-text-fill: green;");
+                        err.setText("Cập nhật hồ sơ thành công!!");
+                        break;
+
+                    case "UPDATE_PROFILE_ERROR":
+                        String errorMsg = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Cập nhật thất bại";
+                        err.setStyle("-fx-text-fill: red;");
+                        err.setText("Lỗi: " + errorMsg);
+                        break;
+
+                    case "ERROR":
+                        String msg = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Lỗi hệ thống";
+                        err.setStyle("-fx-text-fill: red;");
+                        err.setText(msg);
+                        break;
+                }
+            } catch (Exception e) {
+                System.out.println("❌ KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
             }
         });
     }
 
-
     public String fileToBase64(File file) {
         try {
             byte[] fileContent = Files.readAllBytes(file.toPath());
-            // Sử dụng getEncoder() - mặc định tạo 1 dòng duy nhất, không có line breaks
             return Base64.getEncoder().encodeToString(fileContent);
         } catch (IOException e) {
             e.printStackTrace();

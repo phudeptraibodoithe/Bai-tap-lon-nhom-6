@@ -1,5 +1,10 @@
 package com.tboat.controllers;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import com.tboat.utilsclient.UserSession;
@@ -13,12 +18,14 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+
 import java.net.URL;
 import java.util.ResourceBundle;
 
 public class ControllerHistory extends BaseController implements Initializable, SocketListener {
 
     @FXML VBox lichsu;
+    private Gson gson = new Gson(); // Khởi tạo Gson
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -28,24 +35,44 @@ public class ControllerHistory extends BaseController implements Initializable, 
     public void loadlichsu() {
         lichsu.getChildren().clear();
         String username = UserSession.getInstance().getUsername();
-        SocketManager.getInstance().send("GET_HISTORY|" + username);
+
+        JsonObject request = new JsonObject();
+        request.addProperty("action", "GET_HISTORY");
+        request.addProperty("payload", username); // Gửi tên tài khoản cần xem lịch sử
+
+        SocketManager.getInstance().send(gson.toJson(request));
     }
 
+    @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
-            String[] parts = response.split("\\|");
+            try {
+                // Phân tích phản hồi JSON từ Server
+                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+                String status = jsonResponse.get("status").getAsString();
 
-            if (parts[0].equals("HISTORY_RES")) {
-                for (int i = 1; i < parts.length; i++) {
-                    String[] data = parts[i].split(";");
-                    if (data.length >= 3) {
-                        String sessionName = "Phiên đấu giá #" + data[0];
-                        String price = String.format("%,.0f VNĐ", Double.parseDouble(data[1]));
-                        String time = data[2].replace("T", " ");
-                        HBox row = createHistoryRow(sessionName, "ID: " + data[0], "Thành công", price, true);
+                if (status.equals("HISTORY_RES")) {
+                    JsonArray historyArray = jsonResponse.getAsJsonArray("data");
+
+                    for (JsonElement element : historyArray) {
+                        JsonObject dataObj = element.getAsJsonObject();
+
+                        String id = dataObj.get("auctionSessionId").getAsString();
+                        double priceValue = dataObj.get("finalPrice").getAsDouble();
+
+                        String time = "";
+                        if (dataObj.has("completedAt")) {
+                            time = dataObj.get("completedAt").getAsString().replace("T", " ");
+                        }
+                        String sessionName = "Phiên đấu giá #" + id;
+                        String price = String.format("%,.0f VNĐ", priceValue);
+                        HBox row = createHistoryRow(sessionName, "ID: " + id, "Thành công", price, true);
                         lichsu.getChildren().add(row);
                     }
                 }
+            } catch (Exception e) {
+                System.out.println("❌ KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
+                e.printStackTrace();
             }
         });
     }

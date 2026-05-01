@@ -1,5 +1,8 @@
 package com.tboat.controllers;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import com.tboat.utilsclient.UserSession;
@@ -23,10 +26,12 @@ public class NapRutController extends BaseController implements Initializable, S
     @FXML private TextField txtPin;
     @FXML private Button btnSubmit;
 
-
     private double currentBalance = UserSession.getInstance().getBalance();
     private final String CORRECT_PIN = "123456"; // Mã PIN đúng để test
     private boolean isDepositMode = true;
+
+    private Gson gson = new Gson(); // Khởi tạo Gson
+
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle){
         updateBalanceLabel();
@@ -35,6 +40,7 @@ public class NapRutController extends BaseController implements Initializable, S
         btnTabWithdraw.setOnAction(event -> switchToWithdrawMode());
         btnSubmit.setOnAction(event -> handleTransaction());
     }
+
     private void switchToDepositMode() {
         isDepositMode = true;
         btnTabDeposit.setStyle("-fx-background-color: #4CAF50; -fx-background-radius: 5; -fx-text-fill: white; -fx-cursor: hand;");
@@ -84,27 +90,49 @@ public class NapRutController extends BaseController implements Initializable, S
             }
             btnSubmit.setDisable(true);
             double amountToSend = isDepositMode ? amount : -amount;
-            String message = "TRANSACTION|" + amountToSend;
-            SocketManager.getInstance().send(message);
+
+            // TẠO JSON REQUEST
+            JsonObject request = new JsonObject();
+            request.addProperty("action", "TRANSACTION");
+            request.addProperty("payload", amountToSend); // Gửi số tiền dưới dạng JSON Property
+
+            SocketManager.getInstance().send(gson.toJson(request));
 
         } catch (NumberFormatException e) {
             showAlert(Alert.AlertType.ERROR, "Lỗi nhập liệu", "Vui lòng chỉ nhập số vào ô Số tiền.");
         }
     }
+
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
-            btnSubmit.setDisable(false);
-            String[] parts = response.split("\\|");
-            if (parts[0].equals("TRANSACTION_SUCCESS")) {
-                double changedAmount = Double.parseDouble(parts[1]);
-                double newBalance = UserSession.getInstance().getUser().getBalance() + changedAmount;
-                UserSession.getInstance().getUser().setBalance(newBalance);
-                currentBalance = newBalance;
-                updateBalanceLabel();
-                showAlert(Alert.AlertType.INFORMATION, "Thành công", "Giao dịch đã được xử lý!");
-            } else if (parts[0].equals("TRANSACTION_FAILED")) {
-                showAlert(Alert.AlertType.ERROR, "Thất bại", parts[1]);
+            btnSubmit.setDisable(false); // Mở khóa nút lại dù thành công hay thất bại
+
+            try {
+                // Phân tích JSON từ Server
+                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+                String status = jsonResponse.get("status").getAsString();
+
+                if (status.equals("TRANSACTION_SUCCESS")) {
+                    double changedAmount = jsonResponse.get("data").getAsDouble(); // Server trả về số tiền đã thay đổi
+                    double newBalance = UserSession.getInstance().getUser().getBalance() + changedAmount;
+
+                    UserSession.getInstance().getUser().setBalance(newBalance);
+                    currentBalance = newBalance;
+                    updateBalanceLabel();
+
+                    // Ưu tiên đọc message từ server nếu có
+                    String successMsg = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Giao dịch đã được xử lý!";
+                    showAlert(Alert.AlertType.INFORMATION, "Thành công", successMsg);
+
+                } else if (status.equals("TRANSACTION_FAILED")) {
+                    String errorMsg = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Giao dịch bị từ chối.";
+                    showAlert(Alert.AlertType.ERROR, "Thất bại", errorMsg);
+                }
+
+            } catch (Exception e) {
+                showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Lỗi đọc dữ liệu từ Server.");
+                System.out.println("❌ KHÔNG THỂ ĐỌC JSON NẠP/RÚT: " + response);
             }
         });
     }

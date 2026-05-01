@@ -1,5 +1,8 @@
 package com.tboat.controllers;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.tboat.models.User;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
@@ -17,6 +20,8 @@ public class ControllerLogin extends BaseController implements SocketListener {
     @FXML private PasswordField passText;
     @FXML private Label err;
 
+    private Gson gson = new Gson(); // Khởi tạo Gson
+
     @FXML
     public void submit(ActionEvent event) {
         String username = signText.getText().trim();
@@ -27,11 +32,25 @@ public class ControllerLogin extends BaseController implements SocketListener {
             err.setText("Vui lòng điền đầy đủ thông tin!");
             return;
         }
+
         err.setStyle("-fx-text-fill: blue;");
         err.setText("Đang đăng nhập...");
+
         new Thread(() -> {
             try {
-                SocketManager.getInstance().send("LOGIN|" + username + "|" + password);
+                // TẠO JSON REQUEST GỬI LÊN SERVER
+                JsonObject request = new JsonObject();
+                request.addProperty("action", "LOGIN");
+
+                // Đóng gói username và password vào payload
+                JsonObject payload = new JsonObject();
+                payload.addProperty("username", username);
+                payload.addProperty("password", password);
+                request.add("payload", payload);
+
+                // Gửi JSON đi
+                SocketManager.getInstance().send(gson.toJson(request));
+
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     err.setStyle("-fx-text-fill: red;");
@@ -44,40 +63,61 @@ public class ControllerLogin extends BaseController implements SocketListener {
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
-            String[] parts = response.split("\\|", -1);
-            String status = parts[0];
+            try {
+                // Phân tích JSON trả về
+                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+                String status = jsonResponse.get("status").getAsString();
 
-            if (status.equals("LOGIN_ADMIN_SUCCESS")) {
-                changeScene(err, "Admin.fxml");
+                switch (status) {
+                    case "LOGIN_ADMIN_SUCCESS":
+                        changeScene(err, "Admin.fxml");
+                        break;
 
-            }
-            else if (status.equals("LOGIN_SUCCESS") && parts.length >= 5) {
-                User loggedUser = new User(signText.getText(), null, parts[1],
-                        Double.parseDouble(parts[2]), parts[4], parts[3]);
-                UserSession.getInstance().createUserSession(loggedUser);
-                changeScene(err, "TrangChu.fxml");
+                    case "LOGIN_SUCCESS":
+                        // Lấy object data chứa thông tin user
+                        JsonObject data = jsonResponse.getAsJsonObject("data");
 
-            } else if (status.equals("LOGIN_FAILED")) {
-                // Thêm kiểm tra an toàn để tránh lỗi IndexOutOfBounds nếu parts[1] không tồn tại
-                String errorType = (parts.length > 1) ? parts[1] : "UNKNOWN_ERROR";
-                err.setStyle("-fx-text-fill: red;");
+                        String nickname = data.has("nickname") ? data.get("nickname").getAsString() : "";
+                        double balance = data.has("balance") ? data.get("balance").getAsDouble() : 0.0;
+                        String avatar = data.has("avatar") ? data.get("avatar").getAsString() : "default.png";
+                        String description = data.has("description") ? data.get("description").getAsString() : "";
 
-                switch (errorType) {
-                    case "USER_NOT_FOUND":
-                        err.setText("Tài khoản không tồn tại!");
+                        // Tạo User object
+                        User loggedUser = new User(signText.getText(), null, nickname, balance, description, avatar);
+                        UserSession.getInstance().createUserSession(loggedUser);
+
+                        changeScene(err, "TrangChu.fxml");
                         break;
-                    case "WRONG_PASSWORD":
-                        err.setText("Sai mật khẩu, vui lòng thử lại.");
+
+                    case "LOGIN_FAILED":
+                        // Lấy mã lỗi từ message
+                        String errorType = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "UNKNOWN_ERROR";
+                        err.setStyle("-fx-text-fill: red;");
+
+                        switch (errorType) {
+                            case "USER_NOT_FOUND":
+                                err.setText("Tài khoản không tồn tại!");
+                                break;
+                            case "WRONG_PASSWORD":
+                                err.setText("Sai mật khẩu, vui lòng thử lại.");
+                                break;
+                            case "ALREADY_LOGGED_IN":
+                                err.setText("Tài khoản đang online ở nơi khác.");
+                                break;
+                            case "DATABASE_ERROR":
+                                err.setText("Lỗi cơ sở dữ liệu.");
+                                break;
+                            default:
+                                err.setText("Đăng nhập thất bại: " + errorType);
+                        }
                         break;
-                    case "ALREADY_LOGGED_IN":
-                        err.setText("Tài khoản đang online ở nơi khác.");
-                        break;
-                    case "DATABASE_ERROR":
-                        err.setText("Lỗi cơ sở dữ liệu.");
-                        break;
-                    default:
-                        err.setText("Đăng nhập thất bại: " + errorType);
                 }
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    err.setStyle("-fx-text-fill: red;");
+                    err.setText("Lỗi đọc dữ liệu từ Server!");
+                });
+                System.out.println("❌ KHÔNG THỂ ĐỌC JSON ĐĂNG NHẬP: " + response);
             }
         });
     }

@@ -1,7 +1,9 @@
 package com.tboat;
 
+import com.tboat.models.StatusOfAuction;
+import com.tboat.service.AuctionTimerService;
 import com.tboat.socket.ClientHandler;
-import com.tboat.service.RoomManager;
+import com.tboat.service.AuctionManager;
 import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.models.AuctionSession;
 import java.io.IOException;
@@ -43,7 +45,7 @@ public class ServerMain {
     private static void initAuctionRooms() {
         try {
             AuctionSessionDAO sessionDAO = new AuctionSessionDAO();
-            RoomManager roomManager = RoomManager.getInstance();
+            AuctionManager auctionManager = AuctionManager.getInstance();
 
             // Lấy danh sách từ DB
             List<AuctionSession> availableSessions = sessionDAO.getAvailableAuctions();
@@ -53,15 +55,18 @@ public class ServerMain {
                 return;
             }
 
+            // Trong vòng lặp for của initAuctionRooms:
             for (AuctionSession session : availableSessions) {
-                // Chuyển ID thành String để làm key cho Map trong AuctionManager
                 int roomId = session.getId();
                 double startPrice = session.getCurrentPrice();
 
-                // Tạo phòng vật lý trong bộ nhớ Server
-                roomManager.createRoom(roomId, startPrice);
+                auctionManager.createRoom(roomId, startPrice);
 
-                System.out.println("[Init]: Đã kích hoạt Phòng ID: " + roomId + " | Giá hiện tại: " + startPrice);
+                if (session.getStatusOfAuction() == StatusOfAuction.valueOf("ONGOING")) {
+                    AuctionTimerService.getInstance().scheduleAuctionClose(session.getId(), session.getEndTime());
+                }
+
+                System.out.println("[Init]: Đã kích hoạt Phòng ID: " + roomId);
             }
 
             System.out.println("[System]: Khởi tạo thành công " + availableSessions.size() + " phòng đấu giá.");

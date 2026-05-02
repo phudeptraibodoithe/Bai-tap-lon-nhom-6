@@ -18,7 +18,7 @@ public class ControllerRegister extends BaseController implements SocketListener
     @FXML private PasswordField passText, repassText;
     @FXML private Label err;
 
-    private Gson gson = new Gson(); // Khởi tạo Gson
+    private Gson gson = new Gson();
 
     @FXML
     public void submit(ActionEvent event) {
@@ -46,11 +46,9 @@ public class ControllerRegister extends BaseController implements SocketListener
             return;
         }
 
-        // TẠO JSON REQUEST
         JsonObject request = new JsonObject();
         request.addProperty("action", "REGISTER");
 
-        // Đóng gói toàn bộ thông tin đăng ký vào payload
         JsonObject payload = new JsonObject();
         payload.addProperty("accountName", accountName);
         payload.addProperty("password", password);
@@ -60,7 +58,6 @@ public class ControllerRegister extends BaseController implements SocketListener
 
         request.add("payload", payload);
 
-        // Gửi chuỗi JSON qua Socket
         SocketManager.getInstance().send(gson.toJson(request));
 
         err.setStyle("-fx-text-fill: blue;");
@@ -71,33 +68,17 @@ public class ControllerRegister extends BaseController implements SocketListener
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                // Phân tích JSON từ Server
                 JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                String status = jsonResponse.get("status").getAsString();
+                String status = jsonResponse.has("status") ? jsonResponse.get("status").getAsString() : "";
+                String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
 
-                switch (status) {
-                    case "REG_SUCCESS":
-                        err.setStyle("-fx-text-fill: green;");
-                        err.setText("Đăng ký thành công! Đang chuyển hướng...");
-                        changeScene(err, "login.fxml");
-                        break;
-
-                    case "REG_EXISTED":
-                        err.setStyle("-fx-text-fill: red;");
-                        // Đọc message từ server nếu có, không thì hiển thị mặc định
-                        String existMsg = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Tên tài khoản đã tồn tại trên hệ thống!";
-                        err.setText(existMsg);
-                        break;
-
-                    case "REG_ERROR":
-                    case "ERROR":
-                        err.setStyle("-fx-text-fill: red;");
-                        String errorMsg = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Máy chủ gặp sự cố khi xử lý!";
-                        err.setText(errorMsg);
-                        break;
-
-                    default:
-                        break;
+                if ("SUCCESS".equals(status)) {
+                    err.setStyle("-fx-text-fill: green;");
+                    err.setText("Đăng ký thành công! Đang chuyển hướng...");
+                    changeScene(err, "login.fxml");
+                } else if ("FAILED".equals(status) || "ERROR".equals(status)) {
+                    err.setStyle("-fx-text-fill: red;");
+                    err.setText(message.isEmpty() ? "Đăng ký thất bại, vui lòng thử lại!" : message);
                 }
             } catch (Exception e) {
                 err.setStyle("-fx-text-fill: red;");

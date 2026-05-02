@@ -1,9 +1,6 @@
 package com.tboat.controllers;
 
-
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.tboat.models.AuctionSession;
 import com.tboat.socket.SocketListener;
@@ -23,6 +20,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import java.lang.reflect.Type;
 import java.net.URL;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
@@ -31,7 +29,7 @@ public class AdminController extends BaseController implements Initializable, So
 
     @FXML private TextField txtSearch;
     @FXML private TableView<AuctionSession> tableSessions;
-    @FXML private TableColumn<AuctionSession, String> colId;
+    @FXML private TableColumn<AuctionSession, Integer> colId;
     @FXML private TableColumn<AuctionSession, String> colName;
     @FXML private TableColumn<AuctionSession, Double> colStartPrice;
     @FXML private TableColumn<AuctionSession, Double> colJump;
@@ -41,7 +39,10 @@ public class AdminController extends BaseController implements Initializable, So
     @FXML private Label err;
 
     private ObservableList<AuctionSession> sessionList;
-    private Gson gson = new Gson(); // Khởi tạo Gson để dùng chung
+    private Gson gson = new GsonBuilder()
+            .registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>)
+                    (json, typeOfT, context) -> LocalDateTime.parse(json.getAsString()))
+            .create();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -74,8 +75,9 @@ public class AdminController extends BaseController implements Initializable, So
                         AuctionSession session = getTableView().getItems().get(getIndex());
 
                         JsonObject request = new JsonObject();
-                        request.addProperty("action", actionType); // APPROVE_ITEM hoặc REJECT_ITEM
-                        request.addProperty("payload", session.getId()); // Gửi kèm ID sản phẩm
+                        request.addProperty("action", actionType);
+                        request.addProperty("payload", session.getId());
+                        SocketManager.getInstance().send(gson.toJson(request));
 
                         System.out.println("Gửi lệnh (" + actionType + ") cho: " + session.getName());
                         SocketManager.getInstance().send(gson.toJson(request));
@@ -103,46 +105,38 @@ public class AdminController extends BaseController implements Initializable, So
         Platform.runLater(() -> {
             try {
                 JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                String status = jsonResponse.get("status").getAsString();
+                // Dự phòng trường hợp key của Server là "action" thay vì "status"
+                String status = jsonResponse.has("status") ? jsonResponse.get("status").getAsString() : jsonResponse.get("action").getAsString();
+                String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
 
-                switch (status) {
-                    case "PENDING_ITEMS_RESULT":
-                        System.out.println("👉 [AdminController] ĐÃ NHẬN JSON: " + response);
+                if ("SUCCESS".equals(status)) {
+                    if ("Danh sách chờ duyệt".equals(message)) {
                         sessionList.clear();
-
-                        // Gson TỰ ĐỘNG CHUYỂN JsonArray thành List<AuctionSession>
                         Type listType = new TypeToken<ArrayList<AuctionSession>>(){}.getType();
-                        List<AuctionSession> items = gson.fromJson(jsonResponse.get("data"), listType);
+                        List<AuctionSession> items = gson.fromJson(jsonResponse.get("payload"), listType);
 
                         if (items != null) {
                             sessionList.addAll(items);
                         }
-                        break;
-
-                    case "APPROVE_SUCCESS":
-                        if(err != null) {
+                    } else if ("Đã duyệt và bắt đầu đấu giá".equals(message)) {
+                        if (err != null) {
                             err.setStyle("-fx-text-fill: green;");
-                            err.setText("Đã DUYỆT sản phẩm ID: " + jsonResponse.get("data").getAsString());
+                            err.setText("Đã DUYỆT sản phẩm ID: " + jsonResponse.get("payload").getAsString());
                         }
-                        break;
-
-                    case "REJECT_SUCCESS":
-                        if(err != null) {
+                    } else if ("Đã từ chối sản phẩm".equals(message)) {
+                        if (err != null) {
                             err.setStyle("-fx-text-fill: #cc7a00;");
-                            err.setText("Đã TỪ CHỐI sản phẩm ID: " + jsonResponse.get("data").getAsString());
+                            err.setText("Đã TỪ CHỐI sản phẩm ID: " + jsonResponse.get("payload").getAsString());
                         }
-                        break;
-
-                    case "ERROR":
-                        if(err != null) {
-                            err.setStyle("-fx-text-fill: red;");
-                            err.setText("Lỗi: " + jsonResponse.get("message").getAsString());
-                        }
-                        System.out.println("❌ BỊ SERVER TỪ CHỐI: " + jsonResponse.get("message").getAsString());
-                        break;
+                    }
+                } else if ("ERROR".equals(status)) {
+                    if (err != null) {
+                        err.setStyle("-fx-text-fill: red;");
+                        err.setText("Lỗi: " + message);
+                    }
+                    System.out.println("❌ LỖI TỪ SERVER: " + message);
                 }
             } catch (Exception e) {
-                // Nếu Server gửi format cũ, hoặc JSON bị lỗi
                 System.out.println("❌ KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
                 e.printStackTrace();
             }

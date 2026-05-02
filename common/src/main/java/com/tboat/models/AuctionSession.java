@@ -57,7 +57,6 @@ public class AuctionSession {
         this.sellerAccountName = sellerAccountName;
         this.name = name;
     }
-
     public void updateStatusBasedOnTime() {
         LocalDateTime now = LocalDateTime.now();
         if (now.isBefore(startTime)) {

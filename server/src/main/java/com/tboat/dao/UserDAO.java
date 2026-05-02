@@ -33,17 +33,15 @@ public class UserDAO {
         return ResponseCode.ERROR;
     }
 
-    public boolean updateUser(User user) {
-        // update người dùng, true nếu update thành công
+    public boolean updateProfile(String accountName, String description, String avatarURL) {
+        // Cập nhật profile người dùng, true nếu update thành công
         boolean ck = false;
-        String update = "UPDATE user SET nickname = ?, password = ?, description = ?, avatarURL = ? WHERE accountName = ?";
+        String update = "UPDATE user SET description = ?, avatarURL = ? WHERE accountName = ?";
         try (Connection c = DatabaseConnection.getConnection();
              PreparedStatement ps = c.prepareStatement(update)) {
-            ps.setString(1, user.getNickname());
-            ps.setString(2, user.getPassword());
-            ps.setString(3, user.getDescription());
-            ps.setString(4, user.getAvatarURL());
-            ps.setString(5, user.getAccountName());
+            ps.setString(1, description);
+            ps.setString(2, avatarURL);
+            ps.setString(3, accountName);
             int af = ps.executeUpdate();
             if (af > 0) {
                 ck = true;

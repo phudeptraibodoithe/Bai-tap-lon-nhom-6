@@ -36,21 +36,17 @@ public class AuctionController extends BaseController implements SocketListener 
     @FXML private Button btnBid;
 
     private AuctionSession currentSession;
-    private Gson gson = new Gson(); // Khởi tạo Gson
+    private Gson gson = new Gson();
 
-    // ====================================================================
-    // HÀM NHẬN DỮ LIỆU TỪ TRANG CHỦ / LỊCH SỬ GỬI SANG
-    // ====================================================================
     public void setItemData(AuctionSession item) {
         if (item == null) return;
 
         this.currentSession = item;
         updateUI();
 
-        // TẠO JSON REQUEST ĐỂ JOIN PHÒNG
         JsonObject request = new JsonObject();
         request.addProperty("action", "JOIN");
-        request.addProperty("payload", item.getId()); // Gửi ID phòng
+        request.addProperty("payload", item.getId());
 
         SocketManager.getInstance().send(gson.toJson(request));
     }
@@ -83,9 +79,6 @@ public class AuctionController extends BaseController implements SocketListener 
         }
     }
 
-    // ====================================================================
-    // HÀM XỬ LÝ KHI NGƯỜI DÙNG BẤM NÚT "PLACE BID"
-    // ====================================================================
     @FXML
     public void handlePlaceBid(ActionEvent event) {
         String inputBid = BidAmount.getText();
@@ -104,10 +97,9 @@ public class AuctionController extends BaseController implements SocketListener 
                 return;
             }
 
-            // TẠO JSON REQUEST CHO LỆNH BID
             JsonObject request = new JsonObject();
             request.addProperty("action", "BID");
-            request.addProperty("payload", bidValue); // Gửi mức giá lên
+            request.addProperty("payload", bidValue);
 
             SocketManager.getInstance().send(gson.toJson(request));
 
@@ -119,23 +111,19 @@ public class AuctionController extends BaseController implements SocketListener 
         }
     }
 
-    // ====================================================================
-    // LẮNG NGHE PHẢN HỒI TỪ SERVER BẰNG JSON
-    // ====================================================================
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                // Phân tích JSON từ Server
                 JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                String status = jsonResponse.get("status").getAsString();
+                String status = jsonResponse.has("status") ? jsonResponse.get("status").getAsString() : jsonResponse.get("action").getAsString();
+                String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Lỗi hệ thống.";
 
                 switch (status) {
                     case "NEW_BID":
-                        // Lấy object "data" chứa giá mới và tên người dẫn đầu
-                        JsonObject data = jsonResponse.getAsJsonObject("data");
-                        double newPrice = data.get("price").getAsDouble();
-                        String newLeader = data.get("clientId").getAsString();
+                        // Server gửi: message="[clientId] vừa đặt giá mới", payload=price
+                        double newPrice = jsonResponse.get("payload").getAsDouble();
+                        String newLeader = message.replace(" vừa đặt giá mới", ""); // Tách tên người dùng từ message
 
                         currentSession.setCurrentPrice(newPrice);
                         currentSession.setHighestBidderAccount(newLeader);
@@ -145,32 +133,38 @@ public class AuctionController extends BaseController implements SocketListener 
                                 "Người dùng " + newLeader + " vừa đặt mức giá: " + String.format("%,.0f VNĐ", newPrice));
                         break;
 
-                    case "BID_FAILED":
-                        // Đọc thẳng câu thông báo lỗi
-                        String errorMsg = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Lỗi hệ thống.";
-                        showAlert(Alert.AlertType.ERROR, "Đặt giá thất bại", errorMsg);
-                        break;
-
-                    case "BID_SUCCESS":
-                        String successMsg = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Bạn đang dẫn đầu!";
-                        showAlert(Alert.AlertType.INFORMATION, "Thành công", successMsg);
+                    case "SUCCESS":
+                        if (message.contains("dẫn đầu")) {
+                            // Cập nhật giá nếu chính mình vừa bid thành công
+                            if (jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull()) {
+                                currentSession.setCurrentPrice(jsonResponse.get("payload").getAsDouble());
+                                updateUI();
+                            }
+                            showAlert(Alert.AlertType.INFORMATION, "Thành công", message);
+                        }
                         break;
 
                     case "JOIN_SUCCESS":
-                        System.out.println("Vào phòng thành công. Lời chào từ server: " + jsonResponse.get("message").getAsString());
-                        break;
-
-                    case "ROOM_INFO":
-                        // Server giờ sẽ gửi thẳng kiểu SỐ (Double) chứ không gửi chữ "Giá hiện tại: xxx" nữa
-                        if (jsonResponse.has("data")) {
-                            double currentPrice = jsonResponse.get("data").getAsDouble();
+                        System.out.println("Vào phòng thành công: " + message);
+                        if (jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull()) {
+                            double currentPrice = jsonResponse.get("payload").getAsDouble();
                             currentSession.setCurrentPrice(currentPrice);
                             updateUI();
                         }
                         break;
+
+                    case "SERVER_READY":
+                        System.out.println("Hệ thống: " + message);
+                        break;
+
+                    case "FAILED":
+                    case "ERROR":
+                        showAlert(Alert.AlertType.ERROR, "Thất bại", message);
+                        break;
                 }
             } catch (Exception e) {
-                System.out.println("❌ KHÔNG THỂ ĐỌC JSON: " + response);
+                System.out.println("❌ KHÔNG THỂ ĐỌC DỮ LIỆU TỪ SERVER: " + response);
+                e.printStackTrace();
             }
         });
     }

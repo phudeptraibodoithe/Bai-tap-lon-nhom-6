@@ -47,10 +47,8 @@ public class ControllerPostItem extends BaseController implements Initializable,
     private Scene scene;
     private Parent root;
 
-    // Thêm biến lưu file ảnh thực tế để chuyển đổi sang Base64
     private File selectedFile;
-
-    private Gson gson = new Gson(); // Khởi tạo Gson
+    private Gson gson = new Gson();
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -96,7 +94,7 @@ public class ControllerPostItem extends BaseController implements Initializable,
         LocalTime nowTime = LocalTime.now();
 
         configureSpinner(hourStart, 0, 23, nowTime.getHour(), hourConverter);
-        configureSpinner(minuteStart, 0, 59, nowTime.getHour(), minuteConverter);
+        configureSpinner(minuteStart, 0, 59, nowTime.getMinute(), minuteConverter);
         configureSpinner(hourEnd, 0, 23, nowTime.plusHours(1).getHour(), hourConverter);
         configureSpinner(minuteEnd, 0, 59, nowTime.getMinute(), minuteConverter);
 
@@ -162,7 +160,6 @@ public class ControllerPostItem extends BaseController implements Initializable,
         String infor = inforItem.getText();
         String type = typeComboBox.getValue();
 
-        // Kiểm tra DatePicker null trước khi lấy giá trị thời gian
         if(datePickerStart.getValue() == null || datePickerEnd.getValue() == null) {
             showError("Vui lòng chọn ngày tháng đầy đủ!");
             return;
@@ -191,10 +188,8 @@ public class ControllerPostItem extends BaseController implements Initializable,
         double bidInc = jumpSpinner.getValue();
         long durationSeconds = java.time.Duration.between(startDT, endDT).getSeconds();
 
-        // 1. CHUYỂN ẢNH THÀNH BASE64
         String base64Image = fileToBase64(selectedFile);
 
-        // 2. TẠO JSON REQUEST
         JsonObject request = new JsonObject();
         request.addProperty("action", "POST_ITEM");
 
@@ -202,10 +197,11 @@ public class ControllerPostItem extends BaseController implements Initializable,
         payload.addProperty("name", name);
         payload.addProperty("description", infor);
         payload.addProperty("type", type);
-        payload.addProperty("imageURL", base64Image); // Gửi chuỗi ảnh khổng lồ một cách an toàn
-        payload.addProperty("startPrice", startPrice);
+        payload.addProperty("imageURL", base64Image);
+        payload.addProperty("currentPrice", startPrice);
         payload.addProperty("bidIncrease", bidInc);
-        payload.addProperty("durationSeconds", durationSeconds);
+        payload.addProperty("startTime", startDT.toString());
+        payload.addProperty("endTime", endDT.toString());
 
         request.add("payload", payload);
         SocketManager.getInstance().send(gson.toJson(request));
@@ -226,10 +222,9 @@ public class ControllerPostItem extends BaseController implements Initializable,
                 new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif")
         );
         stage = (Stage) myImageView.getScene().getWindow();
-        selectedFile = fileChooser.showOpenDialog(stage); // Lưu file được chọn
+        selectedFile = fileChooser.showOpenDialog(stage);
 
         if (selectedFile != null) {
-            // Chỉ dùng Image(URI) để hiển thị cục bộ trên giao diện
             Image image = new Image(selectedFile.toURI().toString());
             myImageView.setPreserveRatio(true);
             double width = myImageView.getFitWidth();
@@ -267,7 +262,6 @@ public class ControllerPostItem extends BaseController implements Initializable,
         }
     }
 
-    // Hàm chuyển file sang chuỗi Base64
     public String fileToBase64(File file) {
         try {
             byte[] fileContent = Files.readAllBytes(file.toPath());
@@ -278,28 +272,24 @@ public class ControllerPostItem extends BaseController implements Initializable,
         }
     }
 
-    // ====================================================================
-    // LẮNG NGHE PHẢN HỒI JSON TỪ SERVER
-    // ====================================================================
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
                 JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                String status = jsonResponse.get("status").getAsString();
+                String status = jsonResponse.has("status") ? jsonResponse.get("status").getAsString() : jsonResponse.get("action").getAsString();
+                String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
 
-                switch (status) {
-                    case "POST_SUCCESS":
+                if ("SUCCESS".equals(status)) {
+                    // Cờ check xem SUCCESS này có phải là của hàm POST_ITEM không
+                    if (message.contains("Đăng sản phẩm")) {
                         thongbao.setStyle("-fx-text-fill: green;");
-                        String id = jsonResponse.has("data") ? jsonResponse.get("data").getAsString() : "";
+                        String id = jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull() ? jsonResponse.get("payload").getAsString() : "N/A";
                         thongbao.setText("Đăng bán thành công! ID Phiên: " + id);
                         changeScene(thongbao, "TrangChu.fxml");
-                        break;
-
-                    case "ERROR":
-                        String errorMsg = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Lỗi hệ thống khi đăng tải!";
-                        showError(errorMsg);
-                        break;
+                    }
+                } else if ("ERROR".equals(status) || "FAILED".equals(status)) {
+                    showError(message);
                 }
             } catch (Exception e) {
                 showError("Lỗi đọc dữ liệu từ server.");

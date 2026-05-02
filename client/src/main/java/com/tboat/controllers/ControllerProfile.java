@@ -41,16 +41,14 @@ public class ControllerProfile extends BaseController implements Initializable, 
     @FXML private Label nickname, balance, err;
     @FXML private TextArea desc;
 
-    private Gson gson = new Gson(); // Khởi tạo Gson
+    private Gson gson = new Gson();
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        // TẠO JSON REQUEST GỬI LÊN SERVER (Thay cho "PROFILE")
         JsonObject request = new JsonObject();
         request.addProperty("action", "PROFILE");
         SocketManager.getInstance().send(gson.toJson(request));
 
-        // Hiển thị dữ liệu tạm thời từ Session trong khi đợi Server
         user = UserSession.getInstance().getUser();
         if (user != null) {
             updateUI(user.getNickname(), user.getBalance(), user.getAvatarURL(), user.getDescription());
@@ -65,10 +63,8 @@ public class ControllerProfile extends BaseController implements Initializable, 
     }
 
     public void updateProfile(ActionEvent e) {
-        // 1. Lấy mô tả (BÂY GIỜ KHÔNG CẦN DÙNG .replace("|", " ") NỮA VÌ ĐÃ CÓ JSON BẢO VỆ)
         String mota = desc.getText() == null ? "" : desc.getText().trim();
 
-        // 2. Xử lý dữ liệu ảnh
         String imageData;
         if (selectedFile != null) {
             imageData = fileToBase64(selectedFile);
@@ -79,14 +75,12 @@ public class ControllerProfile extends BaseController implements Initializable, 
             }
         }
 
-        // 3. TẠO JSON REQUEST GỬI LÊN SERVER
         JsonObject request = new JsonObject();
         request.addProperty("action", "UPDATE_PROFILE");
 
-        // Đóng gói payload
         JsonObject payload = new JsonObject();
         payload.addProperty("description", mota);
-        payload.addProperty("avatar", imageData);
+        payload.addProperty("avatarURL", imageData); // Chuẩn hóa lại key (avatarURL hay avatar tùy Model Server)
         request.add("payload", payload);
 
         SocketManager.getInstance().send(gson.toJson(request));
@@ -133,7 +127,6 @@ public class ControllerProfile extends BaseController implements Initializable, 
         alert.getButtonTypes().setAll(btnYes, btnNo);
 
         if (alert.showAndWait().orElse(btnNo) == btnYes) {
-            // TẠO JSON REQUEST CHO LOGOUT
             JsonObject request = new JsonObject();
             request.addProperty("action", "LOGOUT");
             SocketManager.getInstance().send(gson.toJson(request));
@@ -188,19 +181,18 @@ public class ControllerProfile extends BaseController implements Initializable, 
         myImageView.setClip(clipCircle);
     }
 
-    // ====================================================================
-    // LẮNG NGHE PHẢN HỒI TỪ SERVER
-    // ====================================================================
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
                 JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                String status = jsonResponse.get("status").getAsString();
+                String status = jsonResponse.has("status") ? jsonResponse.get("status").getAsString() : jsonResponse.get("action").getAsString();
+                String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
 
-                switch (status) {
-                    case "PROFILE_INFO":
-                        JsonObject data = jsonResponse.getAsJsonObject("data");
+                if ("SUCCESS".equals(status)) {
+                    // 1. Phản hồi tải thông tin Profile (Giả định message Server gửi về là "Thông tin hồ sơ")
+                    if (message.contains("Thông tin") && jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull()) {
+                        JsonObject data = jsonResponse.getAsJsonObject("payload");
 
                         String nick = data.has("nickname") ? data.get("nickname").getAsString() : "";
                         double bal = data.has("balance") ? data.get("balance").getAsDouble() : 0.0;
@@ -214,30 +206,26 @@ public class ControllerProfile extends BaseController implements Initializable, 
                         user.setBalance(bal);
                         user.setAvatar(avt);
                         user.setDescription(description);
-                        break;
-
-                    case "UPDATE_PROFILE_SUCCESS":
+                    }
+                    // 2. Phản hồi Update thành công (Giả định message Server gửi về là "Cập nhật thành công")
+                    else if (message.contains("Cập nhật")) {
                         user.setDescription(desc.getText());
                         if (selectedFile != null) {
-                            user.setAvatar(selectedFile.toURI().toString());
+                            user.setAvatar(fileToBase64(selectedFile));
                         }
-
                         err.setStyle("-fx-text-fill: green;");
                         err.setText("Cập nhật hồ sơ thành công!!");
-                        break;
-
-                    case "UPDATE_PROFILE_ERROR":
-                        String errorMsg = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Cập nhật thất bại";
-                        err.setStyle("-fx-text-fill: red;");
-                        err.setText("Lỗi: " + errorMsg);
-                        break;
-
-                    case "ERROR":
-                        String msg = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Lỗi hệ thống";
-                        err.setStyle("-fx-text-fill: red;");
-                        err.setText(msg);
-                        break;
+                    }
+                    // 3. Xử lý trường hợp báo đăng xuất thành công từ Server (Tuỳ chọn)
+                    else if (message.contains("Đã đăng xuất")) {
+                        System.out.println("Đăng xuất hoàn tất.");
+                    }
                 }
+                else if ("ERROR".equals(status) || "FAILED".equals(status)) {
+                    err.setStyle("-fx-text-fill: red;");
+                    err.setText("Lỗi: " + message);
+                }
+
             } catch (Exception e) {
                 System.out.println("❌ KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
             }

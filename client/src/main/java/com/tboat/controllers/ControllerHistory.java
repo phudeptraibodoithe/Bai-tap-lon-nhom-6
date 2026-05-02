@@ -25,7 +25,7 @@ import java.util.ResourceBundle;
 public class ControllerHistory extends BaseController implements Initializable, SocketListener {
 
     @FXML VBox lichsu;
-    private Gson gson = new Gson(); // Khởi tạo Gson
+    private Gson gson = new Gson();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -38,7 +38,7 @@ public class ControllerHistory extends BaseController implements Initializable, 
 
         JsonObject request = new JsonObject();
         request.addProperty("action", "GET_HISTORY");
-        request.addProperty("payload", username); // Gửi tên tài khoản cần xem lịch sử
+        request.addProperty("payload", username);
 
         SocketManager.getInstance().send(gson.toJson(request));
     }
@@ -47,23 +47,26 @@ public class ControllerHistory extends BaseController implements Initializable, 
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                // Phân tích phản hồi JSON từ Server
                 JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
                 String status = jsonResponse.get("status").getAsString();
 
-                if (status.equals("HISTORY_RES")) {
-                    JsonArray historyArray = jsonResponse.getAsJsonArray("data");
+                // Kiểm tra payload có phải JsonArray không để phân biệt với các SUCCESS khác
+                if ("SUCCESS".equals(status) && jsonResponse.has("payload") && jsonResponse.get("payload").isJsonArray()) {
+                    JsonArray historyArray = jsonResponse.getAsJsonArray("payload"); // Đổi từ data -> payload
+
+                    lichsu.getChildren().clear(); // Dọn dẹp lại lần nữa trước khi render
 
                     for (JsonElement element : historyArray) {
                         JsonObject dataObj = element.getAsJsonObject();
 
-                        String id = dataObj.get("auctionSessionId").getAsString();
-                        double priceValue = dataObj.get("finalPrice").getAsDouble();
+                        String id = dataObj.has("auctionSessionId") ? dataObj.get("auctionSessionId").getAsString() : "N/A";
+                        double priceValue = dataObj.has("finalPrice") ? dataObj.get("finalPrice").getAsDouble() : 0.0;
 
                         String time = "";
-                        if (dataObj.has("completedAt")) {
+                        if (dataObj.has("completedAt") && !dataObj.get("completedAt").isJsonNull()) {
                             time = dataObj.get("completedAt").getAsString().replace("T", " ");
                         }
+
                         String sessionName = "Phiên đấu giá #" + id;
                         String price = String.format("%,.0f VNĐ", priceValue);
                         HBox row = createHistoryRow(sessionName, "ID: " + id, "Thành công", price, true);
@@ -84,24 +87,30 @@ public class ControllerHistory extends BaseController implements Initializable, 
         row.setPadding(new Insets(15, 25, 15, 25));
         row.setStyle("-fx-background-color: white; -fx-background-radius: 10; -fx-border-radius: 10; " +
                 "-fx-border-width: 1; -fx-border-color: #dddddd; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);");
+
         Label ten = new Label(name);
         ten.setPrefWidth(250.0);
         ten.setStyle("-fx-text-fill: #333333; -fx-font-weight: bold; -fx-font-size: 17px;");
+
         Label lblId = new Label(id);
         lblId.setAlignment(Pos.CENTER);
         lblId.setPrefWidth(120.0);
         lblId.setStyle("-fx-text-fill: #7f8c8d; -fx-font-size: 15px;");
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
+
         Label kq = new Label(result);
         kq.setAlignment(Pos.CENTER);
         kq.setPrefWidth(160.0);
         String colorStatus = success ? "#27ae60" : "#e74c3c";
         kq.setStyle("-fx-text-fill: " + colorStatus + "; -fx-font-weight: bold; -fx-font-size: 16px;");
+
         Label lblBienDong = new Label(bienDong);
         lblBienDong.setAlignment(Pos.CENTER_RIGHT);
         lblBienDong.setPrefWidth(180.0);
         lblBienDong.setStyle("-fx-text-fill: #2c3e50; -fx-font-weight: bold; -fx-font-size: 17px;");
+
         row.getChildren().addAll(ten, lblId, spacer, kq, lblBienDong);
         return row;
     }

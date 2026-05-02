@@ -1,15 +1,27 @@
 package com.tboat.socket;
 
-import com.tboat.dao.*;
+import com.google.gson.*;
+import com.google.gson.reflect.TypeToken;
+import com.tboat.dao.AuctionSessionDAO;
+import com.tboat.dao.HistoryBidDAO;
+import com.tboat.dao.UserDAO;
 import com.tboat.models.*;
-import com.tboat.service.*;
+import com.tboat.service.AuctionManager;
+import com.tboat.service.AuctionRoom;
+import com.tboat.service.AuctionTimerService;
+import com.tboat.service.UserManager;
 import com.tboat.utils.ResponseCode;
 
-import java.io.*;
-import java.net.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.lang.reflect.Type;
+import java.net.Socket;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class ClientHandler implements Runnable {
     private Socket socket;
@@ -23,6 +35,13 @@ public class ClientHandler implements Runnable {
     private static final List<String> PUBLIC_ACTIONS = Arrays.asList(
             "LOGIN", "REGISTER", "LIST_AVAILABLE", "GET_PENDING_ITEMS", "APPROVE_ITEM", "REJECT_ITEM"
     );
+    private static final Gson gson = new GsonBuilder()
+            .registerTypeAdapter(LocalDateTime.class, (JsonSerializer<LocalDateTime>)
+                    (src, typeOfT, context) -> new JsonPrimitive(src.toString()))
+            .registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>)
+                    (json, typeOfT, context) -> LocalDateTime.parse(json.getAsString()))
+            .create();
+
     public ClientHandler(Socket socket) {
         this.socket = socket;
     }
@@ -31,7 +50,10 @@ public class ClientHandler implements Runnable {
     public void run() {
         try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
             this.out = new PrintWriter(socket.getOutputStream(), true);
-            out.println("SERVER_READY|Chào mừng bạn đến với hệ thống đấu giá TBoat!");
+
+            // Đã sửa: Gửi lời chào bằng chuẩn JSON thay vì chuỗi thô
+            sendSystemMessage("SERVER_READY", "Chào mừng bạn đến với hệ thống đấu giá TBoat!", null);
+
             String inputLine;
             while ((inputLine = in.readLine()) != null) {
                 handleCommand(inputLine.trim());
@@ -44,280 +66,286 @@ public class ClientHandler implements Runnable {
     }
 
     private void handleCommand(String input) {
-        String[] parts = input.split("\\|", -1);
-        if (parts.length == 0) return;
-        String action = parts[0].toUpperCase();
+        try {
+            JsonObject jsonReq = JsonParser.parseString(input).getAsJsonObject();
+            String action = jsonReq.get("action").getAsString().toUpperCase();
 
-        if (!PUBLIC_ACTIONS.contains(action) && clientId.equals("Guest")) {
-            out.println("ERROR|Vui lòng đăng nhập để thực hiện chức năng này.");
+            if (!PUBLIC_ACTIONS.contains(action) && clientId.equals("Guest")) {
+                sendResponse(new Response<>("ERROR", "Vui lòng đăng nhập", null));
+                return;
+            }
+
+            switch (action) {
+                case "LOGIN": handleLogin(input, gson); break;
+                case "REGISTER": handleRegister(input, gson); break;
+                case "LIST_AVAILABLE": handleListAvailable(); break;
+                case "JOIN": handleJoin(input, gson); break;
+                case "BID": handleBid(input, gson); break;
+                case "POST_ITEM": handlePostItem(input, gson); break;
+                case "GET_PENDING_ITEMS": handleGetPendingItems(); break;
+                case "APPROVE_ITEM": handleApproveItem(input, gson); break;
+                case "REJECT_ITEM": handleRejectItem(input, gson); break;
+                case "PROFILE": handleProfile(); break;
+                case "UPDATE_PROFILE": handleUpdateProfile(input); break;
+                case "TRANSACTION": handleTransaction(input); break;
+
+                case "LOGOUT":
+                    userManager.logout(this.clientId);
+                    this.clientId = "Guest";
+                    if (currentRoom != null) currentRoom.removeSubscriber(this);
+                    sendResponse(new Response<>("SUCCESS", "Đã đăng xuất", null));
+                    break;
+                default:
+                    sendResponse(new Response<>("ERROR", "Lệnh không xác định", null));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendResponse(new Response<>("ERROR", "Lỗi xử lý yêu cầu", null));
+        }
+    }
+
+    private void handleLogin(String input, Gson gson) {
+        Type type = new TypeToken<Request<User>>(){}.getType();
+        Request<User> req = gson.fromJson(input, type);
+        User credentials = req.getPayload();
+
+        ResponseCode res = userManager.login(credentials.getAccountName(), credentials.getPassword(), this);
+
+        if (res == ResponseCode.SUCCESS) {
+            this.clientId = credentials.getAccountName();
+            User fullUser = userDAO.getUser(this.clientId);
+            sendResponse(new Response<>("SUCCESS", "Đăng nhập thành công", fullUser));
+        } else {
+            sendResponse(new Response<>("FAILED", res.name(), null));
+        }
+    }
+
+    private void handleListAvailable() {
+        List<AuctionSession> sessions = auctionDAO.getAvailableAuctions();
+        sendResponse(new Response<>("SUCCESS", "Danh sách phiên đấu giá", sessions));
+    }
+
+    private void handleBid(String input, Gson gson) {
+        if (currentRoom == null) {
+            sendResponse(new Response<>("ERROR", "Bạn chưa vào phòng", null));
+            return;
+        }
+        JsonObject json = JsonParser.parseString(input).getAsJsonObject();
+        double price = json.get("payload").getAsDouble();
+
+        User currentUser = userDAO.getUser(clientId);
+        if (currentUser == null || currentUser.getBalance() < price) {
+            sendResponse(new Response<>("FAILED", "Số dư không đủ để đặt mức giá này", null));
             return;
         }
 
-        switch (action) {
-            case "LOGIN": // Format: LOGIN|username|password
-                if (parts.length < 3) {
-                    out.println("LOGIN_FAILED|MISSING_PARAMETERS");
-                    break;
-                }
-                String username = parts[1];
-                String password = parts[2];
-                if (username.equals("admin") && password.equals("admin")) {
-                    this.clientId = "admin";
-                    out.println("LOGIN_ADMIN_SUCCESS");
-                    break;
-                }
-                ResponseCode loginRes = userManager.login(username, password, this);
-                switch (loginRes) {
-                    case SUCCESS:
-                        this.clientId = username;
-                        User user = userDAO.getUser(this.clientId);
-                        if (user != null) {
-                            String nick = (user.getNickname() != null) ? user.getNickname() : "Người dùng";
-                            String avt = (user.getAvatarURL() != null) ? user.getAvatarURL() : "default.png";
-                            String bio = (user.getDescription() != null) ? user.getDescription() : "";
+        boolean bidAccepted = currentRoom.placeBid(price, clientId);
 
-                            out.println("LOGIN_SUCCESS|" + nick + "|" + user.getBalance() + "|" + avt + "|" + bio);
-                        } else {
-                            userManager.logout(this.clientId);
-                            this.clientId = "Guest";
-                            out.println("LOGIN_FAILED|DATABASE_ERROR");
-                        }
-                        break;
-                    case NOT_FOUND:
-                        out.println("LOGIN_FAILED|USER_NOT_FOUND");
-                        break;
-                    case WRONG_PASSWORD:
-                        out.println("LOGIN_FAILED|WRONG_PASSWORD");
-                        break;
-                    case ALREADY_LOGGED_IN:
-                        out.println("LOGIN_FAILED|ALREADY_LOGGED_IN");
-                        break;
-                    default:
-                        out.println("LOGIN_FAILED|UNKNOWN_ERROR");
-                        break;
-                }
-                break;
-
-            case "REGISTER": // Format: REGISTER|username|password|nickname
-                if (parts.length < 4) return;
-                ResponseCode regRes = userManager.register(parts[1], parts[2], parts[3]);
-                out.println("REGISTER_RESULT|" + regRes.name());
-                break;
-
-            case "PROFILE": // Format: PROFILE
-                User userProfile = userDAO.getUser(clientId);
-                if (userProfile != null) {
-                    out.println("PROFILE_INFO|" + userProfile.getAccountName() + "|" + userProfile.getNickname() + "|" + userProfile.getBalance() + "|" + userProfile.getAvatarURL() + "|" + userProfile.getDescription());
-                }
-                break;
-
-            case "DETAIL_AUCTION": // Format: DETAIL_AUCTION|auctionId
-                if (parts.length < 2) return;
-                AuctionSession session = auctionDAO.getAuctionById(Integer.parseInt(parts[1]));
-                if (session != null) {
-                    out.println("AUCTION_DETAIL|" + session.getName() + "|" + session.getDescription() + "|" + session.getCurrentPrice());
-                } else {
-                    out.println("ERROR|Không tìm thấy phiên đấu giá.");
-                }
-                break;
-
-            case "LIST_AVAILABLE": // Format: LIST_AVAILABLE
-                List<AuctionSession> sessions = auctionDAO.getAvailableAuctions();
-                String listData = sessions.stream()
-                        .map(s -> s.getId() + ":" + s.getName() + ":" + s.getCurrentPrice())
-                        .collect(Collectors.joining(";"));
-                out.println("AVAILABLE_AUCTIONS|" + (listData.isEmpty() ? "NONE" : listData));
-                break;
-
-            case "JOIN": // Format: JOIN|sessionId
-                if (parts.length < 2) break;
-                try {
-                    int sessionId = Integer.parseInt(parts[1]); // Parse sang int ngay
-                    AuctionRoom targetRoom = RoomManager.getInstance().getRoom(sessionId);
-
-                    if (targetRoom != null) {
-                        if (currentRoom != null) currentRoom.removeSubscriber(this);
-                        currentRoom = targetRoom;
-                        currentRoom.addSubscriber(this);
-
-                        out.println("JOIN_SUCCESS|Bạn đã vào phòng: " + sessionId);
-                        out.println("ROOM_INFO|Giá hiện tại: " + currentRoom.getCurrentPrice());
-                    } else {
-                        out.println("ERROR|Phòng " + sessionId + " không tồn tại.");
-                    }
-                } catch (NumberFormatException e) {
-                    out.println("ERROR|Mã phòng phải là số.");
-                }
-                break;
-
-            case "BID": // Format: BID|price
-                if (clientId.equals("Guest") || currentRoom == null) {
-                    out.println("ERROR|Hãy đăng nhập và tham gia phòng trước.");
-                    break;
-                }
-                try {
-                    double price = Double.parseDouble(parts[1]);
-                    int sId = currentRoom.getSessionId(); // Lấy int trực tiếp
-
-                    // 1. Dùng BiddingService (Strategy Pattern) để xử lý DB/Tiền nong
-                    BiddingService biddingService=new BiddingService();
-                    boolean success = biddingService.placeBid(clientId, sId, price);
-
-                    if (success) {
-                        // 2. Nếu DB OK, cập nhật RAM và Broadcast
-                        currentRoom.placeBid(price, clientId);
-                        currentRoom.broadcast("NEW_BID|" + price + "|" + clientId);
-                        out.println("BID_SUCCESS|Bạn đang dẫn đầu!");
-                    } else {
-                        out.println("BID_FAILED|Giá không hợp lệ hoặc số dư không đủ.");
-                    }
-                } catch (Exception e) {
-                    out.println("ERROR|Lệnh đặt giá không hợp lệ.");
-                }
-                break;
-
-            case "POST_ITEM": // Format: POST_ITEM|name|description|type|imageURL|startPrice|bidIncrease|durationSeconds
-                try {
-                    String name = parts[1];
-                    String desc = parts[2];
-                    String type = parts[3];
-                    String img = parts[4];
-                    double startPrice = Double.parseDouble(parts[5]);
-                    double bidInc = Double.parseDouble(parts[6]);
-                    int duration = Integer.parseInt(parts[7]);
-
-                    AuctionSession newSession = new AuctionSession();
-                    newSession.setName(name);
-                    newSession.setDescription(desc);
-                    newSession.setType(type);
-                    newSession.setImageURL(img);
-                    newSession.setCurrentPrice(startPrice);
-                    newSession.setBidIncrease(bidInc);
-                    newSession.setSellerAccountName(this.clientId);
-                    newSession.setStatusOfAuction(StatusOfAuction.PENDING);
-                    newSession.setStartTime(java.time.LocalDateTime.now());
-                    newSession.setEndTime(java.time.LocalDateTime.now().plusSeconds(duration));
-
-                    int generatedId = auctionDAO.addAuctionSession(newSession);
-
-                    if (generatedId > 0) {
-                        RoomManager.getInstance().createRoom(generatedId, startPrice);
-                        out.println("POST_SUCCESS|" + generatedId);
-                        System.out.println("[Server]: User " + clientId + " đã mở phiên mới ID: " + generatedId);
-                    }
-                } catch (Exception e) {
-                    out.println("ERROR|Dữ liệu đăng tải không đúng định dạng.");
-                }
-                break;
-
-            case "GET_BID": // Format: GET_BID|sessionId
-                if (parts.length < 2) return;
-                String leader = auctionDAO.getAuctionById(Integer.parseInt(parts[1])).getHighestBidderAccount();
-                out.println("BID_LEADER|" + (leader != null ? leader : "Chưa có ai"));
-                break;
-
-            case "TRANSACTION": // Format: TRANSACTION|amount
-                try {
-                    double amount = Double.parseDouble(parts[1]);
-                    if (userDAO.updateBalance(this.clientId, amount)) {
-                        out.println("TRANSACTION_SUCCESS|" + amount);
-                    } else {
-                        out.println("TRANSACTION_FAILED|Số dư không đủ hoặc lỗi hệ thống");
-                    }
-                } catch (NumberFormatException e) {
-                    out.println("ERROR|Định dạng tiền không hợp lệ");
-                }
-                break;
-
-            case "UPDATE_PROFILE": // Format: UPDATE_PROFILE|newDescription|newAvatarURL
-                if (parts.length < 3) {
-                    out.println("UPDATE_PROFILE_ERROR|INVALID_FORMAT");
-                    break;
-                }
-                String newDesc = parts[1];
-                String newAvt = parts[2];
-                User updateUser = userDAO.getUser(this.clientId);
-                if (updateUser != null) {
-                    updateUser.setDescription(newDesc);
-                    updateUser.setAvatar(newAvt);
-                    if (userDAO.updateUser(updateUser)) {
-                        out.println("UPDATE_PROFILE_SUCCESS");
-                    } else {
-                        out.println("UPDATE_PROFILE_ERROR");
-                    }
-                }
-                break;
-
-            case "GET_HISTORY": // Format: GET_HISTORY  hoặc  GET_HISTORY|targetAccount
-                String targetAccount = (parts.length > 1) ? parts[1] : this.clientId;
-                List<History> historyList = historyDAO.getHistoryByAccount(targetAccount);
-
-                StringBuilder sb = new StringBuilder("HISTORY_RES");
-                for (History h : historyList) {
-                    sb.append("|").append(h.getAuctionSessionId())
-                            .append(";").append(h.getFinalPrice())
-                            .append(";").append(h.getCompletedAt().toString());
-                }
-                out.println(sb.toString());
-                break;
-
-            case "GET_PENDING_ITEMS":
-                List<AuctionSession> pendingList = auctionDAO.getPendingAuctions();
-                StringBuilder res = new StringBuilder("PENDING_ITEMS_RESULT");
-
-                for(AuctionSession s : pendingList) {
-                    res.append("|").append(s.getId()).append(",")
-                            .append(s.getName()).append(",")
-                            .append(s.getCurrentPrice()).append(",")
-                            .append(s.getBidIncrease()).append(",")
-                            .append(s.getSellerAccountName()); // Hoặc s.getCreator() tùy cách đặt tên
-                }
-                out.println(res.toString());
-                break;
-
-            case "APPROVE_ITEM":
-                if (parts.length < 2) break;
-                int approveId = Integer.parseInt(parts[1]);
-
-                // Gọi đúng tên hàm và truyền vào Enum của bạn
-                if (auctionDAO.updateSessionStatus(approveId, StatusOfAuction.NOT_STARTED)) {
-                    out.println("APPROVE_SUCCESS|" + approveId);
-                } else {
-                    out.println("ERROR|Lỗi cơ sở dữ liệu khi duyệt sản phẩm");
-                }
-                break;
-
-            case "REJECT_ITEM":
-                if (parts.length < 2) break;
-                int rejectId = Integer.parseInt(parts[1]);
-
-                // Gọi đúng tên hàm và truyền vào Enum của bạn
-                if (auctionDAO.updateSessionStatus(rejectId, StatusOfAuction.CANCELED)) {
-                    out.println("REJECT_SUCCESS|" + rejectId);
-                } else {
-                    out.println("ERROR|Lỗi cơ sở dữ liệu khi từ chối sản phẩm");
-                }
-                break;
-
-            case "LOGOUT": // Format: LOGOUT
-                if (!this.clientId.equals("Guest")) {
-                    userManager.logout(this.clientId);
-                    System.out.println("[Server]: User " + this.clientId + " đã đăng xuất.");
-                    this.clientId = "Guest";
-                }
-                if (currentRoom != null) currentRoom.removeSubscriber(this);
-                break;
-
-            default:
-                out.println("UNKNOWN_COMMAND|Lệnh không hợp lệ.");
+        if (bidAccepted) {
+            sendResponse(new Response<>("SUCCESS", "Bạn đang dẫn đầu", price));
+            currentRoom.broadcast("NEW_BID", clientId + " vừa đặt giá mới", price);
+        } else {
+            sendResponse(new Response<>("FAILED", "Giá đặt phải cao hơn giá hiện tại", currentRoom.getCurrentPrice()));
         }
     }
-    public synchronized void sendMessage(String msg) {
+
+    private void handleRegister(String input, Gson gson) {
+        Type type = new TypeToken<Request<User>>(){}.getType();
+        Request<User> req = gson.fromJson(input, type);
+        User user = req.getPayload();
+
+        ResponseCode res = userManager.register(user.getAccountName(), user.getPassword(), user.getNickname());
+        sendResponse(new Response<>(res == ResponseCode.SUCCESS ? "SUCCESS" : "FAILED", res.name(), null));
+    }
+
+    private void handlePostItem(String input, Gson gson) {
+        try {
+            JsonObject json = JsonParser.parseString(input).getAsJsonObject();
+            JsonObject payload = json.getAsJsonObject("payload");
+
+            // Tạo mới một phiên đấu giá
+            AuctionSession session = new AuctionSession();
+
+            // Cài đặt các thông tin cơ bản từ Client gửi lên
+            session.setName(payload.get("name").getAsString());
+            session.setDescription(payload.get("description").getAsString());
+            session.setType(payload.get("type").getAsString());
+            session.setImageURL(payload.get("imageURL").getAsString());
+            session.setCurrentPrice(payload.get("currentPrice").getAsDouble());
+            session.setBidIncrease(payload.get("bidIncrease").getAsDouble());
+
+            // Cài đặt thời gian do người dùng chọn
+            LocalDateTime startTime = LocalDateTime.parse(payload.get("startTime").getAsString());
+            LocalDateTime endTime = LocalDateTime.parse(payload.get("endTime").getAsString());
+            session.setStartTime(startTime);
+            session.setEndTime(endTime);
+
+            // Cài đặt thông tin hệ thống
+            session.setSellerAccountName(this.clientId);
+            session.setStatusOfAuction(StatusOfAuction.PENDING);
+
+            // Lưu vào DB
+            int id = auctionDAO.addAuctionSession(session);
+
+            if (id > 0) {
+
+                sendResponse(new Response<>("SUCCESS", "Đăng sản phẩm thành công, đang chờ duyệt", id));
+            } else {
+                sendResponse(new Response<>("ERROR", "Lỗi lưu dữ liệu vào Database", null));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendResponse(new Response<>("ERROR", "Dữ liệu gửi lên không hợp lệ!", null));
+        }
+    }
+
+    private void handleJoin(String input, Gson gson) {
+        JsonObject json = JsonParser.parseString(input).getAsJsonObject();
+
+        // Đã sửa: Đổi tên thành sessionId và lấy kiểu Int
+        int sessionId = json.get("payload").getAsInt();
+        AuctionRoom targetRoom = AuctionManager.getInstance().getRoom(sessionId);
+
+        if (targetRoom != null) {
+            if (currentRoom != null) currentRoom.removeSubscriber(this);
+            currentRoom = targetRoom;
+            currentRoom.addSubscriber(this);
+
+            // Đã sửa: Ép tham số message thành String ("Vào phòng " + sessionId...)
+            sendResponse(new Response<>("JOIN_SUCCESS", "Vào phòng " + sessionId + " thành công", currentRoom.getCurrentPrice()));
+        } else {
+            sendResponse(new Response<>("ERROR", "Phòng không tồn tại", null));
+        }
+    }
+
+    private void handleGetPendingItems() {
+        try {
+            List<AuctionSession> pendingItems = auctionDAO.getPendingAuctions();
+
+            // Đảm bảo không bao giờ trả về null, trả về danh sách rỗng [] nếu không có bài
+            if (pendingItems == null) {
+                pendingItems = new ArrayList<>();
+            }
+
+            // Gửi response về, message phải khớp 100% với Client đang check
+            sendResponse(new Response<>("SUCCESS", "Danh sách chờ duyệt", pendingItems));
+            System.out.println("[Server]: Đã gửi danh sách chờ duyệt cho Admin.");
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendResponse(new Response<>("ERROR", "Lỗi lấy danh sách: " + e.getMessage(), null));
+        }
+    }
+    private void handleApproveItem(String input, Gson gson) {
+        try {
+            JsonObject json = JsonParser.parseString(input).getAsJsonObject();
+            // Lấy ID từ payload (Client gửi trực tiếp số ID)
+            int sessionId = json.get("payload").getAsInt();
+
+            // Cập nhật trạng thái trong Database
+            boolean success = auctionDAO.updateSessionStatus(sessionId, StatusOfAuction.valueOf("ONGOING"));
+
+            if (success) {
+                // Lấy thông tin phiên để lập lịch kết thúc
+                AuctionSession session = auctionDAO.getAuctionById(sessionId);
+                if (session != null) {
+                    AuctionTimerService.getInstance().scheduleAuctionClose(sessionId, session.getEndTime());
+                }
+
+                // Trả về SUCCESS và message khớp với AdminController dòng 114
+                sendResponse(new Response<>("SUCCESS", "Đã duyệt và bắt đầu đấu giá", sessionId));
+                System.out.println("[Server]: Admin đã duyệt phiên ID: " + sessionId);
+            } else {
+                sendResponse(new Response<>("ERROR", "Không thể duyệt sản phẩm (Lỗi Database)", null));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendResponse(new Response<>("ERROR", "Lỗi xử lý duyệt sản phẩm: " + e.getMessage(), null));
+        }
+    }
+
+    private void handleRejectItem(String input, Gson gson) {
+        try {
+            JsonObject json = JsonParser.parseString(input).getAsJsonObject();
+            // Lấy ID từ payload
+            int sessionId = json.get("payload").getAsInt();
+
+            // Cập nhật trạng thái thành CANCELED hoặc REJECTED (tùy Enum của bạn)
+            boolean success = auctionDAO.updateSessionStatus(sessionId, StatusOfAuction.valueOf("CANCELED"));
+
+            if (success) {
+                // Trả về SUCCESS và message khớp với AdminController dòng 119
+                sendResponse(new Response<>("SUCCESS", "Đã từ chối sản phẩm", sessionId));
+                System.out.println("[Server]: Admin đã từ chối phiên ID: " + sessionId);
+            } else {
+                sendResponse(new Response<>("ERROR", "Không thể thực hiện từ chối (Lỗi Database)", null));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendResponse(new Response<>("ERROR", "Lỗi xử lý từ chối sản phẩm: " + e.getMessage(), null));
+        }
+    }
+
+    private void handleProfile() {
+        User fullUser = userDAO.getUser(this.clientId);
+        if (fullUser != null) {
+            // Gửi trả status PROFILE_INFO khớp với Frontend gốc
+            sendResponse(new Response<>("PROFILE_INFO", "Thông tin hồ sơ", fullUser));
+        } else {
+            sendResponse(new Response<>("ERROR", "Không tìm thấy người dùng", null));
+        }
+    }
+
+    private void handleUpdateProfile(String input) {
+        JsonObject json = JsonParser.parseString(input).getAsJsonObject();
+        JsonObject payload = json.getAsJsonObject("payload");
+
+        String desc = payload.has("description") ? payload.get("description").getAsString() : "";
+
+        // ĐÃ SỬA: Đổi "avatar" thành "avatarURL" cho khớp với Client gửi lên
+        String avatar = payload.has("avatarURL") ? payload.get("avatarURL").getAsString() : "";
+
+        // Gọi DB cập nhật
+        boolean updateOk = userDAO.updateProfile(this.clientId, desc, avatar);
+
+        if (updateOk) {
+            sendResponse(new Response<>("SUCCESS", "Cập nhật thành công", null)); // Chú ý: Đổi lại status thành SUCCESS để khớp dòng 159 bên Client
+        } else {
+            sendResponse(new Response<>("ERROR", "Lỗi cập nhật", null));
+        }
+    }
+
+    private void handleTransaction(String input) {
+        JsonObject json = JsonParser.parseString(input).getAsJsonObject();
+        double amount = json.get("payload").getAsDouble();
+
+        // Giả sử userDAO có hàm updateBalance xử lý cộng/trừ tiền trong CSDL
+        boolean transOk = userDAO.updateBalance(this.clientId, amount);
+
+        if (transOk) {
+            // Frontend cũ cần payload/data là số tiền thay đổi để update UI
+            sendResponse(new Response<>("TRANSACTION_SUCCESS", "Giao dịch đã được xử lý!", amount));
+        } else {
+            sendResponse(new Response<>("TRANSACTION_FAILED", "Giao dịch bị từ chối (Số dư không đủ).", null));
+        }
+    }
+
+    public synchronized void sendResponse(Response<?> response) {
+        String json = gson.toJson(response);
         if (out != null) {
-            out.println(msg);
+            out.println(json);
             out.flush();
         }
     }
+
+    public synchronized void sendSystemMessage(String action, String message, Object payload) {
+        Response<Object> response = new Response<>(action, message, payload);
+        String json = gson.toJson(response);
+        if (out != null) {
+            out.println(json);
+            out.flush();
+        }
+    }
+
     private void cleanUp() {
         try {
             if (clientId != null && !clientId.equals("Guest")) {

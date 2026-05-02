@@ -20,7 +20,7 @@ public class ControllerLogin extends BaseController implements SocketListener {
     @FXML private PasswordField passText;
     @FXML private Label err;
 
-    private Gson gson = new Gson(); // Khởi tạo Gson
+    private Gson gson = new Gson();
 
     @FXML
     public void submit(ActionEvent event) {
@@ -38,17 +38,15 @@ public class ControllerLogin extends BaseController implements SocketListener {
 
         new Thread(() -> {
             try {
-                // TẠO JSON REQUEST GỬI LÊN SERVER
                 JsonObject request = new JsonObject();
                 request.addProperty("action", "LOGIN");
 
-                // Đóng gói username và password vào payload
+                // Dùng accountName để khớp với Model User trong ClientHandler
                 JsonObject payload = new JsonObject();
-                payload.addProperty("username", username);
+                payload.addProperty("accountName", username);
                 payload.addProperty("password", password);
                 request.add("payload", payload);
 
-                // Gửi JSON đi
                 SocketManager.getInstance().send(gson.toJson(request));
 
             } catch (Exception e) {
@@ -64,37 +62,40 @@ public class ControllerLogin extends BaseController implements SocketListener {
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                // Phân tích JSON trả về
                 JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
                 String status = jsonResponse.get("status").getAsString();
+                String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
 
                 switch (status) {
-                    case "LOGIN_ADMIN_SUCCESS":
-                        changeScene(err, "Admin.fxml");
+                    case "SUCCESS":
+                        if ("Đăng nhập thành công".equals(message)) {
+                            JsonObject payload = jsonResponse.getAsJsonObject("payload");
+
+                            // Kiểm tra role hoặc tên tài khoản để vào Admin (Fallback)
+                            String role = payload.has("role") ? payload.get("role").getAsString() : "";
+                            if ("admin".equalsIgnoreCase(signText.getText().trim()) || "ADMIN".equalsIgnoreCase(role)) {
+                                changeScene(err, "Admin.fxml");
+                                break;
+                            }
+
+                            String nickname = payload.has("nickname") ? payload.get("nickname").getAsString() : "";
+                            double balance = payload.has("balance") ? payload.get("balance").getAsDouble() : 0.0;
+                            String avatarURL = payload.has("avatarURL") ? payload.get("avatarURL").getAsString() : "null";
+                            String description = payload.has("description") ? payload.get("description").getAsString() : "";
+
+                            User loggedUser = new User(signText.getText(), null, nickname, balance, description, avatarURL);
+                            UserSession.getInstance().createUserSession(loggedUser);
+
+                            changeScene(err, "TrangChu.fxml");
+                        }
                         break;
 
-                    case "LOGIN_SUCCESS":
-                        // Lấy object data chứa thông tin user
-                        JsonObject data = jsonResponse.getAsJsonObject("data");
-
-                        String nickname = data.has("nickname") ? data.get("nickname").getAsString() : "";
-                        double balance = data.has("balance") ? data.get("balance").getAsDouble() : 0.0;
-                        String avatar = data.has("avatar") ? data.get("avatar").getAsString() : "default.png";
-                        String description = data.has("description") ? data.get("description").getAsString() : "";
-
-                        // Tạo User object
-                        User loggedUser = new User(signText.getText(), null, nickname, balance, description, avatar);
-                        UserSession.getInstance().createUserSession(loggedUser);
-
-                        changeScene(err, "TrangChu.fxml");
-                        break;
-
-                    case "LOGIN_FAILED":
-                        // Lấy mã lỗi từ message
-                        String errorType = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "UNKNOWN_ERROR";
+                    case "FAILED":
+                    case "ERROR":
                         err.setStyle("-fx-text-fill: red;");
 
-                        switch (errorType) {
+                        // Ánh xạ message (là ResponseCode.name() từ Server)
+                        switch (message) {
                             case "USER_NOT_FOUND":
                                 err.setText("Tài khoản không tồn tại!");
                                 break;
@@ -108,7 +109,7 @@ public class ControllerLogin extends BaseController implements SocketListener {
                                 err.setText("Lỗi cơ sở dữ liệu.");
                                 break;
                             default:
-                                err.setText("Đăng nhập thất bại: " + errorType);
+                                err.setText("Đăng nhập thất bại: " + message);
                         }
                         break;
                 }

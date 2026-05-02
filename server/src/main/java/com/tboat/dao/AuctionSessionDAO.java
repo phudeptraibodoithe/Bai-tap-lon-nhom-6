@@ -180,4 +180,18 @@ public class AuctionSessionDAO {
             return false;
         }
     }
+
+    public boolean updateEndTime(int sessionId, java.time.LocalDateTime newEndTime) {
+        String sql = "UPDATE auction_session SET endTime = ? WHERE id = ?";
+        try (java.sql.Connection c = com.tboat.database.DatabaseConnection.getConnection();
+             java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setTimestamp(1, java.sql.Timestamp.valueOf(newEndTime));
+            ps.setInt(2, sessionId);
+            return ps.executeUpdate() > 0;
+        } catch (java.sql.SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

@@ -11,6 +11,7 @@ public class User extends Person {
         this.avatarURL=avatarURL;
         this.description=description;
     }
+    public User(){    }
 
     // Setters
     public void setDescription(String description) {

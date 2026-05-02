@@ -27,10 +27,10 @@ public class NapRutController extends BaseController implements Initializable, S
     @FXML private Button btnSubmit;
 
     private double currentBalance = UserSession.getInstance().getBalance();
-    private final String CORRECT_PIN = "123456"; // Mã PIN đúng để test
+    private final String CORRECT_PIN = "123456";
     private boolean isDepositMode = true;
 
-    private Gson gson = new Gson(); // Khởi tạo Gson
+    private Gson gson = new Gson();
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle){
@@ -52,12 +52,11 @@ public class NapRutController extends BaseController implements Initializable, S
 
     private void switchToWithdrawMode() {
         isDepositMode = false;
-        // Đổi nút Rút thành màu Cam, nút Nạp thành màu Xám/Trắng
         btnTabWithdraw.setStyle("-fx-background-color: #e67e22; -fx-background-radius: 5; -fx-text-fill: white; -fx-cursor: hand;");
         btnTabDeposit.setStyle("-fx-background-color: transparent; -fx-border-color: #cccccc; -fx-border-radius: 5; -fx-text-fill: #666666; -fx-cursor: hand;");
 
         btnSubmit.setText("XÁC NHẬN RÚT TIỀN");
-        btnSubmit.setStyle("-fx-background-color: #e67e22; -fx-background-radius: 5; -fx-cursor: hand;"); // Màu cam cho nguy hiểm
+        btnSubmit.setStyle("-fx-background-color: #e67e22; -fx-background-radius: 5; -fx-cursor: hand;");
     }
 
     private void updateBalanceLabel() {
@@ -68,13 +67,11 @@ public class NapRutController extends BaseController implements Initializable, S
         String amountText = txtAmount.getText();
         String pinText = txtPin.getText();
 
-        // 1. Kiểm tra nhập thiếu
         if (amountText.trim().isEmpty() || pinText.trim().isEmpty()) {
             showAlert(Alert.AlertType.WARNING, "Lỗi nhập liệu", "Vui lòng nhập đầy đủ Số tiền và Mã PIN!");
             return;
         }
 
-        // 2. Kiểm tra mã PIN
         if (!pinText.equals(CORRECT_PIN)) {
             showAlert(Alert.AlertType.ERROR, "Sai mã PIN", "Mã PIN không chính xác. Vui lòng thử lại!");
             return;
@@ -83,7 +80,6 @@ public class NapRutController extends BaseController implements Initializable, S
         try {
             double amount = Double.parseDouble(amountText);
 
-            // Kiểm tra số tiền phải lớn hơn 0
             if (amount <= 0) {
                 showAlert(Alert.AlertType.ERROR, "Lỗi số tiền", "Số tiền giao dịch phải lớn hơn 0!");
                 return;
@@ -91,10 +87,9 @@ public class NapRutController extends BaseController implements Initializable, S
             btnSubmit.setDisable(true);
             double amountToSend = isDepositMode ? amount : -amount;
 
-            // TẠO JSON REQUEST
             JsonObject request = new JsonObject();
             request.addProperty("action", "TRANSACTION");
-            request.addProperty("payload", amountToSend); // Gửi số tiền dưới dạng JSON Property
+            request.addProperty("payload", amountToSend);
 
             SocketManager.getInstance().send(gson.toJson(request));
 
@@ -106,27 +101,28 @@ public class NapRutController extends BaseController implements Initializable, S
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
-            btnSubmit.setDisable(false); // Mở khóa nút lại dù thành công hay thất bại
+            btnSubmit.setDisable(false);
 
             try {
-                // Phân tích JSON từ Server
                 JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                String status = jsonResponse.get("status").getAsString();
+                String status = jsonResponse.has("status") ? jsonResponse.get("status").getAsString() : "";
+                String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
 
-                if (status.equals("TRANSACTION_SUCCESS")) {
-                    double changedAmount = jsonResponse.get("data").getAsDouble(); // Server trả về số tiền đã thay đổi
-                    double newBalance = UserSession.getInstance().getUser().getBalance() + changedAmount;
+                if ("SUCCESS".equals(status)) {
+                    // Đọc lượng tiền thay đổi từ payload thay vì data
+                    if (jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull()) {
+                        double changedAmount = jsonResponse.get("payload").getAsDouble();
+                        double newBalance = UserSession.getInstance().getUser().getBalance() + changedAmount;
 
-                    UserSession.getInstance().getUser().setBalance(newBalance);
-                    currentBalance = newBalance;
-                    updateBalanceLabel();
+                        UserSession.getInstance().getUser().setBalance(newBalance);
+                        currentBalance = newBalance;
+                        updateBalanceLabel();
 
-                    // Ưu tiên đọc message từ server nếu có
-                    String successMsg = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Giao dịch đã được xử lý!";
-                    showAlert(Alert.AlertType.INFORMATION, "Thành công", successMsg);
-
-                } else if (status.equals("TRANSACTION_FAILED")) {
-                    String errorMsg = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "Giao dịch bị từ chối.";
+                        String successMsg = message.isEmpty() ? "Giao dịch đã được xử lý thành công!" : message;
+                        showAlert(Alert.AlertType.INFORMATION, "Thành công", successMsg);
+                    }
+                } else if ("FAILED".equals(status) || "ERROR".equals(status)) {
+                    String errorMsg = message.isEmpty() ? "Giao dịch bị từ chối." : message;
                     showAlert(Alert.AlertType.ERROR, "Thất bại", errorMsg);
                 }
 

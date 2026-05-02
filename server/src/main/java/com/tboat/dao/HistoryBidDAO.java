@@ -79,72 +79,75 @@ public class HistoryBidDAO {
     }
 
     public ResponseCode updateBidLeader(int sessionId, String bidderAccount, double newPrice, String previousBidder, double previousPrice) {
-//        String sqlCharge = "UPDATE user SET balance = balance - ? WHERE accountName = ? AND balance >= ?";
-//        String sqlUpdateSession = "UPDATE auction_session SET currentPrice = ?, highestBidderAccount = ? WHERE id = ? AND currentPrice < ?";
-//        String sqlRefund = "UPDATE user SET balance = balance + ? WHERE accountName = ?";
-//        String sqlInsertBid = "INSERT INTO bid (auctionSessionId, bidderAccount, bidAmount, bidTime) VALUES (?, ?, ?, NOW())";
-//
-//        try (Connection conn = DatabaseConnection.getConnection()) {
-//            try {
-//                conn.setAutoCommit(false);
-//
-//                // Bước 1: Trừ tiền người đặt giá mới
-//                try (PreparedStatement psCharge = conn.prepareStatement(sqlCharge)) {
-//                    psCharge.setDouble(1, newPrice);
-//                    psCharge.setString(2, bidderAccount);
-//                    psCharge.setDouble(3, newPrice);
-//
-//                    if (psCharge.executeUpdate() == 0) {
-//                        conn.rollback();
-//                        return ResponseCode.INSUFFICIENT_BALANCE;
-//                    }
-//                }
-//
-//                // Bước 2: Cập nhật phiên đấu giá (Thực hiện ngay sau khi trừ tiền để chốt vị trí)
-//                try (PreparedStatement psUpdate = conn.prepareStatement(sqlUpdateSession)) {
-//                    psUpdate.setDouble(1, newPrice);
-//                    psUpdate.setString(2, bidderAccount);
-//                    psUpdate.setInt(3, sessionId);
-//                    psUpdate.setDouble(4, newPrice);
-//
-//                    if (psUpdate.executeUpdate() == 0) {
-//                        conn.rollback();
-//                        return ResponseCode.BID_FAILED; // Đã có người khác nhanh tay đặt giá cao hơn trước đó
-//                    }
-//                }
-//
-//                // Bước 3: Hoàn tiền cho người giữ giá cao nhất trước đó (nếu có)
-//                if (previousBidder != null && !previousBidder.equals(bidderAccount)) {
-//                    try (PreparedStatement psRefund = conn.prepareStatement(sqlRefund)) {
-//                        psRefund.setDouble(1, previousPrice);
-//                        psRefund.setString(2, previousBidder);
-//                        psRefund.executeUpdate();
-//                    }
-//                }
-//
-//                // Bước 4: Lưu lịch sử đặt giá
-//                try (PreparedStatement psInsert = conn.prepareStatement(sqlInsertBid)) {
-//                    psInsert.setInt(1, sessionId);
-//                    psInsert.setString(2, bidderAccount);
-//                    psInsert.setDouble(3, newPrice);
-//                    psInsert.executeUpdate();
-//                }
-//
-//                // Hoàn tất giao dịch nếu không có bước nào bị lỗi hoặc bị rollback giữa chừng
-//                conn.commit();
-//                return ResponseCode.SUCCESS;
-//
-//            } catch (Exception innerException) {
-//                // Rollback chủ động khi có bất kỳ Exception nào (lỗi mạng, rớt mạng, lỗi DB...)
-//                conn.rollback();
-//                throw innerException; // Ném lỗi ra khối catch bên ngoài để log
-//            }
-//
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            return ResponseCode.ERROR;
-//        }
-        return ResponseCode.BID_FAILED;
+        // SQL linh hoạt hơn: Nếu là người cũ thì trừ phần chênh lệch, nếu người mới thì trừ toàn bộ
+        String sqlChargeNewBidder = "UPDATE user SET balance = balance - ? WHERE accountName = ? AND balance >= ?";
+        String sqlUpdateSession = "UPDATE auction_session SET currentPrice = ?, highestBidderAccount = ? WHERE id = ? AND currentPrice < ?";
+        String sqlRefundOldBidder = "UPDATE user SET balance = balance + ? WHERE accountName = ?";
+        String sqlInsertBid = "INSERT INTO bid (auctionSessionId, bidderAccount, bidAmount, bidTime) VALUES (?, ?, ?, NOW())";
+
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            // 1. XỬ LÝ TRỪ TIỀN
+            if (bidderAccount.equals(previousBidder)) {
+                // Trường hợp người cũ nâng giá: Chỉ trừ phần chênh lệch
+                double diff = newPrice - previousPrice;
+                try (PreparedStatement ps = conn.prepareStatement(sqlChargeNewBidder)) {
+                    ps.setDouble(1, diff);
+                    ps.setString(2, bidderAccount);
+                    ps.setDouble(3, diff);
+                    if (ps.executeUpdate() == 0) { conn.rollback(); return ResponseCode.INSUFFICIENT_BALANCE; }
+                }
+            } else {
+                // Trường hợp người mới đặt giá: Trừ đủ số tiền mới
+                try (PreparedStatement ps = conn.prepareStatement(sqlChargeNewBidder)) {
+                    ps.setDouble(1, newPrice);
+                    ps.setString(2, bidderAccount);
+                    ps.setDouble(3, newPrice);
+                    if (ps.executeUpdate() == 0) { conn.rollback(); return ResponseCode.INSUFFICIENT_BALANCE; }
+                }
+
+                // 2. HOÀN TIỀN CHO NGƯỜI CŨ (Vì người mới đã chiếm ưu thế)
+                if (previousBidder != null && !previousBidder.isEmpty()) {
+                    try (PreparedStatement ps = conn.prepareStatement(sqlRefundOldBidder)) {
+                        ps.setDouble(1, previousPrice);
+                        ps.setString(2, previousBidder);
+                        ps.executeUpdate();
+                    }
+                }
+            }
+
+            // 3. CẬP NHẬT PHIÊN ĐẤU GIÁ (Kiểm tra lại giá một lần nữa để tránh Race Condition)
+            try (PreparedStatement ps = conn.prepareStatement(sqlUpdateSession)) {
+                ps.setDouble(1, newPrice);
+                ps.setString(2, bidderAccount);
+                ps.setInt(3, sessionId);
+                ps.setDouble(4, newPrice);
+                if (ps.executeUpdate() == 0) {
+                    conn.rollback();
+                    return ResponseCode.BID_FAILED;
+                }
+            }
+
+            // 4. LƯU LỊCH SỬ ĐẶT GIÁ
+            try (PreparedStatement ps = conn.prepareStatement(sqlInsertBid)) {
+                ps.setInt(1, sessionId);
+                ps.setString(2, bidderAccount);
+                ps.setDouble(3, newPrice);
+                ps.executeUpdate();
+            }
+
+            conn.commit();
+            return ResponseCode.SUCCESS;
+        } catch (SQLException e) {
+            if (conn != null) try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            e.printStackTrace();
+            return ResponseCode.ERROR;
+        } finally {
+            if (conn != null) try { conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+        }
     }
 
     public List<Bid> getBidsBySession(int sessionId) {

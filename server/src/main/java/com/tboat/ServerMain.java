@@ -1,5 +1,7 @@
 package com.tboat;
 
+import com.tboat.models.StatusOfAuction;
+import com.tboat.service.AuctionTimerService;
 import com.tboat.socket.ClientHandler;
 import com.tboat.service.AuctionManager;
 import com.tboat.dao.AuctionSessionDAO;
@@ -53,15 +55,19 @@ public class ServerMain {
                 return;
             }
 
+            // Trong vòng lặp for của initAuctionRooms:
             for (AuctionSession session : availableSessions) {
-                // Chuyển ID thành String để làm key cho Map trong AuctionManager
                 String roomId = String.valueOf(session.getId());
                 double startPrice = session.getCurrentPrice();
 
-                // Tạo phòng vật lý trong bộ nhớ Server
                 auctionManager.createRoom(roomId, startPrice);
 
-                System.out.println("[Init]: Đã kích hoạt Phòng ID: " + roomId + " | Giá hiện tại: " + startPrice);
+                // --- BỔ SUNG: Lập lịch đóng phiên cho các phiên đang OPENING ---
+                if (session.getStatusOfAuction() == StatusOfAuction.valueOf("OPENING")) {
+                    AuctionTimerService.getInstance().scheduleAuctionClose(session.getId(), session.getEndTime());
+                }
+
+                System.out.println("[Init]: Đã kích hoạt Phòng ID: " + roomId);
             }
 
             System.out.println("[System]: Khởi tạo thành công " + availableSessions.size() + " phòng đấu giá.");

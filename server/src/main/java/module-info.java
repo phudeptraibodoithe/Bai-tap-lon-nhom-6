@@ -1,6 +1,7 @@
 module com.tboat.server {
     requires java.sql;
     requires com.tboat.common;
+    requires com.google.gson;
 
     // Xuất các package để hệ thống tìm thấy class khi chạy
     exports com.tboat;

@@ -2,6 +2,7 @@ package com.tboat.dao;
 
 
 import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -174,6 +175,20 @@ public class AuctionSessionDAO {
             ps.setString(2, bidderAccount);
             ps.setInt(3, sessionId);
             ps.setDouble(4, newPrice);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // Thêm đoạn này vào cuối class AuctionSessionDAO.java
+    public boolean updateEndTime(int sessionId, LocalDateTime newEndTime) {
+        String sql = "UPDATE auction_session SET endTime = ? WHERE id = ?";
+        try (Connection c = DatabaseConnection.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setTimestamp(1, java.sql.Timestamp.valueOf(newEndTime));
+            ps.setInt(2, sessionId);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();

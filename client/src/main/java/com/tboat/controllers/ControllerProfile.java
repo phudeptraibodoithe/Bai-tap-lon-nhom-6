@@ -6,6 +6,7 @@ import com.google.gson.JsonParser;
 import com.tboat.models.User;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.utilsclient.ImageUtils;
 import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -15,17 +16,13 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.StackPane;
 import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.file.Files;
-import java.util.Base64;
 import java.util.ResourceBundle;
 
 public class ControllerProfile extends BaseController implements Initializable, SocketListener {
@@ -45,6 +42,10 @@ public class ControllerProfile extends BaseController implements Initializable, 
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
+        // 1. Lắng nghe tin nhắn từ Server
+        SocketManager.getInstance().subscribe(this);
+
+        // 2. Gửi yêu cầu lấy thông tin Profile
         JsonObject request = new JsonObject();
         request.addProperty("action", "PROFILE");
         SocketManager.getInstance().send(gson.toJson(request));
@@ -67,7 +68,8 @@ public class ControllerProfile extends BaseController implements Initializable, 
 
         String imageData;
         if (selectedFile != null) {
-            imageData = fileToBase64(selectedFile);
+            // Dùng tiện ích xịn sò để mã hóa ảnh
+            imageData = ImageUtils.fileToBase64(selectedFile);
         } else {
             imageData = UserSession.getInstance().getUser().getAvatarURL();
             if (imageData == null || imageData.isEmpty()) {
@@ -80,7 +82,7 @@ public class ControllerProfile extends BaseController implements Initializable, 
 
         JsonObject payload = new JsonObject();
         payload.addProperty("description", mota);
-        payload.addProperty("avatarURL", imageData); // Chuẩn hóa lại key (avatarURL hay avatar tùy Model Server)
+        payload.addProperty("avatarURL", imageData);
         request.add("payload", payload);
 
         SocketManager.getInstance().send(gson.toJson(request));
@@ -94,13 +96,19 @@ public class ControllerProfile extends BaseController implements Initializable, 
             }
 
             Image image;
+            // Nếu là chuỗi Base64 dài ngoằng (không phải link web hay file cứng)
             if (!pathOrBase64.startsWith("file:/") && !pathOrBase64.startsWith("http")) {
-                byte[] imageBytes = Base64.getDecoder().decode(pathOrBase64);
-                image = new Image(new ByteArrayInputStream(imageBytes));
+                // Dùng hàm giải mã Base64 sang ảnh
+                image = ImageUtils.base64ToImage(pathOrBase64);
             } else {
                 image = new Image(pathOrBase64, true);
             }
-            setCircularImage(image);
+
+            if (image != null) {
+                setCircularImage(image);
+            } else {
+                loadDefaultAvatar();
+            }
 
         } catch (Exception e) {
             System.err.println("[Avatar Error]: " + e.getMessage());
@@ -117,7 +125,6 @@ public class ControllerProfile extends BaseController implements Initializable, 
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Xác nhận đăng xuất");
         DialogPane dialogPane = alert.getDialogPane();
-        dialogPane.getStylesheets().add(getClass().getResource("/styles/Button.css").toExternalForm());
         Stage alertStage = (Stage) alert.getDialogPane().getScene().getWindow();
         alertStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/logo.png")));
         alert.setHeaderText(null);
@@ -132,28 +139,30 @@ public class ControllerProfile extends BaseController implements Initializable, 
             SocketManager.getInstance().send(gson.toJson(request));
 
             UserSession.getInstance().cleanUserSession();
-            changeScene(myImageView,"start.fxml");
+
+            // Chú ý: Hàm changeScene trong BaseController đang nhận tham số (Button, String).
+            // Nếu báo lỗi ở đoạn này, bạn hãy tự sửa lại tham số truyền vào cho đúng nhé!
+            Button btnSource = (Button) e.getSource();
+            changeScene(btnSource, "start.fxml");
         }
     }
 
     public void canclePost(ActionEvent e) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Xác nhận hủy thay đổi");
-        DialogPane dialogPane = alert.getDialogPane();
-        dialogPane.getStylesheets().add(getClass().getResource("/styles/Button.css").toExternalForm());
-        Stage alertStage = (Stage) alert.getDialogPane().getScene().getWindow();
-        alertStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/logo.png")));
         alert.setHeaderText(null);
         alert.setContentText("Toàn bộ thông tin bạn vừa nhập sẽ không được lưu lại.\nBạn có chắc chắn muốn hủy thay đổi không?");
         ButtonType btnYes = new ButtonType("Có", ButtonBar.ButtonData.OK_DONE);
         ButtonType btnNo = new ButtonType("Không", ButtonBar.ButtonData.CANCEL_CLOSE);
         alert.getButtonTypes().setAll(btnYes, btnNo);
+
         if (alert.showAndWait().orElse(btnNo) == btnYes) {
-            changeScene(myImageView,"profile.fxml");
+            Button btnSource = (Button) e.getSource();
+            changeScene(btnSource, "profile.fxml");
         }
     }
 
-    public void uploadImage(MouseEvent event) throws IOException {
+    public void uploadImage(MouseEvent event) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Chọn ảnh đại diện");
         fileChooser.getExtensionFilters().addAll(
@@ -190,7 +199,7 @@ public class ControllerProfile extends BaseController implements Initializable, 
                 String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
 
                 if ("SUCCESS".equals(status)) {
-                    // 1. Phản hồi tải thông tin Profile (Giả định message Server gửi về là "Thông tin hồ sơ")
+                    // 1. Load Profile
                     if (message.contains("Thông tin") && jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull()) {
                         JsonObject data = jsonResponse.getAsJsonObject("payload");
 
@@ -199,24 +208,23 @@ public class ControllerProfile extends BaseController implements Initializable, 
                         String avt = data.has("avatarURL") ? data.get("avatarURL").getAsString() : "";
                         String description = data.has("description") ? data.get("description").getAsString() : "";
 
-                        nickname.setText(nick);
-                        balance.setText(String.format("%,.0f VNĐ", bal));
+                        updateUI(nick, bal, avt, description); // Tái sử dụng hàm cho gọn
 
                         user.setNickname(nick);
                         user.setBalance(bal);
                         user.setAvatar(avt);
                         user.setDescription(description);
                     }
-                    // 2. Phản hồi Update thành công (Giả định message Server gửi về là "Cập nhật thành công")
+                    // 2. Update thành công
                     else if (message.contains("Cập nhật")) {
                         user.setDescription(desc.getText());
                         if (selectedFile != null) {
-                            user.setAvatar(fileToBase64(selectedFile));
+                            user.setAvatar(ImageUtils.fileToBase64(selectedFile));
                         }
                         err.setStyle("-fx-text-fill: green;");
                         err.setText("Cập nhật hồ sơ thành công!!");
                     }
-                    // 3. Xử lý trường hợp báo đăng xuất thành công từ Server (Tuỳ chọn)
+                    // 3. Log out
                     else if (message.contains("Đã đăng xuất")) {
                         System.out.println("Đăng xuất hoàn tất.");
                     }
@@ -230,15 +238,5 @@ public class ControllerProfile extends BaseController implements Initializable, 
                 System.out.println("❌ KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
             }
         });
-    }
-
-    public String fileToBase64(File file) {
-        try {
-            byte[] fileContent = Files.readAllBytes(file.toPath());
-            return Base64.getEncoder().encodeToString(fileContent);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
     }
 }

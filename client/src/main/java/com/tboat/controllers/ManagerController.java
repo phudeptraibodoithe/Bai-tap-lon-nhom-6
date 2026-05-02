@@ -1,94 +1,179 @@
 package com.tboat.controllers;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.tboat.models.AuctionSession;
+import com.tboat.models.StatusOfAuction;
+import com.tboat.socket.SocketListener;
+import com.tboat.socket.SocketManager;
+import com.tboat.utilsclient.UserSession;
+import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.control.Label;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
+import javafx.fxml.Initializable;
+import javafx.scene.control.Button;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.util.Callback;
 
-public class ManagerController extends BaseController {
+import java.net.URL;
+import java.util.ResourceBundle;
 
-    // Khai báo các ID trên FXML của trang Chi tiết sản phẩm
-    @FXML private Label NameItem;
-    @FXML private Label IdItem;
-    @FXML private Label CurrentPrice;
-    @FXML private Label Description;
-    @FXML private Label NextPrice;
-    @FXML private Label HighestBidder;
-    @FXML private ImageView ItemImage;
+public class ManagerController extends BaseController implements Initializable, SocketListener {
 
-    // Biến lưu trữ phiên đấu giá đang được mở
-    private AuctionSession currentSession;
+    // 1. LIÊN KẾT CÁC ID TỪ FXML
+    @FXML private TableView<AuctionSession> tableMyItems;
+    @FXML private TableColumn<AuctionSession, Integer> colId;
+    @FXML private TableColumn<AuctionSession, String> colName;
+    @FXML private TableColumn<AuctionSession, String> colRole;
+    @FXML private TableColumn<AuctionSession, Double> colPrice;
+    @FXML private TableColumn<AuctionSession, StatusOfAuction> colStatus;
+    @FXML private TableColumn<AuctionSession, Void> colAction;
 
-    // ====================================================================
-    // HÀM ĐỔ DỮ LIỆU TỪ TRANG CHỦ / LỊCH SỬ SANG TRANG CHI TIẾT
-    // ====================================================================
-    public void setItemData(AuctionSession item) {
-        if (item == null) {
-            return;
-        }
+    private Gson gson = new Gson();
 
-        this.currentSession = item; // Lưu lại để dùng cho nút "Đặt giá" sau này
+    // Danh sách để chứa dữ liệu cho TableView
+    private ObservableList<AuctionSession> listMyItems = FXCollections.observableArrayList();
 
-        try {
-            // 1. Đổ dữ liệu Tên và ID
-            if (NameItem != null) NameItem.setText(item.getName());
-            if (IdItem != null) IdItem.setText("ID : " + item.getId());
+    @Override
+    public void initialize(URL location, ResourceBundle resources) {
+        // Khởi tạo các cột cho bảng
+        setupTableColumns();
 
-            // 2. Đổ dữ liệu Giá hiện tại
-            if (CurrentPrice != null) {
-                CurrentPrice.setText(String.format("%,.0f VNĐ", item.getCurrentPrice()));
-            }
+        // Đăng ký nhận tin nhắn từ Server
+        SocketManager.getInstance().subscribe(this);
 
-            // 3. Đổ dữ liệu Mô tả
-            if (Description != null) {
-                Description.setText(item.getDescription() != null ? item.getDescription() : "Không có mô tả.");
-            }
-
-            // 4. Tính toán Mức giá tối thiểu tiếp theo (Giá hiện tại + Bước nhảy)
-            if (NextPrice != null) {
-                double nextMin = item.getCurrentPrice() + item.getBidIncrease();
-                NextPrice.setText(String.format("Mức giá hợp lệ tiếp theo: %,.0f VNĐ", nextMin));
-            }
-
-            // 5. Cập nhật Trạng thái và Người dẫn đầu
-            if (HighestBidder != null) {
-                String statusText = "🏆 Trạng thái: " + item.getStatusOfAuction().name();
-
-                // Kiểm tra nếu đã có người đấu giá thì hiển thị thêm tên người đó
-                String topBidder = item.getHighestBidderAccount();
-                if (topBidder != null && !topBidder.isEmpty() && !topBidder.equals("N/A")) {
-                    statusText += " | Đang dẫn đầu: " + topBidder;
-                }
-                HighestBidder.setText(statusText);
-            }
-
-            // 6. Xử lý Ảnh sản phẩm
-            if (ItemImage != null && item.getImageURL() != null && !item.getImageURL().isEmpty()) {
-                String imageUrl = item.getImageURL();
-                try {
-                    Image img;
-                    // Kiểm tra xem ảnh là link web hay là file trong máy
-                    if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-                        img = new Image(imageUrl, true); // Tải ảnh từ web
-                    } else {
-                        // Tải ảnh từ thư mục resources/images/
-                        img = new Image(getClass().getResourceAsStream("/images/" + imageUrl));
-                    }
-
-                    if (img != null && !img.isError()) {
-                        ItemImage.setImage(img);
-                    }
-                } catch (Exception e) {
-                    System.err.println("Không thể tải ảnh sản phẩm: " + imageUrl);
-                }
-            }
-
-        } catch (Exception e) {
-            System.err.println("Lỗi khi đổ dữ liệu AuctionSession vào giao diện ItemController!");
-            e.printStackTrace();
-        }
+        // Lấy dữ liệu từ Server
+        loadMyAuctions();
     }
 
-    // (Sau này bạn có thể viết thêm hàm onAction cho nút "Xác nhận đặt giá" ở đây)
+    // ====================================================================
+    // CẤU HÌNH CÁC CỘT CHO TABLEVIEW
+    // ====================================================================
+    private void setupTableColumns() {
+        // Gắn tên thuộc tính của class AuctionSession vào các cột
+        colId.setCellValueFactory(new PropertyValueFactory<>("id"));
+        colName.setCellValueFactory(new PropertyValueFactory<>("name"));
+        colStatus.setCellValueFactory(new PropertyValueFactory<>("statusOfAuction"));
+
+        // Định dạng cột Giá tiền (Thêm dấu phẩy và chữ VNĐ)
+        colPrice.setCellValueFactory(new PropertyValueFactory<>("currentPrice"));
+        colPrice.setCellFactory(column -> new TableCell<AuctionSession, Double>() {
+            @Override
+            protected void updateItem(Double price, boolean empty) {
+                super.updateItem(price, empty);
+                if (empty || price == null) {
+                    setText(null);
+                } else {
+                    setText(String.format("%,.0f VNĐ", price));
+                }
+            }
+        });
+
+        // Cột Loại: Hiển thị mặc định chữ "Người Bán" (Seller) vì đây là hàng của mình
+        colRole.setCellFactory(column -> new TableCell<AuctionSession, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setText(null);
+                } else {
+                    setText("Người Bán");
+                    setStyle("-fx-text-fill: #2980b9; -fx-font-weight: bold; -fx-alignment: CENTER;");
+                }
+            }
+        });
+
+        // Cột Thao tác: Tạo nút "Chi tiết"
+        colAction.setCellFactory(new Callback<TableColumn<AuctionSession, Void>, TableCell<AuctionSession, Void>>() {
+            @Override
+            public TableCell<AuctionSession, Void> call(final TableColumn<AuctionSession, Void> param) {
+                return new TableCell<AuctionSession, Void>() {
+                    private final Button btn = new Button("Chi tiết");
+                    {
+                        btn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-cursor: hand;");
+                        btn.setOnAction((ActionEvent event) -> {
+                            AuctionSession data = getTableView().getItems().get(getIndex());
+                            System.out.println("Bạn vừa bấm vào sản phẩm: " + data.getName());
+                            // Bạn có thể viết code chuyển sang trang Item/Auction ở đây
+                        });
+                    }
+
+                    @Override
+                    protected void updateItem(Void item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (empty) {
+                            setGraphic(null);
+                        } else {
+                            setGraphic(btn);
+                        }
+                    }
+                };
+            }
+        });
+
+        // Gắn danh sách trống vào bảng
+        tableMyItems.setItems(listMyItems);
+    }
+
+    // ====================================================================
+    // GỬI YÊU CẦU LÊN SERVER
+    // ====================================================================
+    public void loadMyAuctions() {
+        String myUsername = UserSession.getInstance().getUsername();
+        JsonObject request = new JsonObject();
+        request.addProperty("action", "GET_MY_AUCTIONS"); // Bạn nhớ đổi tên action cho khớp với Server
+        request.addProperty("payload", myUsername);
+
+        SocketManager.getInstance().send(gson.toJson(request));
+    }
+
+    // ====================================================================
+    // XỬ LÝ DỮ LIỆU JSON TỪ SERVER
+    // ====================================================================
+    @Override
+    public void handleServerResponse(String response) {
+        Platform.runLater(() -> {
+            try {
+                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+                String status = jsonResponse.get("status").getAsString();
+
+                if ("SUCCESS".equals(status) && jsonResponse.has("payload") && jsonResponse.get("payload").isJsonArray()) {
+                    JsonArray myArray = jsonResponse.getAsJsonArray("payload");
+
+                    // Xóa dữ liệu cũ trong bảng
+                    listMyItems.clear();
+
+                    for (JsonElement element : myArray) {
+                        JsonObject dataObj = element.getAsJsonObject();
+
+                        AuctionSession session = new AuctionSession();
+                        session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
+                        session.setName(dataObj.has("name") ? dataObj.get("name").getAsString() : "No name");
+                        session.setCurrentPrice(dataObj.has("currentPrice") ? dataObj.get("currentPrice").getAsDouble() : 0.0);
+
+                        String statusString = dataObj.has("statusOfAuction") ? dataObj.get("statusOfAuction").getAsString() : "ONGOING";
+                        try {
+                            session.setStatusOfAuction(StatusOfAuction.valueOf(statusString));
+                        } catch (Exception ignored) {}
+
+                        // Thêm sản phẩm vào danh sách, TableView sẽ tự động hiển thị
+                        listMyItems.add(session);
+                    }
+                }
+            } catch (Exception e) {
+                if (response.contains("{")) {
+                    System.out.println("❌ LỖI ĐỌC JSON TRANG MANAGER: " + response);
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
 }

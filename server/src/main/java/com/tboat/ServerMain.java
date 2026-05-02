@@ -17,6 +17,7 @@ import java.util.concurrent.Executors;
 public class ServerMain {
     // Tạo một hồ chứa luồng (Pool) tối đa 100 người chơi cùng lúc
     private static final ExecutorService threadPool = Executors.newFixedThreadPool(100);
+    public static final ExecutorService broadcastExecutor = Executors.newFixedThreadPool(10);
 
     public static void main(String[] args) {
         int port = 8888;

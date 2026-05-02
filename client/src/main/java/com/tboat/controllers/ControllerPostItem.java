@@ -5,14 +5,12 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.utilsclient.ImageUtils; // THÊM IMPORT NÀY
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -25,12 +23,10 @@ import javafx.util.StringConverter;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.file.Files;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Base64;
 import java.util.ResourceBundle;
 
 public class ControllerPostItem extends BaseController implements Initializable, SocketListener {
@@ -44,14 +40,13 @@ public class ControllerPostItem extends BaseController implements Initializable,
     @FXML private ComboBox<String> typeComboBox;
 
     private Stage stage;
-    private Scene scene;
-    private Parent root;
-
     private File selectedFile;
     private Gson gson = new Gson();
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
+        SocketManager.getInstance().subscribe(this);
+
         setupPriceSpinners();
         setupDateTimeLogic();
         typeComboBox.getItems().addAll("Điện tử", "Thời trang", "Đồ gia dụng", "Trang sức", "Sách", "Khác");
@@ -186,9 +181,8 @@ public class ControllerPostItem extends BaseController implements Initializable,
 
         double startPrice = priceSpinner.getValue();
         double bidInc = jumpSpinner.getValue();
-        long durationSeconds = java.time.Duration.between(startDT, endDT).getSeconds();
 
-        String base64Image = fileToBase64(selectedFile);
+        String base64Image = ImageUtils.fileToBase64(selectedFile);
 
         JsonObject request = new JsonObject();
         request.addProperty("action", "POST_ITEM");
@@ -215,7 +209,7 @@ public class ControllerPostItem extends BaseController implements Initializable,
         thongbao.setText(msg);
     }
 
-    public void uploadImage(MouseEvent event) throws IOException {
+    public void uploadImage(MouseEvent event) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Chọn ảnh sản phẩm");
         fileChooser.getExtensionFilters().addAll(
@@ -249,26 +243,10 @@ public class ControllerPostItem extends BaseController implements Initializable,
         ButtonType btnYes = new ButtonType("Có", ButtonBar.ButtonData.OK_DONE);
         ButtonType btnNo = new ButtonType("Không", ButtonBar.ButtonData.CANCEL_CLOSE);
         alert.getButtonTypes().setAll(btnYes, btnNo);
-        if (alert.showAndWait().orElse(btnNo) == btnYes) {
-            try {
-                root = FXMLLoader.load(getClass().getResource("/views/postItem.fxml"));
-                scene = ((Node) e.getSource()).getScene();
-                scene.getStylesheets().clear();
-                scene.getStylesheets().add(getClass().getResource("/styles/Button.css").toExternalForm());
-                scene.setRoot(root);
-            } catch (IOException event) {
-                event.printStackTrace();
-            }
-        }
-    }
 
-    public String fileToBase64(File file) {
-        try {
-            byte[] fileContent = Files.readAllBytes(file.toPath());
-            return Base64.getEncoder().encodeToString(fileContent);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
+        if (alert.showAndWait().orElse(btnNo) == btnYes) {
+            // 3. Tận dụng hàm changeScene của BaseController cho gọn
+            changeScene((Node) e.getSource(), "postItem.fxml");
         }
     }
 
@@ -281,12 +259,13 @@ public class ControllerPostItem extends BaseController implements Initializable,
                 String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
 
                 if ("SUCCESS".equals(status)) {
-                    // Cờ check xem SUCCESS này có phải là của hàm POST_ITEM không
                     if (message.contains("Đăng sản phẩm")) {
                         thongbao.setStyle("-fx-text-fill: green;");
                         String id = jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull() ? jsonResponse.get("payload").getAsString() : "N/A";
                         thongbao.setText("Đăng bán thành công! ID Phiên: " + id);
-                        changeScene(thongbao, "TrangChu.fxml");
+
+                        // Chuyển về trang chủ sau khi đăng xong
+                        changeScene(thongbao, "trangchu.fxml"); // Lưu ý: Tên file FXML thường viết thường (trangchu.fxml)
                     }
                 } else if ("ERROR".equals(status) || "FAILED".equals(status)) {
                     showError(message);

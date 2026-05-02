@@ -52,20 +52,13 @@ public class UserDAO {
         return ck;
     }
 
-    public boolean updateBalance(String accountName, double amount) {
+    public boolean updateBalance(Connection conn, String accountName, double amount) throws SQLException {
         String sql = "UPDATE user SET balance = balance + ? WHERE accountName = ? AND (balance + ?) >= 0";
-
-        try (Connection c = DatabaseConnection.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setDouble(1, amount);
             ps.setString(2, accountName);
             ps.setDouble(3, amount);
-
             return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
         }
     }
 

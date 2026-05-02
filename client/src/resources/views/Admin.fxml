@@ -16,13 +16,15 @@
 
 <BorderPane prefHeight="700.0" prefWidth="1000.0" style="-fx-background-color: #f4f7f6;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.AdminController">
 
+    <!-- PHẦN HEADER (THANH ĐIỀU HƯỚNG TRÊN CÙNG) -->
     <top>
         <HBox alignment="CENTER_LEFT" prefHeight="60.0" spacing="20.0" style="-fx-background-color: #2c3e50; -fx-border-color: #1a252f; -fx-border-width: 0 0 1 0;" BorderPane.alignment="CENTER">
             <padding>
                 <Insets left="20.0" right="20.0" />
             </padding>
             <children>
-                <Button mnemonicParsing="false"  style="-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;">
+                <!-- 1. Logo -->
+                <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;">
                     <graphic>
                         <ImageView fitHeight="59.0" fitWidth="129.0" pickOnBounds="true" preserveRatio="true">
                             <image>
@@ -31,17 +33,43 @@
                         </ImageView>
                     </graphic>
                 </Button>
-                <Label text="HỆ THỐNG QUẢN TRỊ" textFill="WHITE">
+
+                <!-- 2. Nhóm Menu Điều Hướng (Đặt cạnh nhau) -->
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <children>
+                        <!-- Nút Admin -->
+                        <Button fx:id="btnAdminHome" mnemonicParsing="false" onAction="#switchToAdmin" style="-fx-background-color: #2c3e50; -fx-background-radius: 8; -fx-padding: 8 18; -fx-cursor: hand;" text="HỆ THỐNG QUẢN TRỊ" textFill="WHITE">
+                            <font>
+                                <Font name="System Bold" size="14.0" />
+                            </font>
+                        </Button>
+
+                        <!-- Nút Profile -->
+                        <Button mnemonicParsing="false" onAction="#switchToProfile" style="-fx-background-color: #2c3e50; -fx-background-radius: 8; -fx-padding: 8 18; -fx-cursor: hand;" text="PROFILE" textFill="WHITE">
+                            <font>
+                                <Font name="System Bold" size="14.0" />
+                            </font>
+                        </Button>
+                    </children>
+                    <HBox.margin>
+                        <Insets left="15.0" />
+                    </HBox.margin>
+                </HBox>
+
+                <!-- 3. Khoảng trống đẩy Lời chào sang góc phải -->
+                <Region HBox.hgrow="ALWAYS" />
+
+                <!-- 4. Lời chào góc phải -->
+                <Label text="Xin chào, Admin!" textFill="WHITE">
                     <font>
-                        <Font name="System Bold" size="18.0" />
+                        <Font name="System Bold" size="14.0" />
                     </font>
                 </Label>
-                <Region HBox.hgrow="ALWAYS" />
-                <Label text="Xin chào, Admin!" textFill="WHITE" />
             </children>
         </HBox>
     </top>
 
+    <!-- PHẦN NỘI DUNG CHÍNH Ở GIỮA -->
     <center>
         <VBox spacing="20.0" BorderPane.alignment="CENTER">
             <padding>
@@ -49,20 +77,23 @@
             </padding>
             <children>
 
+                <!-- Tiêu đề trang -->
                 <Label text="Quản Lý Phiên Đấu Giá">
                     <font>
                         <Font name="System Bold" size="24.0" />
                     </font>
                 </Label>
 
+                <!-- Thanh tìm kiếm -->
                 <HBox alignment="CENTER_LEFT" spacing="15.0">
                     <children>
                         <TextField fx:id="txtSearch" prefHeight="40.0" prefWidth="300.0" promptText="Tìm kiếm tên sản phẩm hoặc ID..." style="-fx-background-radius: 5;" />
-                        <Button mnemonicParsing="false" prefHeight="40.0" style="-fx-background-color: #3498db;" text="Tìm kiếm" textFill="WHITE" />
+                        <Button mnemonicParsing="false" prefHeight="40.0" style="-fx-background-color: #3498db; -fx-cursor: hand;" text="Tìm kiếm" textFill="WHITE" />
                         <Region HBox.hgrow="ALWAYS" />
                     </children>
                 </HBox>
 
+                <!-- Bảng hiển thị sản phẩm -->
                 <TableView fx:id="tableSessions" prefHeight="450.0" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 5);" VBox.vgrow="ALWAYS">
                     <columns>
                         <TableColumn fx:id="colId" prefWidth="70.0" text="ID" />
@@ -71,6 +102,7 @@
                         <TableColumn fx:id="colJump" prefWidth="120.0" text="Bước nhảy" />
                         <TableColumn fx:id="colSeller" prefWidth="120.0" text="Seller" />
 
+                        <!-- Các cột nút bấm Duyệt / Từ chối -->
                         <TableColumn fx:id="colApprove" prefWidth="80.0" style="-fx-alignment: CENTER;" text="Xác nhận" />
                         <TableColumn fx:id="colReject" prefWidth="80.0" style="-fx-alignment: CENTER;" text="Từ chối" />
                     </columns>
@@ -78,8 +110,6 @@
                         <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
                     </columnResizePolicy>
                 </TableView>
-
-                <HBox alignment="CENTER_RIGHT" spacing="15.0" />
 
             </children>
         </VBox>

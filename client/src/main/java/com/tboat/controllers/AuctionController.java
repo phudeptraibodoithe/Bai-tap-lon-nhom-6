@@ -4,8 +4,10 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.models.AuctionSession;
+import com.tboat.models.StatusOfAuction; // Nhớ thêm import này
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.utilsclient.ImageUtils;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -30,13 +32,17 @@ public class AuctionController extends BaseController implements SocketListener 
     @FXML private Label Description;
     @FXML private Label CurrentPrice;
     @FXML private Label HighestBidder;
-    @FXML private Label NextPrice;
 
     @FXML private TextField BidAmount;
     @FXML private Button btnBid;
 
     private AuctionSession currentSession;
     private Gson gson = new Gson();
+
+    @FXML
+    public void initialize() {
+        SocketManager.getInstance().subscribe(this);
+    }
 
     public void setItemData(AuctionSession item) {
         if (item == null) return;
@@ -59,9 +65,8 @@ public class AuctionController extends BaseController implements SocketListener 
         CurrentPrice.setText(String.format("%,.0f VNĐ", currentSession.getCurrentPrice()));
 
         double nextMin = currentSession.getCurrentPrice() + currentSession.getBidIncrease();
-        NextPrice.setText(String.format("Mức giá tối thiểu tiếp theo: %,.0f VNĐ", nextMin));
 
-        String statusText = "🏆 Trạng thái: " + currentSession.getStatusOfAuction().name();
+        String statusText = "🏆 Trạng thái: " + (currentSession.getStatusOfAuction() != null ? currentSession.getStatusOfAuction().name() : "ONGOING");
         String topBidder = currentSession.getHighestBidderAccount();
         if (topBidder != null && !topBidder.isEmpty() && !topBidder.equals("N/A")) {
             statusText += " | Đang dẫn đầu: " + topBidder;
@@ -69,12 +74,9 @@ public class AuctionController extends BaseController implements SocketListener 
         HighestBidder.setText(statusText);
 
         if (ItemImage != null && currentSession.getImageURL() != null && !currentSession.getImageURL().isEmpty()) {
-            try {
-                String imageUrl = currentSession.getImageURL();
-                Image img = imageUrl.startsWith("http") ? new Image(imageUrl, true) : new Image(getClass().getResourceAsStream("/images/" + imageUrl));
-                if (img != null && !img.isError()) ItemImage.setImage(img);
-            } catch (Exception e) {
-                System.err.println("Không thể tải ảnh sản phẩm");
+            Image img = ImageUtils.base64ToImage(currentSession.getImageURL());
+            if (img != null) {
+                ItemImage.setImage(img);
             }
         }
     }
@@ -121,9 +123,8 @@ public class AuctionController extends BaseController implements SocketListener 
 
                 switch (status) {
                     case "NEW_BID":
-                        // Server gửi: message="[clientId] vừa đặt giá mới", payload=price
                         double newPrice = jsonResponse.get("payload").getAsDouble();
-                        String newLeader = message.replace(" vừa đặt giá mới", ""); // Tách tên người dùng từ message
+                        String newLeader = message.replace(" vừa đặt giá mới", "");
 
                         currentSession.setCurrentPrice(newPrice);
                         currentSession.setHighestBidderAccount(newLeader);
@@ -135,7 +136,6 @@ public class AuctionController extends BaseController implements SocketListener 
 
                     case "SUCCESS":
                         if (message.contains("dẫn đầu")) {
-                            // Cập nhật giá nếu chính mình vừa bid thành công
                             if (jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull()) {
                                 currentSession.setCurrentPrice(jsonResponse.get("payload").getAsDouble());
                                 updateUI();
@@ -155,6 +155,33 @@ public class AuctionController extends BaseController implements SocketListener 
 
                     case "SERVER_READY":
                         System.out.println("Hệ thống: " + message);
+                        break;
+
+                    // ---> LUỒNG GIA HẠN THỜI GIAN <---
+                    case "TIME_EXTENDED":
+                        showAlert(Alert.AlertType.WARNING, "Đấu giá kịch tính!", message);
+                        break;
+
+                    // ---> LUỒNG KẾT THÚC PHIÊN <---
+                    case "AUCTION_FINISHED":
+                        currentSession.setStatusOfAuction(StatusOfAuction.ENDED);
+
+                        // Cập nhật người chiến thắng
+                        if (jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull()) {
+                            JsonObject payloadObj = jsonResponse.get("payload").getAsJsonObject();
+                            String winner = payloadObj.has("winner") ? payloadObj.get("winner").getAsString() : "Không có";
+                            double finalPrice = payloadObj.has("finalPrice") ? payloadObj.get("finalPrice").getAsDouble() : currentSession.getCurrentPrice();
+
+                            currentSession.setHighestBidderAccount(winner);
+                            currentSession.setCurrentPrice(finalPrice);
+                            updateUI();
+                        }
+
+                        // Khóa nút Đặt Giá lại vì đã kết thúc
+                        btnBid.setDisable(true);
+                        HighestBidder.setText("🏆 KẾT THÚC | Người chiến thắng: " + currentSession.getHighestBidderAccount());
+
+                        showAlert(Alert.AlertType.INFORMATION, "Kết thúc phiên đấu giá", message);
                         break;
 
                     case "FAILED":

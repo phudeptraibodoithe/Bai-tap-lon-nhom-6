@@ -1,14 +1,17 @@
 package com.tboat.service;
 
+import com.tboat.ServerMain;
 import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.dao.HistoryBidDAO;
 import com.tboat.dao.UserDAO;
+import com.tboat.database.DatabaseConnection;
 import com.tboat.models.AuctionSession;
 import com.tboat.models.History;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.ClientHandler;
 import com.tboat.utils.ResponseCode;
 
+import java.sql.Connection;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -26,6 +29,7 @@ public class AuctionRoom {
     private final AuctionSessionDAO sessionDAO = new AuctionSessionDAO();
     private final UserDAO userDAO = new UserDAO();
     private final HistoryBidDAO historyDAO = new HistoryBidDAO();
+    private final BiddingService biddingService = new BiddingService(); // Khởi tạo một lần dùng mãi mãi
 
     public AuctionRoom(int sessionId, double startingPrice) {
         this.sessionId = sessionId;
@@ -38,17 +42,10 @@ public class AuctionRoom {
     public synchronized boolean placeBid(double newPrice, String bidderAccount) {
         if (isFinished) return false;
 
-        // Gọi hàm updateBidLeader với đầy đủ 5 tham số:
-        // (sessionId, người đặt mới, giá mới, người giữ giá cũ, giá cũ)
-        ResponseCode result = historyDAO.updateBidLeader(
-                sessionId,
-                bidderAccount,
-                newPrice,
-                this.lastBidder,
-                this.currentPrice
-        );
+        // Gọi service đã khởi tạo sẵn
+        boolean success = biddingService.placeBid(bidderAccount, this.sessionId, newPrice);
 
-        if (result == ResponseCode.SUCCESS) {
+        if (success) {
             this.currentPrice = newPrice;
             this.lastBidder = bidderAccount;
 
@@ -82,28 +79,69 @@ public class AuctionRoom {
             if (lastBidder != null) {
                 String seller = session.getSellerAccountName();
 
-                // 1. Lưu vào lịch sử
-                historyDAO.addHistory(new History(sessionId, lastBidder, currentPrice, LocalDateTime.now()));
-                // 2. Chuyển trạng thái
-                sessionDAO.updateSessionStatus(sessionId, StatusOfAuction.ENDED);
-                // 3. Cộng tiền cho seller (Tiền của bidder đã bị trừ trong updateBidLeader)
-                userDAO.updateBalance(seller, currentPrice);
+                try {
+                    // 1. Cập nhật trạng thái phiên thành ENDED
+                    boolean statusOk = sessionDAO.updateSessionStatus(sessionId, StatusOfAuction.ENDED);
 
-                System.out.println("[Room " + sessionId + "]: Kết thúc. Người thắng: " + lastBidder + ", Seller: " + seller);
+                    // 2. Thêm vào bảng lịch sử
+                    History history = new History(sessionId, lastBidder, currentPrice, LocalDateTime.now());
+                    boolean historyOk = historyDAO.addHistory(history);
 
-                // Gói dữ liệu vào Map để trả về JSON Object cho mượt
-                Map<String, Object> payload = new HashMap<>();
-                payload.put("winner", lastBidder);
-                payload.put("finalPrice", currentPrice);
+                    // 3. Gọi hàm chia tiền
+                    boolean paymentOk = divideMoney(seller, currentPrice);
 
-                broadcast("AUCTION_FINISHED", "Phiên đấu giá kết thúc", payload);
+                    // 4. Kiểm tra
+                    if (statusOk && historyOk && paymentOk) {
+                        Map<String, Object> payload = new HashMap<>();
+                        payload.put("winner", lastBidder);
+                        payload.put("finalPrice", currentPrice);
+                        broadcast("AUCTION_FINISHED", "Phiên đấu giá kết thúc thành công!", payload);
+                        System.out.println("[Server]: ✅ Đã chốt phiên " + sessionId + " thành công!");
+                    } else {
+                        System.err.println("[CRITICAL]: Lỗi chốt phiên " + sessionId + " (DB thất bại)");
+                    }
+                } catch (Exception e) {
+                    System.err.println("[CRITICAL]: Ngoại lệ khi chốt phiên " + sessionId);
+                    e.printStackTrace();
+                }
+
             } else {
+                // Trường hợp không ai mua
                 sessionDAO.updateSessionStatus(sessionId, StatusOfAuction.ENDED);
-                broadcast("AUCTION_FINISHED", "Phiên đấu giá kết thúc, không có người thắng", null);
+                broadcast("AUCTION_FINISHED", "Kết thúc, không có người thắng", null);
             }
         }
-
         AuctionManager.getInstance().removeRoom(sessionId);
+    }
+
+    /**
+     * Xử lý chia tiền: 10% cho Admin, 90% cho người bán
+     * Trả về true nếu giao dịch an toàn và thành công
+     */
+    private boolean divideMoney(String sellerAccount, double totalAmount) {
+        double adminFee = totalAmount * 0.10;
+        double sellerRevenue = totalAmount - adminFee;
+
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            conn.setAutoCommit(false);
+
+            boolean adminOk = userDAO.updateBalance(conn, "admin", adminFee);
+            boolean sellerOk = userDAO.updateBalance(conn, sellerAccount, sellerRevenue);
+
+            if (adminOk && sellerOk) {
+                conn.commit();
+                System.out.println("[Payment]: Đã chia tiền -> Admin: " + adminFee + ", Seller: " + sellerRevenue);
+                return true;
+            } else {
+                conn.rollback(); // Lỗi 1 trong 2 thì hoàn tiền
+                System.err.println("[Payment]: Lỗi khi cập nhật số dư, đã Rollback!");
+                return false;
+            }
+        } catch (Exception e) {
+            System.err.println("[Payment]: Lỗi ngoại lệ khi chia tiền");
+            e.printStackTrace();
+            return false;
+        }
     }
 
     /**
@@ -111,9 +149,10 @@ public class AuctionRoom {
      */
     public void broadcast(String action, String message, Object payload) {
         for (ClientHandler client : subscribers) {
+            // Dùng Executor riêng để không làm nghẽn hệ thống
             CompletableFuture.runAsync(() -> {
                 client.sendSystemMessage(action, message, payload);
-            });
+            }, ServerMain.broadcastExecutor);
         }
     }
 

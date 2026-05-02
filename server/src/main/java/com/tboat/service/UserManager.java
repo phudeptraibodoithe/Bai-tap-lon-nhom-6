@@ -12,11 +12,15 @@ public class UserManager {
     private static final Map<String, ClientHandler> onlineUsers = new ConcurrentHashMap<>();
 
     // Thêm cơ chế Singleton
-    private static UserManager instance;
+    private static volatile UserManager instance;
     private UserManager() {} // Khóa hàm khởi tạo
 
-    public static synchronized UserManager getInstance() {
-        if (instance == null) instance = new UserManager();
+    public static UserManager getInstance() {
+        if (instance == null) {
+            synchronized (UserManager.class) {
+                if (instance == null) instance = new UserManager();
+            }
+        }
         return instance;
     }
 
@@ -25,15 +29,15 @@ public class UserManager {
     }
 
     public ResponseCode login(String account, String password, ClientHandler handler) {
-        User user = userDAO.getUser(account);
-        if (user == null) {
-            return ResponseCode.NOT_FOUND;
-        }
-
         // KIỂM TRA: Nếu user đã có trong Map onlineUsers, không cho login nữa
         if (onlineUsers.containsKey(account)) {
             System.out.println("[UserManager]: Từ chối login - User " + account + " đang online.");
             return ResponseCode.ALREADY_LOGGED_IN;
+        }
+
+        User user = userDAO.getUser(account);
+        if (user == null) {
+            return ResponseCode.NOT_FOUND;
         }
 
         if (user.getPassword().equals(password)) {

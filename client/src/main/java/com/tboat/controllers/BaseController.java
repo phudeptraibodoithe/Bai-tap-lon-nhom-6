@@ -73,4 +73,7 @@ public abstract class BaseController {
     @FXML public void switchToStart(MouseEvent event) throws IOException {
         changeScene((Node) event.getSource(),"start.fxml");
     }
+    @FXML public void switchToAdmin(ActionEvent event) throws IOException {
+        changeScene((Node) event.getSource(),"Admin.fxml");
+    }
 }

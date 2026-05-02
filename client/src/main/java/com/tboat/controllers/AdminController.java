@@ -1,5 +1,7 @@
 package com.tboat.controllers;
 
+import com.google.gson.*;
+import com.google.gson.reflect.TypeToken;
 import com.tboat.models.AuctionSession;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
@@ -16,50 +18,52 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
-
+import java.lang.reflect.Type;
 import java.net.URL;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ResourceBundle;
 
 public class AdminController extends BaseController implements Initializable, SocketListener {
 
-    // Khớp 100% với các fx:id và kiểu dữ liệu mới của bạn
     @FXML private TextField txtSearch;
     @FXML private TableView<AuctionSession> tableSessions;
-    @FXML private TableColumn<AuctionSession, String> colId;
+    @FXML private TableColumn<AuctionSession, Integer> colId;
     @FXML private TableColumn<AuctionSession, String> colName;
     @FXML private TableColumn<AuctionSession, Double> colStartPrice;
     @FXML private TableColumn<AuctionSession, Double> colJump;
     @FXML private TableColumn<AuctionSession, String> colSeller;
     @FXML private TableColumn<AuctionSession, Void> colApprove;
     @FXML private TableColumn<AuctionSession, Void> colReject;
-
-    @FXML private Label err; // Nhãn thông báo trên UI (nếu bạn có)
+    @FXML private Label err;
 
     private ObservableList<AuctionSession> sessionList;
+    private Gson gson = new GsonBuilder()
+            .registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>)
+                    (json, typeOfT, context) -> LocalDateTime.parse(json.getAsString()))
+            .create();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        // 1. Map các cột với thuộc tính của AuctionSession
         this.colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         this.colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         this.colStartPrice.setCellValueFactory(new PropertyValueFactory<>("currentPrice"));
         this.colJump.setCellValueFactory(new PropertyValueFactory<>("bidIncrease"));
         this.colSeller.setCellValueFactory(new PropertyValueFactory<>("sellerAccountName"));
 
-        // 2. Setup 2 cột hành động (Duyệt / Từ chối) bằng CheckBox
-        this.setupActionColumn(this.colApprove, "APPROVE");
-        this.setupActionColumn(this.colReject, "REJECT");
+        this.setupActionColumn(this.colApprove, "APPROVE_ITEM");
+        this.setupActionColumn(this.colReject, "REJECT_ITEM");
 
-        // 3. Khởi tạo danh sách và gắn vào bảng
         this.sessionList = FXCollections.observableArrayList();
         this.tableSessions.setItems(this.sessionList);
 
-        // 4. Xin dữ liệu từ Server khi vừa mở trang
         Platform.runLater(() -> {
-            SocketManager.getInstance().send("GET_PENDING_ITEMS");
+            JsonObject request = new JsonObject();
+            request.addProperty("action", "GET_PENDING_ITEMS");
+            SocketManager.getInstance().send(gson.toJson(request));
         });
     }
-
 
     private void setupActionColumn(TableColumn<AuctionSession, Void> column, String actionType) {
         column.setCellFactory((param) -> new TableCell<AuctionSession, Void>() {
@@ -68,19 +72,16 @@ public class AdminController extends BaseController implements Initializable, So
             {
                 this.checkBox.setOnAction((event) -> {
                     if (this.checkBox.isSelected()) {
-                        // Lấy ra sản phẩm ở dòng vừa được tích
                         AuctionSession session = getTableView().getItems().get(getIndex());
 
-                        // 1. Gửi lệnh qua Socket lên Server
-                        if (actionType.equals("APPROVE")) {
-                            System.out.println("Gửi lệnh duyệt: " + session.getName());
-                            SocketManager.getInstance().send("APPROVE_ITEM|" + session.getId());
-                        } else {
-                            System.out.println("Gửi lệnh từ chối: " + session.getName());
-                            SocketManager.getInstance().send("REJECT_ITEM|" + session.getId());
-                        }
+                        JsonObject request = new JsonObject();
+                        request.addProperty("action", actionType);
+                        request.addProperty("payload", session.getId());
+                        SocketManager.getInstance().send(gson.toJson(request));
 
-                        // 2. Xóa ngay lập tức khỏi bảng UI (Giống hệt logic code mẫu của bạn)
+                        System.out.println("Gửi lệnh (" + actionType + ") cho: " + session.getName());
+                        SocketManager.getInstance().send(gson.toJson(request));
+
                         getTableView().getItems().remove(session);
                     }
                 });
@@ -92,7 +93,6 @@ public class AdminController extends BaseController implements Initializable, So
                 if (empty) {
                     this.setGraphic((Node) null);
                 } else {
-                    // Reset CheckBox về trạng thái chưa tích khi cuộn bảng
                     this.checkBox.setSelected(false);
                     this.setGraphic(this.checkBox);
                 }
@@ -100,56 +100,45 @@ public class AdminController extends BaseController implements Initializable, So
         });
     }
 
-    // ==========================================================
-    // LẮNG NGHE KẾT QUẢ TRẢ VỀ TỪ SERVER
-    // ==========================================================
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
-            String[] parts = response.split("\\|", -1);
+            try {
+                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+                // Dự phòng trường hợp key của Server là "action" thay vì "status"
+                String status = jsonResponse.has("status") ? jsonResponse.get("status").getAsString() : jsonResponse.get("action").getAsString();
+                String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
 
-            switch (parts[0]) {
-                case "PENDING_ITEMS_RESULT":
-                    sessionList.clear(); // Dọn dẹp dữ liệu cũ
-                    // Giả sử dữ liệu trả về: ID, Name, StartPrice, Jump, Seller
-                    for (int i = 1; i < parts.length; i++) {
-                        if (!parts[i].trim().isEmpty()) {
-                            String[] itemData = parts[i].split(",");
-                            if (itemData.length >= 5) {
-                                int id = Integer.parseInt(itemData[0]);
-                                String name = itemData[1];
-                                double startPrice = Double.parseDouble(itemData[2]);
-                                double jump = Double.parseDouble(itemData[3]);
-                                String seller = itemData[4];
-                                sessionList.add(new AuctionSession(id, name, startPrice, jump, seller));
-                            }
+                if ("SUCCESS".equals(status)) {
+                    if ("Danh sách chờ duyệt".equals(message)) {
+                        sessionList.clear();
+                        Type listType = new TypeToken<ArrayList<AuctionSession>>(){}.getType();
+                        List<AuctionSession> items = gson.fromJson(jsonResponse.get("payload"), listType);
+
+                        if (items != null) {
+                            sessionList.addAll(items);
+                        }
+                    } else if ("Đã duyệt và bắt đầu đấu giá".equals(message)) {
+                        if (err != null) {
+                            err.setStyle("-fx-text-fill: green;");
+                            err.setText("Đã DUYỆT sản phẩm ID: " + jsonResponse.get("payload").getAsString());
+                        }
+                    } else if ("Đã từ chối sản phẩm".equals(message)) {
+                        if (err != null) {
+                            err.setStyle("-fx-text-fill: #cc7a00;");
+                            err.setText("Đã TỪ CHỐI sản phẩm ID: " + jsonResponse.get("payload").getAsString());
                         }
                     }
-                    break;
-
-                case "APPROVE_SUCCESS":
-                    if(err != null) {
-                        err.setStyle("-fx-text-fill: green;");
-                        err.setText("Đã DUYỆT sản phẩm: " + parts[1]);
-                    }
-                    // Không cần load lại bảng vì đã xóa UI cục bộ bằng getTableView().getItems().remove(session)
-                    break;
-
-                case "REJECT_SUCCESS":
-                    if(err != null) {
-                        err.setStyle("-fx-text-fill: #cc7a00;");
-                        err.setText("Đã TỪ CHỐI sản phẩm: " + parts[1]);
-                    }
-                    break;
-
-                case "ERROR":
-                    if(err != null) {
+                } else if ("ERROR".equals(status)) {
+                    if (err != null) {
                         err.setStyle("-fx-text-fill: red;");
-                        err.setText("Lỗi: " + parts[1]);
+                        err.setText("Lỗi: " + message);
                     }
-                    // Load lại dữ liệu để đồng bộ nếu có lỗi xảy ra
-                    SocketManager.getInstance().send("GET_PENDING_ITEMS");
-                    break;
+                    System.out.println("❌ LỖI TỪ SERVER: " + message);
+                }
+            } catch (Exception e) {
+                System.out.println("❌ KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
+                e.printStackTrace();
             }
         });
     }

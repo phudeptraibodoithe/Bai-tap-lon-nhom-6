@@ -1,34 +1,29 @@
 package com.tboat.controllers;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.tboat.models.User;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.utilsclient.ImageUtils;
 import com.tboat.utilsclient.UserSession;
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.StackPane;
 import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.file.Files;
-import java.time.LocalDate;
-import java.util.Base64;
 import java.util.ResourceBundle;
-
 
 public class ControllerProfile extends BaseController implements Initializable, SocketListener {
 
@@ -40,13 +35,21 @@ public class ControllerProfile extends BaseController implements Initializable, 
     private static final double CIRCLE_RADIUS = 110.0;
 
     @FXML private ImageView myImageView;
-    @FXML private Label nickname,balance,err;
+    @FXML private Label nickname, balance, err;
     @FXML private TextArea desc;
 
-    @Override public void initialize(URL url, ResourceBundle resourceBundle) {
-        SocketManager.getInstance().send("PROFILE");
+    private Gson gson = new Gson();
 
-        // Hiển thị dữ liệu tạm thời từ Session trong khi đợi Server
+    @Override
+    public void initialize(URL url, ResourceBundle resourceBundle) {
+        // 1. Lắng nghe tin nhắn từ Server
+        SocketManager.getInstance().subscribe(this);
+
+        // 2. Gửi yêu cầu lấy thông tin Profile
+        JsonObject request = new JsonObject();
+        request.addProperty("action", "PROFILE");
+        SocketManager.getInstance().send(gson.toJson(request));
+
         user = UserSession.getInstance().getUser();
         if (user != null) {
             updateUI(user.getNickname(), user.getBalance(), user.getAvatarURL(), user.getDescription());
@@ -61,13 +64,12 @@ public class ControllerProfile extends BaseController implements Initializable, 
     }
 
     public void updateProfile(ActionEvent e) {
-        // 1. Lấy mô tả, xóa bỏ ký tự gạch đứng để tránh lỗi split
-        String mota = desc.getText() == null ? "" : desc.getText().trim().replace("|", " ");
+        String mota = desc.getText() == null ? "" : desc.getText().trim();
 
-        // 2. Xử lý dữ liệu ảnh
         String imageData;
         if (selectedFile != null) {
-            imageData = fileToBase64(selectedFile);
+            // Dùng tiện ích xịn sò để mã hóa ảnh
+            imageData = ImageUtils.fileToBase64(selectedFile);
         } else {
             imageData = UserSession.getInstance().getUser().getAvatarURL();
             if (imageData == null || imageData.isEmpty()) {
@@ -75,43 +77,45 @@ public class ControllerProfile extends BaseController implements Initializable, 
             }
         }
 
-        // 3. Gửi lệnh
-        String message = "UPDATE_PROFILE|" + mota + "|" + imageData;
-        SocketManager.getInstance().send(message);
+        JsonObject request = new JsonObject();
+        request.addProperty("action", "UPDATE_PROFILE");
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("description", mota);
+        payload.addProperty("avatarURL", imageData);
+        request.add("payload", payload);
+
+        SocketManager.getInstance().send(gson.toJson(request));
     }
 
     public void loadUserAvatar(String pathOrBase64) {
         try {
-            // 1. Kiểm tra trường hợp dữ liệu trống hoặc null
             if (pathOrBase64 == null || pathOrBase64.isEmpty() || pathOrBase64.equals("null")) {
                 loadDefaultAvatar();
                 return;
             }
 
             Image image;
-
-            // 2. Kiểm tra xem đây là chuỗi Base64 hay là Đường dẫn (Path/URL)
-            // Dấu hiệu nhận biết: Path thường bắt đầu bằng "file:/" hoặc "http"
+            // Nếu là chuỗi Base64 dài ngoằng (không phải link web hay file cứng)
             if (!pathOrBase64.startsWith("file:/") && !pathOrBase64.startsWith("http")) {
-                // Đây là chuỗi Base64 -> Giải mã sang mảng byte
-                byte[] imageBytes = Base64.getDecoder().decode(pathOrBase64);
-                // Chuyển mảng byte thành luồng đầu vào (InputStream) để Image có thể đọc
-                image = new Image(new ByteArrayInputStream(imageBytes));
+                // Dùng hàm giải mã Base64 sang ảnh
+                image = ImageUtils.base64ToImage(pathOrBase64);
             } else {
-                // Đây là đường dẫn file hoặc URL cũ
                 image = new Image(pathOrBase64, true);
             }
 
-            setCircularImage(image);
+            if (image != null) {
+                setCircularImage(image);
+            } else {
+                loadDefaultAvatar();
+            }
 
         } catch (Exception e) {
-            // Nếu có bất kỳ lỗi nào (giải mã lỗi, file không tồn tại), hiện ảnh mặc định
             System.err.println("[Avatar Error]: " + e.getMessage());
             loadDefaultAvatar();
         }
     }
 
-    // Hàm phụ để code sạch hơn
     private void loadDefaultAvatar() {
         String defaultPath = getClass().getResource("/images/avtDefault.jpg").toExternalForm();
         setCircularImage(new Image(defaultPath));
@@ -121,7 +125,6 @@ public class ControllerProfile extends BaseController implements Initializable, 
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Xác nhận đăng xuất");
         DialogPane dialogPane = alert.getDialogPane();
-        dialogPane.getStylesheets().add(getClass().getResource("/styles/Button.css").toExternalForm());
         Stage alertStage = (Stage) alert.getDialogPane().getScene().getWindow();
         alertStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/logo.png")));
         alert.setHeaderText(null);
@@ -129,31 +132,37 @@ public class ControllerProfile extends BaseController implements Initializable, 
         ButtonType btnYes = new ButtonType("Có", ButtonBar.ButtonData.OK_DONE);
         ButtonType btnNo = new ButtonType("Không", ButtonBar.ButtonData.CANCEL_CLOSE);
         alert.getButtonTypes().setAll(btnYes, btnNo);
+
         if (alert.showAndWait().orElse(btnNo) == btnYes) {
-            SocketManager.getInstance().send("LOGOUT");
+            JsonObject request = new JsonObject();
+            request.addProperty("action", "LOGOUT");
+            SocketManager.getInstance().send(gson.toJson(request));
+
             UserSession.getInstance().cleanUserSession();
-            changeScene(myImageView,"start.fxml");
+
+            // Chú ý: Hàm changeScene trong BaseController đang nhận tham số (Button, String).
+            // Nếu báo lỗi ở đoạn này, bạn hãy tự sửa lại tham số truyền vào cho đúng nhé!
+            Button btnSource = (Button) e.getSource();
+            changeScene(btnSource, "start.fxml");
         }
     }
 
     public void canclePost(ActionEvent e) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Xác nhận hủy thay đổi");
-        DialogPane dialogPane = alert.getDialogPane();
-        dialogPane.getStylesheets().add(getClass().getResource("/styles/Button.css").toExternalForm());
-        Stage alertStage = (Stage) alert.getDialogPane().getScene().getWindow();
-        alertStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/logo.png")));
         alert.setHeaderText(null);
         alert.setContentText("Toàn bộ thông tin bạn vừa nhập sẽ không được lưu lại.\nBạn có chắc chắn muốn hủy thay đổi không?");
         ButtonType btnYes = new ButtonType("Có", ButtonBar.ButtonData.OK_DONE);
         ButtonType btnNo = new ButtonType("Không", ButtonBar.ButtonData.CANCEL_CLOSE);
         alert.getButtonTypes().setAll(btnYes, btnNo);
+
         if (alert.showAndWait().orElse(btnNo) == btnYes) {
-            changeScene(myImageView,"profile.fxml");
+            Button btnSource = (Button) e.getSource();
+            changeScene(btnSource, "profile.fxml");
         }
     }
 
-    public void uploadImage(MouseEvent event) throws IOException {
+    public void uploadImage(MouseEvent event) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Chọn ảnh đại diện");
         fileChooser.getExtensionFilters().addAll(
@@ -181,60 +190,53 @@ public class ControllerProfile extends BaseController implements Initializable, 
         myImageView.setClip(clipCircle);
     }
 
+    @Override
     public void handleServerResponse(String response) {
-        javafx.application.Platform.runLater(() -> {
-            String[] parts = response.split("\\|", -1);
+        Platform.runLater(() -> {
+            try {
+                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+                String status = jsonResponse.has("status") ? jsonResponse.get("status").getAsString() : jsonResponse.get("action").getAsString();
+                String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
 
-            switch (parts[0]) {
-                case "PROFILE_INFO":
-                    // Server gửi: PROFILE_INFO | accountName | nickname | balance | avatarURL | desc
-                    if (parts.length >= 6) {
-                        nickname.setText(parts[2]);
-                        balance.setText(String.format("%,.0f VNĐ", Double.parseDouble(parts[3])));
-                        user.setNickname(parts[2]);
-                        user.setBalance(Double.parseDouble(parts[3]));
-                        user.setAvatar(parts[4]);
-                        user.setDescription(parts[5]);
+                if ("SUCCESS".equals(status)) {
+                    // 1. Load Profile
+                    if (message.contains("Thông tin") && jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull()) {
+                        JsonObject data = jsonResponse.getAsJsonObject("payload");
+
+                        String nick = data.has("nickname") ? data.get("nickname").getAsString() : "";
+                        double bal = data.has("balance") ? data.get("balance").getAsDouble() : 0.0;
+                        String avt = data.has("avatarURL") ? data.get("avatarURL").getAsString() : "";
+                        String description = data.has("description") ? data.get("description").getAsString() : "";
+
+                        updateUI(nick, bal, avt, description); // Tái sử dụng hàm cho gọn
+
+                        user.setNickname(nick);
+                        user.setBalance(bal);
+                        user.setAvatar(avt);
+                        user.setDescription(description);
                     }
-                    break;
-
-                case "UPDATE_PROFILE_SUCCESS":
-                    // Cập nhật thông tin cục bộ ngay lập tức
-                    user.setDescription(desc.getText());
-                    if (selectedFile != null) {
-                        user.setAvatar(selectedFile.toURI().toString());
+                    // 2. Update thành công
+                    else if (message.contains("Cập nhật")) {
+                        user.setDescription(desc.getText());
+                        if (selectedFile != null) {
+                            user.setAvatar(ImageUtils.fileToBase64(selectedFile));
+                        }
+                        err.setStyle("-fx-text-fill: green;");
+                        err.setText("Cập nhật hồ sơ thành công!!");
                     }
-
-                    err.setStyle("-fx-text-fill: green;");
-                    err.setText("Cập nhật hồ sơ thành công!!");
-                    break;
-
-                case "UPDATE_PROFILE_ERROR":
+                    // 3. Log out
+                    else if (message.contains("Đã đăng xuất")) {
+                        System.out.println("Đăng xuất hoàn tất.");
+                    }
+                }
+                else if ("ERROR".equals(status) || "FAILED".equals(status)) {
                     err.setStyle("-fx-text-fill: red;");
-                    err.setText("Lỗi: " + (parts.length > 1 ? parts[1] : "Cập nhật thất bại"));
-                    break;
+                    err.setText("Lỗi: " + message);
+                }
 
-                case "ERROR":
-                    err.setStyle("-fx-text-fill: red;");
-                    err.setText(parts[1]);
-                    break;
-
-                default:
-                    System.out.println("Lệnh không xác định: " + parts[0]);
-                    break;
+            } catch (Exception e) {
+                System.out.println("❌ KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
             }
         });
-    }
-
-
-    public String fileToBase64(File file) {
-        try {
-            byte[] fileContent = Files.readAllBytes(file.toPath());
-            // Sử dụng getEncoder() - mặc định tạo 1 dòng duy nhất, không có line breaks
-            return Base64.getEncoder().encodeToString(fileContent);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
     }
 }

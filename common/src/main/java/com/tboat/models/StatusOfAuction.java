@@ -5,7 +5,5 @@ public enum StatusOfAuction {
     ONGOING,
     ENDED,
     PENDING,
-    CANCELED,
-    ACTIVE,
-    REJECTED
+    CANCELED
 }

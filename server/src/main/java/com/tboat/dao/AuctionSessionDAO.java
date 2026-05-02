@@ -12,12 +12,11 @@ import com.tboat.models.User;
 
 
 public class AuctionSessionDAO {
-    public boolean addAuctionSession (AuctionSession session) {
-        // 1. Thêm cột highestBidderAccount vào SQL
+    public int addAuctionSession(AuctionSession session) {
         String sql = "INSERT INTO auction_session (startTime, endTime, currentPrice, bidIncrease, status, sellerAccount, type, name, description, imageURL, highestBidderAccount) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection c = DatabaseConnection.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
+             PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             ps.setTimestamp(1, Timestamp.valueOf(session.getStartTime()));
             ps.setTimestamp(2, Timestamp.valueOf(session.getEndTime()));
@@ -31,11 +30,16 @@ public class AuctionSessionDAO {
             ps.setString(10, session.getImageURL());
             ps.setString(11, session.getHighestBidderAccount());
 
-            return ps.executeUpdate() > 0;
+            int affectedRows = ps.executeUpdate();
+            if (affectedRows > 0) {
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) return rs.getInt(1); // Trả về ID vừa tạo
+                }
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            return false;
         }
+        return -1;
     }
 
     private AuctionSession mapResultSetToAuctionSession(ResultSet rs) throws SQLException {
@@ -161,15 +165,15 @@ public class AuctionSessionDAO {
         }
         return null;
     }
-    public boolean updateHighestBidder(int sessionId, double newPrice, String bidderAccount) {
-        String sql = "UPDATE auction_session SET currentPrice = ?, highestBidderAccount = ? WHERE id = ?";
+
+    public boolean updateSessionPriceAndHighest(int sessionId, String bidderAccount, double newPrice) {
+        String sql = "UPDATE auction_session SET currentPrice = ?, highestBidderAccount = ? WHERE id = ? AND currentPrice < ?";
         try (Connection c = DatabaseConnection.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
-
             ps.setDouble(1, newPrice);
             ps.setString(2, bidderAccount);
             ps.setInt(3, sessionId);
-
+            ps.setDouble(4, newPrice);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -177,4 +181,17 @@ public class AuctionSessionDAO {
         }
     }
 
+    public boolean updateEndTime(int sessionId, java.time.LocalDateTime newEndTime) {
+        String sql = "UPDATE auction_session SET endTime = ? WHERE id = ?";
+        try (java.sql.Connection c = com.tboat.database.DatabaseConnection.getConnection();
+             java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setTimestamp(1, java.sql.Timestamp.valueOf(newEndTime));
+            ps.setInt(2, sessionId);
+            return ps.executeUpdate() > 0;
+        } catch (java.sql.SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

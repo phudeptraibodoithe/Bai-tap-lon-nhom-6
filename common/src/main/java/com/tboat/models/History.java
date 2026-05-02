@@ -15,6 +15,7 @@ public class History {
         this.finalPrice = finalPrice;
         this.completedAt = LocalDateTime.now();
     }
+    public History(){}
 
     public History(int auctionSessionId, String winnerAccountName, double finalPrice,LocalDateTime completedAt) {
         this.auctionSessionId = auctionSessionId;

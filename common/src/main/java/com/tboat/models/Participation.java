@@ -1,32 +1,25 @@
 package com.tboat.models;
 
 public class Participation {
-    private String id;
-    private String userAccountName;
-    private int sessionId;
-    private RoleType roleType;
-    private TransactionRole roleBehavior; // Chứa logic tương ứng với Role
+    private String accountName;    // Khóa ngoại từ bảng User
+    private int auctionSessionId;  // Khóa ngoại từ bảng Auction_Session
+    private String roleType;       // "BIDDER" hoặc "SELLER"
 
-    public Participation(String id, String userAccountName, int sessionId, TransactionRole roleBehavior) {
-        this.id = id;
-        this.userAccountName = userAccountName;
-        this.sessionId = sessionId;
-        this.roleBehavior = roleBehavior;
-        this.roleType = roleBehavior.getRoleType(); // Lấy trực tiếp từ behavior
+    public Participation() {}
+
+    public Participation(String accountName, int auctionSessionId, String roleType) {
+        this.accountName = accountName;
+        this.auctionSessionId = auctionSessionId;
+        this.roleType = roleType;
     }
 
-    public RoleType getRoleType() {
-        return roleType;
-    }
+    // Getter và Setter
+    public String getAccountName() { return accountName; }
+    public void setAccountName(String accountName) { this.accountName = accountName; }
 
-    public void executeAction() {
-        // Delegate (ủy quyền) hành vi thực thi xuống cho interface
-        // Nếu roleBehavior là BidderRole, nó có thể ép kiểu để gọi hàm placeBid()
-        if (roleBehavior instanceof BidderRole) {
-            System.out.println("Set price: ");
-            // Ép kiểu để gọi hàm riêng của BidderRole
-        } else if (roleBehavior instanceof SellerRole) {
-            System.out.println("Observation only!");
-        }
-    }
+    public int getAuctionSessionId() { return auctionSessionId; }
+    public void setAuctionSessionId(int auctionSessionId) { this.auctionSessionId = auctionSessionId; }
+
+    public String getRoleType() { return roleType; }
+    public void setRoleType(String roleType) { this.roleType = roleType; }
 }

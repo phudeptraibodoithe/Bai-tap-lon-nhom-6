@@ -1,5 +1,8 @@
 package com.tboat.controllers;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.tboat.models.User;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
@@ -10,43 +13,43 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
-import java.io.IOException;
 
 public class ControllerLogin extends BaseController implements SocketListener {
 
-    @FXML private TextField signText, ipText;
+    @FXML private TextField signText;
     @FXML private PasswordField passText;
     @FXML private Label err;
 
-    @FXML public void initialize() {
-        ipText.setText("192.168.1.27");
-    }
+    private Gson gson = new Gson();
 
-    @FXML public void submit(ActionEvent event) {
+    @FXML
+    public void submit(ActionEvent event) {
         String username = signText.getText().trim();
         String password = passText.getText().trim();
-        String ipv4 = ipText.getText().trim();
 
-        if (username.isEmpty() || password.isEmpty() || ipv4.isEmpty()) {
+        if (username.isEmpty() || password.isEmpty()) {
+            err.setStyle("-fx-text-fill: red;");
             err.setText("Vui lòng điền đầy đủ thông tin!");
             return;
         }
 
+        err.setStyle("-fx-text-fill: blue;");
+        err.setText("Đang đăng nhập...");
+
         new Thread(() -> {
             try {
-                if (!SocketManager.getInstance().isConnected()) {
-                    SocketManager.getInstance().connect(ipv4, 8888);
-                }
-                Platform.runLater(() -> {
-                    if (username.equals("admin") && password.equals("admin")) {
-                        changeScene(err, "Admin.fxml");
-                    } else {
-                        SocketManager.getInstance().send("LOGIN|" + username + "|" + password);
-                        err.setStyle("-fx-text-fill: blue;");
-                        err.setText("Đang đăng nhập...");
-                    }
-                });
-            } catch (IOException e) {
+                JsonObject request = new JsonObject();
+                request.addProperty("action", "LOGIN");
+
+                // Dùng accountName để khớp với Model User trong ClientHandler
+                JsonObject payload = new JsonObject();
+                payload.addProperty("accountName", username);
+                payload.addProperty("password", password);
+                request.add("payload", payload);
+
+                SocketManager.getInstance().send(gson.toJson(request));
+
+            } catch (Exception e) {
                 Platform.runLater(() -> {
                     err.setStyle("-fx-text-fill: red;");
                     err.setText("Lỗi kết nối: " + e.getMessage());
@@ -54,26 +57,68 @@ public class ControllerLogin extends BaseController implements SocketListener {
             }
         }).start();
     }
+
+    @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
-            String[] parts = response.split("\\|", -1);
-            String status = parts[0];
+            try {
+                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+                String status = jsonResponse.get("status").getAsString();
+                String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
 
-            if (status.equals("LOGIN_SUCCESS") && parts.length >= 5) {
-                User loggedUser = new User(signText.getText(), null, parts[1],
-                        Double.parseDouble(parts[2]), parts[4], parts[3]);
-                UserSession.getInstance().createUserSession(loggedUser);
-                changeScene(err, "TrangChu.fxml");
-            } else if (status.equals("LOGIN_FAILED")) {
-                String errorType = parts[1];
-                err.setStyle("-fx-text-fill: red;");
-                switch (errorType) {
-                    case "USER_NOT_FOUND": err.setText("Tài khoản không tồn tại!"); break;
-                    case "WRONG_PASSWORD": err.setText("Sai mật khẩu, vui lòng thử lại."); break;
-                    case "ALREADY_LOGGED_IN": err.setText("Tài khoản đang online ở nơi khác."); break;
-                    case "DATABASE_ERROR": err.setText("Lỗi cơ sở dữ liệu."); break;
-                    default: err.setText("Đăng nhập thất bại: " + errorType);
+                switch (status) {
+                    case "SUCCESS":
+                        if ("Đăng nhập thành công".equals(message)) {
+                            JsonObject payload = jsonResponse.getAsJsonObject("payload");
+
+                            // Kiểm tra role hoặc tên tài khoản để vào Admin (Fallback)
+                            String role = payload.has("role") ? payload.get("role").getAsString() : "";
+                            if ("admin".equalsIgnoreCase(signText.getText().trim()) || "ADMIN".equalsIgnoreCase(role)) {
+                                changeScene(err, "Admin.fxml");
+                                break;
+                            }
+
+                            String nickname = payload.has("nickname") ? payload.get("nickname").getAsString() : "";
+                            double balance = payload.has("balance") ? payload.get("balance").getAsDouble() : 0.0;
+                            String avatarURL = payload.has("avatarURL") ? payload.get("avatarURL").getAsString() : "null";
+                            String description = payload.has("description") ? payload.get("description").getAsString() : "";
+
+                            User loggedUser = new User(signText.getText(), null, nickname, balance, description, avatarURL);
+                            UserSession.getInstance().createUserSession(loggedUser);
+
+                            changeScene(err, "TrangChu.fxml");
+                        }
+                        break;
+
+                    case "FAILED":
+                    case "ERROR":
+                        err.setStyle("-fx-text-fill: red;");
+
+                        // Ánh xạ message (là ResponseCode.name() từ Server)
+                        switch (message) {
+                            case "USER_NOT_FOUND":
+                                err.setText("Tài khoản không tồn tại!");
+                                break;
+                            case "WRONG_PASSWORD":
+                                err.setText("Sai mật khẩu, vui lòng thử lại.");
+                                break;
+                            case "ALREADY_LOGGED_IN":
+                                err.setText("Tài khoản đang online ở nơi khác.");
+                                break;
+                            case "DATABASE_ERROR":
+                                err.setText("Lỗi cơ sở dữ liệu.");
+                                break;
+                            default:
+                                err.setText("Đăng nhập thất bại: " + message);
+                        }
+                        break;
                 }
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    err.setStyle("-fx-text-fill: red;");
+                    err.setText("Lỗi đọc dữ liệu từ Server!");
+                });
+                System.out.println("❌ KHÔNG THỂ ĐỌC JSON ĐĂNG NHẬP: " + response);
             }
         });
     }

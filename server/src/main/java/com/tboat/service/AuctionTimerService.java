@@ -1,57 +1,69 @@
 package com.tboat.service;
 
+import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.models.AuctionSession;
+
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-import static com.tboat.models.StatusOfAuction.ENDED;
+import java.util.Map;
+import java.util.concurrent.*;
 
 public class AuctionTimerService {
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
 
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(10);
+    // Dùng int cho ID task
+    private final Map<Integer, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
+    private static volatile AuctionTimerService instance;
 
-    // Hàm này được gọi khi Phiên đấu giá chuyển sang trạng thái ONGOING
+    private AuctionTimerService() {}
 
-    public void scheduleAuctionClose(AuctionSession session) {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime endTime = session.getEndTime(); // Giả sử bạn có trường endTime
+    public static AuctionTimerService getInstance() {
+        if (instance == null) {
+            synchronized (AuctionTimerService.class) {
+                if (instance == null) instance = new AuctionTimerService();
+            }
+        }
+        return instance;
+    }
 
-        // Tính toán khoảng thời gian (giây) từ hiện tại cho đến lúc kết thúc
-        long delaySeconds = Duration.between(now, endTime).getSeconds();
+    public void scheduleAuctionClose(int sessionId, LocalDateTime endTime) {
+        cancelTask(sessionId);
 
-        if (delaySeconds <= 0) {
-            // Nếu thời gian đã trôi qua, đóng phiên ngay lập tức
-            closeAuction(session);
+        long delay = Duration.between(LocalDateTime.now(), endTime).getSeconds();
+
+        if (delay <= 0) {
+            closeAuction(sessionId);
             return;
         }
 
-        // Lên lịch cho tác vụ đóng phiên chạy sau 'delaySeconds'
-        scheduler.schedule(() -> {
-            closeAuction(session);
-        }, delaySeconds, TimeUnit.SECONDS);
-
-        System.out.println("Đã lên lịch đóng phiên " + session.getId() + " sau " + delaySeconds + " giây.");
+        ScheduledFuture<?> future = scheduler.schedule(() -> closeAuction(sessionId), delay, TimeUnit.SECONDS);
+        scheduledTasks.put(sessionId, future);
     }
 
-    private void closeAuction(AuctionSession session) {
-        // Khóa object session lại để chắc chắn không ai bid được trong lúc đang chốt
-        synchronized (session) {
-            if ("RUNNING".equals(session.getStatusOfAuction())) {
-                session.setStatusOfAuction(ENDED);
-                System.out.println("--- PHIÊN " + session.getId() + " ĐÃ KẾT THÚC ---");
+    public void extendAuction(int sessionId, int secondsToAdd) {
+        AuctionSessionDAO dao = new AuctionSessionDAO();
+        AuctionSession session = dao.getAuctionById(sessionId);
 
-                if (session.getHighestBidderAccount() != null) {
-                    System.out.println("Người thắng: " + session.getHighestBidderAccount() + " với giá: " + session.getCurrentPrice());
-                    // TODO: Gọi hàm lưu History vào Database
-                } else {
-                    System.out.println("Phiên kết thúc không có ai trả giá.");
-                }
+        if (session != null) {
+            LocalDateTime currentEnd = session.getEndTime();
+            LocalDateTime newEndTime = (currentEnd.isBefore(LocalDateTime.now()) ?
+                    LocalDateTime.now() : currentEnd).plusSeconds(secondsToAdd);
 
-                // TODO: Gọi socket gửi thông báo Broadcast cho tất cả Client biết phiên đã đóng
-            }
+            dao.updateEndTime(sessionId, newEndTime);
+            scheduleAuctionClose(sessionId, newEndTime);
+        }
+    }
+
+    private void cancelTask(int sessionId) {
+        ScheduledFuture<?> future = scheduledTasks.remove(sessionId);
+        if (future != null) future.cancel(false);
+    }
+
+    private void closeAuction(int sessionId) {
+        scheduledTasks.remove(sessionId);
+        AuctionRoom room = AuctionManager.getInstance().getRoom(sessionId);
+        if (room != null) {
+            room.finishAuction();
         }
     }
 }

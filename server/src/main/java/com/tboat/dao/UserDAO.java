@@ -4,60 +4,44 @@ import com.tboat.database.DatabaseConnection;
 import com.tboat.models.User;
 import com.tboat.utils.ResponseCode;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
+import java.sql.*;
 
 public class UserDAO {
 
 
     public ResponseCode addUser(String accountName, String password, String nickname) {
-        // 1. Kiểm tra xem accountName đã tồn tại chưa
-        String checkSql = "SELECT 1 FROM user WHERE accountName = ?";
+        String insertSql = "INSERT INTO user(accountName, password, nickname, balance, description, avatarURL) VALUES(?,?,?,?,?,?)";
+        try (Connection c = DatabaseConnection.getConnection();
+             PreparedStatement psInsert = c.prepareStatement(insertSql)) {
+            psInsert.setString(1, accountName);
+            psInsert.setString(2, password);
+            psInsert.setString(3, nickname);
+            psInsert.setDouble(4, 0.0);
+            psInsert.setString(5, "");
+            psInsert.setString(6, "");
 
-        try (Connection c = DatabaseConnection.getConnection()) {
-            try (PreparedStatement psCheck = c.prepareStatement(checkSql)) {
-                psCheck.setString(1, accountName);
-                if (psCheck.executeQuery().next()) {
-                    return ResponseCode.EXISTED; // Trả về mã: Đã tồn tại
-                }
+            if (psInsert.executeUpdate() > 0) {
+                return ResponseCode.SUCCESS;
             }
-
-            // 2. Nếu chưa tồn tại, tiến hành thêm mới
-            String insertSql = "INSERT INTO user(accountName, password, nickname, balance,description,avatarURL) VALUES(?,?,?,?,?,?)";
-            try (PreparedStatement psInsert = c.prepareStatement(insertSql)) {
-                psInsert.setString(1, accountName);
-                psInsert.setString(2, password);
-                psInsert.setString(3, nickname);
-                psInsert.setDouble(4, 0.0);
-                psInsert.setString(5,"");
-                psInsert.setString(6,"");
-
-                if (psInsert.executeUpdate() > 0) {
-                    return ResponseCode.SUCCESS;
-                }
-            }
+        } catch (SQLIntegrityConstraintViolationException e) {
+            // lỗi này có thể là trùng primacykey, vi phạm foreignkey, trống cái not null hoặc bị casi unique
+            return ResponseCode.EXISTED;
         } catch (SQLException e) {
             e.printStackTrace();
+            return ResponseCode.ERROR;
         }
         return ResponseCode.ERROR;
     }
 
-    public boolean updateUser(User user) {
-        // update người dùng, true nếu update thành công
-        String update = "UPDATE user SET nickname = ?, password = ?, balance = ?, description = ?, avatarURL = ? WHERE accountName = ?";
+    public boolean updateProfile(String accountName, String description, String avatarURL) {
+        // Cập nhật profile người dùng, true nếu update thành công
         boolean ck = false;
+        String update = "UPDATE user SET description = ?, avatarURL = ? WHERE accountName = ?";
         try (Connection c = DatabaseConnection.getConnection();
              PreparedStatement ps = c.prepareStatement(update)) {
-            ps.setString(1, user.getNickname());
-            ps.setString(2, user.getPassword());
-            ps.setDouble(3, user.getBalance());
-            ps.setString(4, user.getDescription());
-            ps.setString(5, user.getAvatarURL());
-            ps.setString(6, user.getAccountName());
+            ps.setString(1, description);
+            ps.setString(2, avatarURL);
+            ps.setString(3, accountName);
             int af = ps.executeUpdate();
             if (af > 0) {
                 ck = true;
@@ -114,24 +98,25 @@ public class UserDAO {
 
     public User getUser(String accountName) {
         String sql = "SELECT * FROM user WHERE accountName = ?";
-        User user = null;
-
         try (Connection c = DatabaseConnection.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
-
             ps.setString(1, accountName);
-
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    user = new User(rs.getString("accountName"),rs.getString("password")
-                            ,rs.getString("nickname"),rs.getDouble("balance"),rs.getString("description"),rs.getString("avatarURL"));
+                    return new User(
+                            rs.getString("accountName"),
+                            rs.getString("password"),
+                            rs.getString("nickname"),
+                            rs.getDouble("balance"),
+                            rs.getString("description"),
+                            rs.getString("avatarURL")
+                    );
                 }
             }
-        } catch (Exception e) {
+        } catch (SQLException e) { // Dùng SQLException thay vì Exception chung
             e.printStackTrace();
         }
-        return user;
-        // Sẽ trả về null nếu không tìm thấy user
+        return null;
     }
 
     public double getBalance(String accountName) {

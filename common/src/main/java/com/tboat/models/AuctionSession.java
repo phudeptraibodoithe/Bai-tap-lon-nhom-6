@@ -14,16 +14,8 @@ public class AuctionSession {
     private String name;
     private String description;
     private String imageURL;
-
-    // Thuộc tính quan trọng bạn vừa thêm
     private String highestBidderAccount;
-    public AuctionSession(int id, String name, double currentPrice,double bidIncrease, String sellerAccountName){
-        this.id=id;
-        this.name=name;
-        this.currentPrice=currentPrice;
-        this.bidIncrease=bidIncrease;
-        this.sellerAccountName=sellerAccountName;
-    }
+
     public AuctionSession(int id, LocalDateTime startTime, LocalDateTime endTime, double currentPrice,
                           double bidIncrease, StatusOfAuction statusOfAuction, String sellerAccountName,
                           String type, String name, String description, String imageURL,
@@ -39,7 +31,7 @@ public class AuctionSession {
         this.name = name;
         this.description = description;
         this.imageURL = imageURL;
-        this.highestBidderAccount = highestBidderAccount; // GÁN Ở ĐÂY
+        this.highestBidderAccount = highestBidderAccount;
     }
 
     public AuctionSession(LocalDateTime startTime, LocalDateTime endTime, double currentPrice,
@@ -58,6 +50,13 @@ public class AuctionSession {
         updateStatusBasedOnTime();
     }
 
+    public AuctionSession(int id, String name, double currentPrice, double bidIncrease,String sellerAccountName){
+        this.id = id;
+        this.currentPrice = currentPrice;
+        this.bidIncrease = bidIncrease;
+        this.sellerAccountName = sellerAccountName;
+        this.name = name;
+    }
     public void updateStatusBasedOnTime() {
         LocalDateTime now = LocalDateTime.now();
         if (now.isBefore(startTime)) {
@@ -83,7 +82,6 @@ public class AuctionSession {
     public String getType() { return type; }
     public String getHighestBidderAccount() { return highestBidderAccount; }
     // Setters
-
     public void setHighestBidderAccount(String highestBidderAccount) {
         this.highestBidderAccount = highestBidderAccount;
     }
@@ -105,16 +103,20 @@ public class AuctionSession {
     }
 
     public void setStatusOfAuction(StatusOfAuction statusOfAuction) {
-        if (LocalDateTime.now().isBefore(startTime)) {
-            this.statusOfAuction = StatusOfAuction.NOT_STARTED;
-        } else if (LocalDateTime.now().isAfter(endTime)) {
-            this.statusOfAuction = StatusOfAuction.ENDED;
-        } else {
-            this.statusOfAuction = StatusOfAuction.ONGOING;
-        }
+        this.statusOfAuction = statusOfAuction;
     }
 
     public void setImageURL(String imageURL) {
         this.imageURL = imageURL;
     }
+
+    // 1. THÊM CONSTRUCTOR TRỐNG (BẮT BUỘC để dùng được new AuctionSession())
+    public AuctionSession() {}
+
+    // 2. THÊM CÁC SETTER CÒN THIẾU
+    public void setId(int id) { this.id = id; }
+    public void setSellerAccountName(String sellerAccountName) { this.sellerAccountName = sellerAccountName; }
+    public void setType(String type) { this.type = type; }
+    public void setName(String name) { this.name = name; }
+    public void setDescription(String description) { this.description = description; }
 }

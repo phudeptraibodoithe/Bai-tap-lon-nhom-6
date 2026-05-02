@@ -1,107 +1,126 @@
 package com.tboat.service;
 
+import com.tboat.dao.AuctionSessionDAO;
+import com.tboat.dao.HistoryBidDAO;
+import com.tboat.dao.UserDAO;
+import com.tboat.models.AuctionSession;
+import com.tboat.models.History;
+import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.ClientHandler;
-import java.util.*;
-import java.util.concurrent.*;
+import com.tboat.utils.ResponseCode;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class AuctionRoom {
-    private final String roomName;
+    private final int sessionId;
     private double currentPrice;
     private String lastBidder;
-    private List<ClientHandler> subscribers = new CopyOnWriteArrayList<>();
-    private final ExecutorService broadcastExecutor = Executors.newFixedThreadPool(2);
-
-    // Khai báo biến đếm ngược an toàn cho đa luồng
-    private final AtomicInteger timeLeft = new AtomicInteger(60);
     private boolean isFinished = false;
-    private final ScheduledExecutorService timerExecutor = Executors.newSingleThreadScheduledExecutor();
 
-    public AuctionRoom(String roomName, double startingPrice) {
-        this.roomName = roomName;
+    private final List<ClientHandler> subscribers = new CopyOnWriteArrayList<>();
+    private final AuctionSessionDAO sessionDAO = new AuctionSessionDAO();
+    private final UserDAO userDAO = new UserDAO();
+    private final HistoryBidDAO historyDAO = new HistoryBidDAO();
+
+    public AuctionRoom(int sessionId, double startingPrice) {
+        this.sessionId = sessionId;
         this.currentPrice = startingPrice;
-        startCountdown();
     }
 
-    // Xử lý đấu giá đồng thời an toàn
-    public synchronized boolean placeBid(double newPrice, String bidderId) {
+    /**
+     * Xử lý đặt giá mới (Kết hợp logic Transaction updateBidLeader)
+     */
+    public synchronized boolean placeBid(double newPrice, String bidderAccount) {
         if (isFinished) return false;
 
-        if (newPrice > currentPrice) {
+        // Gọi hàm updateBidLeader với đầy đủ 5 tham số:
+        // (sessionId, người đặt mới, giá mới, người giữ giá cũ, giá cũ)
+        ResponseCode result = historyDAO.updateBidLeader(
+                sessionId,
+                bidderAccount,
+                newPrice,
+                this.lastBidder,
+                this.currentPrice
+        );
+
+        if (result == ResponseCode.SUCCESS) {
             this.currentPrice = newPrice;
-            this.lastBidder = bidderId;
-            // Nếu thời gian còn dưới 15 giây, đặt lại (reset) về 30 giây thay vì cộng dồn
-            if (this.timeLeft.get() <= 15) {
-                this.timeLeft.set(30);
-                broadcast("Thời gian đã được gia hạn thêm về 30 giây!");
+            this.lastBidder = bidderAccount;
+
+            // Kiểm tra Sniper Protection
+            AuctionSession session = sessionDAO.getAuctionById(sessionId);
+            if (session != null && session.getEndTime() != null) {
+                long secondsLeft = java.time.Duration.between(
+                        LocalDateTime.now(),
+                        session.getEndTime()
+                ).getSeconds();
+
+                if (secondsLeft < 15) {
+                    AuctionTimerService.getInstance().extendAuction(sessionId, 30);
+                    broadcast("TIME_EXTENDED", "Phiên được gia hạn thêm 30 giây!", 30);
+                }
             }
             return true;
         }
-
         return false;
     }
 
-    public void addSubscriber(ClientHandler client) {
-        subscribers.add(client);
+    /**
+     * Chốt phiên đấu giá
+     */
+    public synchronized void finishAuction() {
+        if (isFinished) return;
+        isFinished = true;
+
+        AuctionSession session = sessionDAO.getAuctionById(sessionId);
+        if (session != null) {
+            if (lastBidder != null) {
+                String seller = session.getSellerAccountName();
+
+                // 1. Lưu vào lịch sử
+                historyDAO.addHistory(new History(sessionId, lastBidder, currentPrice, LocalDateTime.now()));
+                // 2. Chuyển trạng thái
+                sessionDAO.updateSessionStatus(sessionId, StatusOfAuction.ENDED);
+                // 3. Cộng tiền cho seller (Tiền của bidder đã bị trừ trong updateBidLeader)
+                userDAO.updateBalance(seller, currentPrice);
+
+                System.out.println("[Room " + sessionId + "]: Kết thúc. Người thắng: " + lastBidder + ", Seller: " + seller);
+
+                // Gói dữ liệu vào Map để trả về JSON Object cho mượt
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("winner", lastBidder);
+                payload.put("finalPrice", currentPrice);
+
+                broadcast("AUCTION_FINISHED", "Phiên đấu giá kết thúc", payload);
+            } else {
+                sessionDAO.updateSessionStatus(sessionId, StatusOfAuction.ENDED);
+                broadcast("AUCTION_FINISHED", "Phiên đấu giá kết thúc, không có người thắng", null);
+            }
+        }
+
+        AuctionManager.getInstance().removeRoom(sessionId);
     }
 
-    public void removeSubscriber(ClientHandler client) {
-        subscribers.remove(client);
-    }
-
-    // Observer Pattern: Cập nhật thời gian thực
-    public void broadcast(String message) {
+    /**
+     * Gửi thông báo JSON tới tất cả người dùng trong phòng
+     */
+    public void broadcast(String action, String message, Object payload) {
         for (ClientHandler client : subscribers) {
-            // Mỗi việc gửi tin cho 1 client sẽ được chạy riêng biệt, không đợi nhau
-            broadcastExecutor.submit(() -> {
-                client.sendMessage("[" + roomName + "] " + message);
+            CompletableFuture.runAsync(() -> {
+                client.sendSystemMessage(action, message, payload);
             });
         }
     }
 
+    public void addSubscriber(ClientHandler client) { subscribers.add(client); }
+    public void removeSubscriber(ClientHandler client) { subscribers.remove(client); }
     public double getCurrentPrice() { return currentPrice; }
-
-    public void startCountdown() {
-        timerExecutor.scheduleAtFixedRate(() -> {
-            if (timeLeft.get() > 0) {
-                int time = timeLeft.decrementAndGet(); //Tương đuương timeleft--
-                if (time %10 == 0 || time <= 5) {
-                    broadcast("Thoi gian con lai: " + time + " giay!");
-                }
-            } else {
-                finishAuction();
-            }
-        }, 1, 1, TimeUnit.SECONDS); // Chạy 1 giây 1 lần
-    }
-
-    //    Cải tiến hàm finishAuction
-    private void finishAuction() {
-        if (!isFinished) {
-            isFinished = true;
-
-            // Dừng đếm ngược
-            timerExecutor.shutdown();
-
-            if (lastBidder != null) {
-                broadcast("PHIEN DAU GIA KET THUC! Nguoi thang: " + lastBidder + " voi gia " + currentPrice);
-                // Ở đây bạn nên gọi thêm DAO để trừ tiền người thắng và cộng tiền cho chủ món hàng
-            } else {
-                broadcast("Phien dau gia ket thuc ma khong co nguoi dat gia.");
-            }
-
-            // QUAN TRỌNG: Đóng executor gửi tin sau khi đã gửi xong các tin cuối cùng
-            // Sử dụng shutdown() thay vì shutdownNow() để đảm bảo các tin nhắn cuối vẫn được gửi đi
-            broadcastExecutor.shutdown();
-            System.out.println("[Room " + roomName + "]: Đã giải phóng các luồng Executor.");
-        }
-    }
-
-    public boolean isFinished() {
-        return isFinished;
-    }
-
-    public String getRoomName() {
-        return roomName;
-    }
+    public String getLastBidder() { return lastBidder; }
+    public int getSessionId() { return sessionId; }
+    public boolean isFinished() { return isFinished; }
 }

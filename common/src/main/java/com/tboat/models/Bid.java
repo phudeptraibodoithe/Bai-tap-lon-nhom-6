@@ -24,4 +24,5 @@ public class Bid {
         this.bidAmount = bidAmount;
         this.bidTime = LocalDateTime.now();
     }
+    public Bid(){}
 }   

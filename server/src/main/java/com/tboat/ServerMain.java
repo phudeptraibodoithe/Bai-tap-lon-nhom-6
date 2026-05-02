@@ -17,6 +17,7 @@ import java.util.concurrent.Executors;
 public class ServerMain {
     // Tạo một hồ chứa luồng (Pool) tối đa 100 người chơi cùng lúc
     private static final ExecutorService threadPool = Executors.newFixedThreadPool(100);
+    public static final ExecutorService broadcastExecutor = Executors.newFixedThreadPool(10);
 
     public static void main(String[] args) {
         int port = 8888;
@@ -57,13 +58,12 @@ public class ServerMain {
 
             // Trong vòng lặp for của initAuctionRooms:
             for (AuctionSession session : availableSessions) {
-                String roomId = String.valueOf(session.getId());
+                int roomId = session.getId();
                 double startPrice = session.getCurrentPrice();
 
                 auctionManager.createRoom(roomId, startPrice);
 
-                // --- BỔ SUNG: Lập lịch đóng phiên cho các phiên đang OPENING ---
-                if (session.getStatusOfAuction() == StatusOfAuction.valueOf("OPENING")) {
+                if (session.getStatusOfAuction() == StatusOfAuction.valueOf("ONGOING")) {
                     AuctionTimerService.getInstance().scheduleAuctionClose(session.getId(), session.getEndTime());
                 }
 

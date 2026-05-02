@@ -1,5 +1,6 @@
 package com.tboat.service;
 
+import com.tboat.ServerMain;
 import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.dao.HistoryBidDAO;
 import com.tboat.dao.UserDAO;
@@ -9,59 +10,48 @@ import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.ClientHandler;
 import com.tboat.utils.ResponseCode;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class AuctionRoom {
-    private final String roomName;
+    private final int sessionId;
     private double currentPrice;
     private String lastBidder;
-    private final List<ClientHandler> subscribers = new CopyOnWriteArrayList<>();
-    //private final ExecutorService broadcastExecutor = Executors.newFixedThreadPool(10);
-    //private final ScheduledExecutorService timerExecutor = Executors.newSingleThreadScheduledExecutor();
-    //private final AtomicInteger timeLeft = new AtomicInteger(60);
-    //private boolean isFinished = false;
+    private boolean isFinished = false;
 
+    private final List<ClientHandler> subscribers = new CopyOnWriteArrayList<>();
     private final AuctionSessionDAO sessionDAO = new AuctionSessionDAO();
     private final UserDAO userDAO = new UserDAO();
     private final HistoryBidDAO historyDAO = new HistoryBidDAO();
+    private final BiddingService biddingService = new BiddingService(); // Khởi tạo một lần dùng mãi mãi
 
-    public AuctionRoom(String roomName, double startingPrice) {
-        this.roomName = roomName;
+    public AuctionRoom(int sessionId, double startingPrice) {
+        this.sessionId = sessionId;
         this.currentPrice = startingPrice;
-        //startCountdown();
     }
 
     /**
-     * Xử lý đặt giá mới
+     * Xử lý đặt giá mới (Kết hợp logic Transaction updateBidLeader)
      */
-    public synchronized boolean placeBid(double newPrice, String bidderId) {
-        // 1. Chuyển roomName thành int để có sessionId
-        int sessionId = Integer.parseInt(this.roomName);
+    public synchronized boolean placeBid(double newPrice, String bidderAccount) {
+        if (isFinished) return false;
 
-        // 2. Gọi hàm updateBidLeader với đầy đủ 5 tham số:
-        // (sessionId, người đặt mới, giá mới, người giữ giá cũ, giá cũ)
-        ResponseCode result = historyDAO.updateBidLeader(
-                sessionId,
-                bidderId,
-                newPrice,
-                this.lastBidder,
-                this.currentPrice
-        );
+        // Gọi service đã khởi tạo sẵn
+        boolean success = biddingService.placeBid(bidderAccount, this.sessionId, newPrice);
 
-        // 3. Nếu đặt giá thành công
-        if (result == ResponseCode.SUCCESS) {
+        if (success) {
             this.currentPrice = newPrice;
-            this.lastBidder = bidderId;
+            this.lastBidder = bidderAccount;
 
             // Kiểm tra Sniper Protection
             AuctionSession session = sessionDAO.getAuctionById(sessionId);
-            if (session != null) {
+            if (session != null && session.getEndTime() != null) {
                 long secondsLeft = java.time.Duration.between(
-                        java.time.LocalDateTime.now(),
+                        LocalDateTime.now(),
                         session.getEndTime()
                 ).getSeconds();
 
@@ -76,23 +66,54 @@ public class AuctionRoom {
     }
 
     /**
+     * Chốt phiên đấu giá
+     */
+    public synchronized void finishAuction() {
+        if (isFinished) return;
+        isFinished = true;
+
+        AuctionSession session = sessionDAO.getAuctionById(sessionId);
+        if (session != null) {
+            if (lastBidder != null) {
+                String seller = session.getSellerAccountName();
+
+                // GỌI TRANSACTION DUY NHẤT Ở ĐÂY
+                boolean success = sessionDAO.finalizeAuctionTransaction(sessionId, lastBidder, currentPrice, seller);
+
+                if (success) {
+                    Map<String, Object> payload = new HashMap<>();
+                    payload.put("winner", lastBidder);
+                    payload.put("finalPrice", currentPrice);
+                    broadcast("AUCTION_FINISHED", "Phiên đấu giá kết thúc thành công!", payload);
+                } else {
+                    // Xử lý lỗi hệ thống nếu transaction thất bại
+                    System.err.println("[CRITICAL]: Không thể chốt phiên " + sessionId);
+                }
+            } else {
+                // Trường hợp không ai thèm mua
+                sessionDAO.updateSessionStatus(sessionId, StatusOfAuction.ENDED);
+                broadcast("AUCTION_FINISHED", "Kết thúc, không có người thắng", null);
+            }
+        }
+        AuctionManager.getInstance().removeRoom(sessionId);
+    }
+
+    /**
      * Gửi thông báo JSON tới tất cả người dùng trong phòng
      */
-    // Sửa lại hàm broadcast:
     public void broadcast(String action, String message, Object payload) {
         for (ClientHandler client : subscribers) {
-            // Sử dụng CompletableFuture để đẩy task vào ForkJoinPool dùng chung của hệ thống
-            java.util.concurrent.CompletableFuture.runAsync(() -> {
+            // Dùng Executor riêng để không làm nghẽn hệ thống
+            CompletableFuture.runAsync(() -> {
                 client.sendSystemMessage(action, message, payload);
-            });
+            }, ServerMain.broadcastExecutor);
         }
     }
 
-    // Các hàm getter/setter hỗ trợ
     public void addSubscriber(ClientHandler client) { subscribers.add(client); }
     public void removeSubscriber(ClientHandler client) { subscribers.remove(client); }
     public double getCurrentPrice() { return currentPrice; }
-    //public boolean isFinished() { return isFinished; }
     public String getLastBidder() { return lastBidder; }
-    public String getRoomName() { return roomName; }
+    public int getSessionId() { return sessionId; }
+    public boolean isFinished() { return isFinished; }
 }

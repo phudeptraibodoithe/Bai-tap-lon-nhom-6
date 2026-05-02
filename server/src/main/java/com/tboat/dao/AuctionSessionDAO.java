@@ -2,7 +2,6 @@ package com.tboat.dao;
 
 
 import java.sql.*;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,12 +10,14 @@ import com.tboat.models.AuctionSession;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.models.User;
 
+import static com.tboat.database.DatabaseConnection.getConnection;
+
 
 public class AuctionSessionDAO {
     public int addAuctionSession(AuctionSession session) {
         String sql = "INSERT INTO auction_session (startTime, endTime, currentPrice, bidIncrease, status, sellerAccount, type, name, description, imageURL, highestBidderAccount) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection c = DatabaseConnection.getConnection();
+        try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             ps.setTimestamp(1, Timestamp.valueOf(session.getStartTime()));
@@ -64,7 +65,7 @@ public class AuctionSessionDAO {
         List<AuctionSession> list = new ArrayList<>();
         String sql = "SELECT * FROM auction_session WHERE sellerAccount = ?";
 
-        try (Connection c = DatabaseConnection.getConnection();
+        try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
             ps.setString(1, accountName);
@@ -82,7 +83,7 @@ public class AuctionSessionDAO {
     public boolean cancelAuction(int sessionId) {
         String sql = "UPDATE auction_session SET status = ? " +
                 "WHERE id = ? AND status NOT IN ('ENDED')";
-        try (Connection c = DatabaseConnection.getConnection();
+        try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
             ps.setString(1, StatusOfAuction.CANCELED.name());
@@ -102,7 +103,7 @@ public class AuctionSessionDAO {
                 "WHERE status NOT IN (?, ?) " +
                 "ORDER BY status DESC, startTime ASC";
 
-        try (Connection c = DatabaseConnection.getConnection();
+        try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
             // Dùng enum.name() hoặc enum.toString() đều được
@@ -125,7 +126,7 @@ public class AuctionSessionDAO {
     public List<AuctionSession> getPendingAuctions() {
         List<AuctionSession> list = new ArrayList<>();
         String sql = "SELECT * FROM auction_session WHERE status = 'PENDING'";
-        try (Connection conn = DatabaseConnection.getConnection();
+        try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
@@ -139,7 +140,7 @@ public class AuctionSessionDAO {
 
     public boolean updateSessionStatus(int sessionId, StatusOfAuction status) {
         String sql = "UPDATE auction_session SET status = ? WHERE id = ?";
-        try (Connection c = DatabaseConnection.getConnection();
+        try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, status.name()); // An toàn tuyệt đối
             ps.setInt(2, sessionId);
@@ -152,7 +153,7 @@ public class AuctionSessionDAO {
 
     public AuctionSession getAuctionById(int sessionId) {
         String sql = "SELECT * FROM auction_session WHERE id = ?";
-        try (Connection c = DatabaseConnection.getConnection();
+        try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
             ps.setInt(1, sessionId);
@@ -169,7 +170,7 @@ public class AuctionSessionDAO {
 
     public boolean updateSessionPriceAndHighest(int sessionId, String bidderAccount, double newPrice) {
         String sql = "UPDATE auction_session SET currentPrice = ?, highestBidderAccount = ? WHERE id = ? AND currentPrice < ?";
-        try (Connection c = DatabaseConnection.getConnection();
+        try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setDouble(1, newPrice);
             ps.setString(2, bidderAccount);
@@ -182,17 +183,67 @@ public class AuctionSessionDAO {
         }
     }
 
-    // Thêm đoạn này vào cuối class AuctionSessionDAO.java
-    public boolean updateEndTime(int sessionId, LocalDateTime newEndTime) {
+    public boolean updateEndTime(int sessionId, java.time.LocalDateTime newEndTime) {
         String sql = "UPDATE auction_session SET endTime = ? WHERE id = ?";
-        try (Connection c = DatabaseConnection.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
+        try (java.sql.Connection c = getConnection();
+             java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+
             ps.setTimestamp(1, java.sql.Timestamp.valueOf(newEndTime));
             ps.setInt(2, sessionId);
             return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
+        } catch (java.sql.SQLException e) {
             e.printStackTrace();
             return false;
+        }
+    }
+
+    public boolean finalizeAuctionTransaction(int sessionId, String winner, double finalPrice, String seller) {
+        // Đảm bảo tên Table và Column khớp 100% với hàm addAuctionSession của bạn
+        String sqlStatus = "UPDATE auction_session SET status = ?, currentPrice = ?, highestBidderAccount = ? WHERE id = ?";
+        String sqlHistory = "INSERT INTO history_bids (session_id, bidder_account, bid_price, bid_time) VALUES (?, ?, ?, NOW())";
+        String sqlSeller = "UPDATE users SET balance = balance + ? WHERE account_name = ?";
+
+        Connection conn = null;
+        try {
+            conn = getConnection();
+            conn.setAutoCommit(false); // BẮT ĐẦU TRANSACTION
+
+            // 1. Cập nhật trạng thái phiên
+            try (PreparedStatement psStatus = conn.prepareStatement(sqlStatus)) {
+                psStatus.setString(1, "ENDED");
+                psStatus.setDouble(2, finalPrice);
+                psStatus.setString(3, winner);
+                psStatus.setInt(4, sessionId);
+                psStatus.executeUpdate();
+            }
+
+            // 2. Lưu lịch sử đặt giá
+            try (PreparedStatement psHistory = conn.prepareStatement(sqlHistory)) {
+                psHistory.setInt(1, sessionId);
+                psHistory.setString(2, winner);
+                psHistory.setDouble(3, finalPrice);
+                psHistory.executeUpdate();
+            }
+
+            // 3. Cộng tiền cho người bán
+            try (PreparedStatement psSeller = conn.prepareStatement(sqlSeller)) {
+                psSeller.setDouble(1, finalPrice);
+                psSeller.setString(2, seller);
+                psSeller.executeUpdate();
+            }
+
+            conn.commit(); // Hoàn tất giao dịch
+            return true;
+        } catch (Exception e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (conn != null) {
+                try { conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+            }
         }
     }
 }

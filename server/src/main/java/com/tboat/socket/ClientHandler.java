@@ -1,8 +1,6 @@
 package com.tboat.socket;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.dao.HistoryBidDAO;
@@ -20,6 +18,8 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.lang.reflect.Type;
 import java.net.Socket;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -35,7 +35,12 @@ public class ClientHandler implements Runnable {
     private static final List<String> PUBLIC_ACTIONS = Arrays.asList(
             "LOGIN", "REGISTER", "LIST_AVAILABLE", "GET_PENDING_ITEMS", "APPROVE_ITEM", "REJECT_ITEM"
     );
-    private static final Gson gson = new Gson();
+    private static final Gson gson = new GsonBuilder()
+            .registerTypeAdapter(LocalDateTime.class, (JsonSerializer<LocalDateTime>)
+                    (src, typeOfT, context) -> new JsonPrimitive(src.toString()))
+            .registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>)
+                    (json, typeOfT, context) -> LocalDateTime.parse(json.getAsString()))
+            .create();
 
     public ClientHandler(Socket socket) {
         this.socket = socket;
@@ -45,7 +50,10 @@ public class ClientHandler implements Runnable {
     public void run() {
         try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
             this.out = new PrintWriter(socket.getOutputStream(), true);
-            out.println("SERVER_READY|Chào mừng bạn đến với hệ thống đấu giá TBoat!");
+
+            // Đã sửa: Gửi lời chào bằng chuẩn JSON thay vì chuỗi thô
+            sendSystemMessage("SERVER_READY", "Chào mừng bạn đến với hệ thống đấu giá TBoat!", null);
+
             String inputLine;
             while ((inputLine = in.readLine()) != null) {
                 handleCommand(inputLine.trim());
@@ -58,7 +66,6 @@ public class ClientHandler implements Runnable {
     }
 
     private void handleCommand(String input) {
-        //Gson gson = new Gson();
         try {
             JsonObject jsonReq = JsonParser.parseString(input).getAsJsonObject();
             String action = jsonReq.get("action").getAsString().toUpperCase();
@@ -78,6 +85,10 @@ public class ClientHandler implements Runnable {
                 case "GET_PENDING_ITEMS": handleGetPendingItems(); break;
                 case "APPROVE_ITEM": handleApproveItem(input, gson); break;
                 case "REJECT_ITEM": handleRejectItem(input, gson); break;
+                case "PROFILE": handleProfile(); break;
+                case "UPDATE_PROFILE": handleUpdateProfile(input); break;
+                case "TRANSACTION": handleTransaction(input); break;
+
                 case "LOGOUT":
                     userManager.logout(this.clientId);
                     this.clientId = "Guest";
@@ -122,22 +133,16 @@ public class ClientHandler implements Runnable {
         JsonObject json = JsonParser.parseString(input).getAsJsonObject();
         double price = json.get("payload").getAsDouble();
 
-        // --- BƯỚC CẢI TIẾN: Kiểm tra số dư người dùng ---
         User currentUser = userDAO.getUser(clientId);
         if (currentUser == null || currentUser.getBalance() < price) {
             sendResponse(new Response<>("FAILED", "Số dư không đủ để đặt mức giá này", null));
             return;
         }
-        // -------------------------------------------------
 
-        // Thực hiện đặt giá
         boolean bidAccepted = currentRoom.placeBid(price, clientId);
 
         if (bidAccepted) {
-            // Phản hồi riêng cho người vừa bid thành công
             sendResponse(new Response<>("SUCCESS", "Bạn đang dẫn đầu", price));
-
-            // Gửi thông báo cho TẤT CẢ mọi người trong phòng (dùng 3 tham số mới)
             currentRoom.broadcast("NEW_BID", clientId + " vừa đặt giá mới", price);
         } else {
             sendResponse(new Response<>("FAILED", "Giá đặt phải cao hơn giá hiện tại", currentRoom.getCurrentPrice()));
@@ -154,83 +159,185 @@ public class ClientHandler implements Runnable {
     }
 
     private void handlePostItem(String input, Gson gson) {
-        Type type = new TypeToken<Request<AuctionSession>>(){}.getType();
-        Request<AuctionSession> req = gson.fromJson(input, type);
-        AuctionSession session = req.getPayload();
+        try {
+            JsonObject json = JsonParser.parseString(input).getAsJsonObject();
+            JsonObject payload = json.getAsJsonObject("payload");
 
-        session.setSellerAccountName(this.clientId);
-        session.setStatusOfAuction(StatusOfAuction.PENDING);
-        session.setStartTime(java.time.LocalDateTime.now());
+            // Tạo mới một phiên đấu giá
+            AuctionSession session = new AuctionSession();
 
-        int id = auctionDAO.addAuctionSession(session);
-        if (id > 0) {
-            AuctionManager.getInstance().createRoom(String.valueOf(id), session.getCurrentPrice());
-            sendResponse(new Response<>("SUCCESS", "Đăng sản phẩm thành công, đang chờ duyệt", id));
-        } else {
-            sendResponse(new Response<>("ERROR", "Lỗi lưu dữ liệu", null));
+            // Cài đặt các thông tin cơ bản từ Client gửi lên
+            session.setName(payload.get("name").getAsString());
+            session.setDescription(payload.get("description").getAsString());
+            session.setType(payload.get("type").getAsString());
+            session.setImageURL(payload.get("imageURL").getAsString());
+            session.setCurrentPrice(payload.get("currentPrice").getAsDouble());
+            session.setBidIncrease(payload.get("bidIncrease").getAsDouble());
+
+            // Cài đặt thời gian do người dùng chọn
+            LocalDateTime startTime = LocalDateTime.parse(payload.get("startTime").getAsString());
+            LocalDateTime endTime = LocalDateTime.parse(payload.get("endTime").getAsString());
+            session.setStartTime(startTime);
+            session.setEndTime(endTime);
+
+            // Cài đặt thông tin hệ thống
+            session.setSellerAccountName(this.clientId);
+            session.setStatusOfAuction(StatusOfAuction.PENDING);
+
+            // Lưu vào DB
+            int id = auctionDAO.addAuctionSession(session);
+
+            if (id > 0) {
+
+                sendResponse(new Response<>("SUCCESS", "Đăng sản phẩm thành công, đang chờ duyệt", id));
+            } else {
+                sendResponse(new Response<>("ERROR", "Lỗi lưu dữ liệu vào Database", null));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendResponse(new Response<>("ERROR", "Dữ liệu gửi lên không hợp lệ!", null));
         }
     }
 
     private void handleJoin(String input, Gson gson) {
         JsonObject json = JsonParser.parseString(input).getAsJsonObject();
-        String roomName = json.get("payload").getAsString();
-        AuctionRoom targetRoom = AuctionManager.getInstance().getRoom(roomName);
+
+        // Đã sửa: Đổi tên thành sessionId và lấy kiểu Int
+        int sessionId = json.get("payload").getAsInt();
+        AuctionRoom targetRoom = AuctionManager.getInstance().getRoom(sessionId);
 
         if (targetRoom != null) {
             if (currentRoom != null) currentRoom.removeSubscriber(this);
             currentRoom = targetRoom;
             currentRoom.addSubscriber(this);
-            sendResponse(new Response<>("JOIN_SUCCESS", roomName, currentRoom.getCurrentPrice()));
+
+            // Đã sửa: Ép tham số message thành String ("Vào phòng " + sessionId...)
+            sendResponse(new Response<>("JOIN_SUCCESS", "Vào phòng " + sessionId + " thành công", currentRoom.getCurrentPrice()));
         } else {
             sendResponse(new Response<>("ERROR", "Phòng không tồn tại", null));
         }
     }
 
     private void handleGetPendingItems() {
-        List<AuctionSession> pendingItems = auctionDAO.getPendingAuctions();
-        sendResponse(new Response<>("SUCCESS", "Danh sách chờ duyệt", pendingItems));
-    }
+        try {
+            List<AuctionSession> pendingItems = auctionDAO.getPendingAuctions();
 
-    private void handleApproveItem(String input, Gson gson) {
-        JsonObject json = JsonParser.parseString(input).getAsJsonObject();
-        int sessionId = json.get("payload").getAsInt();
-
-        boolean success = auctionDAO.updateSessionStatus(sessionId, StatusOfAuction.valueOf("OPENING"));
-
-        if (success) {
-            // --- BỔ SUNG: Lấy thông tin session để bắt đầu đếm ngược ---
-            AuctionSession session = auctionDAO.getAuctionById(sessionId);
-            if (session != null) {
-                AuctionTimerService.getInstance().scheduleAuctionClose(sessionId, session.getEndTime());
+            // Đảm bảo không bao giờ trả về null, trả về danh sách rỗng [] nếu không có bài
+            if (pendingItems == null) {
+                pendingItems = new ArrayList<>();
             }
-            sendResponse(new Response<>("SUCCESS", "Đã duyệt và bắt đầu đấu giá", sessionId));
-        } else {
-            sendResponse(new Response<>("ERROR", "Không thể duyệt sản phẩm", null));
+
+            // Gửi response về, message phải khớp 100% với Client đang check
+            sendResponse(new Response<>("SUCCESS", "Danh sách chờ duyệt", pendingItems));
+            System.out.println("[Server]: Đã gửi danh sách chờ duyệt cho Admin.");
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendResponse(new Response<>("ERROR", "Lỗi lấy danh sách: " + e.getMessage(), null));
+        }
+    }
+    private void handleApproveItem(String input, Gson gson) {
+        try {
+            JsonObject json = JsonParser.parseString(input).getAsJsonObject();
+            // Lấy ID từ payload (Client gửi trực tiếp số ID)
+            int sessionId = json.get("payload").getAsInt();
+
+            // Cập nhật trạng thái trong Database
+            boolean success = auctionDAO.updateSessionStatus(sessionId, StatusOfAuction.valueOf("ONGOING"));
+
+            if (success) {
+                // Lấy thông tin phiên để lập lịch kết thúc
+                AuctionSession session = auctionDAO.getAuctionById(sessionId);
+                if (session != null) {
+                    AuctionTimerService.getInstance().scheduleAuctionClose(sessionId, session.getEndTime());
+                }
+
+                // Trả về SUCCESS và message khớp với AdminController dòng 114
+                sendResponse(new Response<>("SUCCESS", "Đã duyệt và bắt đầu đấu giá", sessionId));
+                System.out.println("[Server]: Admin đã duyệt phiên ID: " + sessionId);
+            } else {
+                sendResponse(new Response<>("ERROR", "Không thể duyệt sản phẩm (Lỗi Database)", null));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendResponse(new Response<>("ERROR", "Lỗi xử lý duyệt sản phẩm: " + e.getMessage(), null));
         }
     }
 
     private void handleRejectItem(String input, Gson gson) {
-        JsonObject json = JsonParser.parseString(input).getAsJsonObject();
-        int sessionId = json.get("payload").getAsInt();
+        try {
+            JsonObject json = JsonParser.parseString(input).getAsJsonObject();
+            // Lấy ID từ payload
+            int sessionId = json.get("payload").getAsInt();
 
-        boolean success = auctionDAO.updateSessionStatus(sessionId, StatusOfAuction.valueOf("CANCELED"));
+            // Cập nhật trạng thái thành CANCELED hoặc REJECTED (tùy Enum của bạn)
+            boolean success = auctionDAO.updateSessionStatus(sessionId, StatusOfAuction.valueOf("CANCELED"));
 
-        if (success) {
-            sendResponse(new Response<>("SUCCESS", "Đã từ chối sản phẩm", sessionId));
+            if (success) {
+                // Trả về SUCCESS và message khớp với AdminController dòng 119
+                sendResponse(new Response<>("SUCCESS", "Đã từ chối sản phẩm", sessionId));
+                System.out.println("[Server]: Admin đã từ chối phiên ID: " + sessionId);
+            } else {
+                sendResponse(new Response<>("ERROR", "Không thể thực hiện từ chối (Lỗi Database)", null));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendResponse(new Response<>("ERROR", "Lỗi xử lý từ chối sản phẩm: " + e.getMessage(), null));
+        }
+    }
+
+    private void handleProfile() {
+        User fullUser = userDAO.getUser(this.clientId);
+        if (fullUser != null) {
+            // Gửi trả status PROFILE_INFO khớp với Frontend gốc
+            sendResponse(new Response<>("PROFILE_INFO", "Thông tin hồ sơ", fullUser));
         } else {
-            sendResponse(new Response<>("ERROR", "Không thể thực hiện", null));
+            sendResponse(new Response<>("ERROR", "Không tìm thấy người dùng", null));
+        }
+    }
+
+    private void handleUpdateProfile(String input) {
+        JsonObject json = JsonParser.parseString(input).getAsJsonObject();
+        JsonObject payload = json.getAsJsonObject("payload");
+
+        String desc = payload.has("description") ? payload.get("description").getAsString() : "";
+
+        // ĐÃ SỬA: Đổi "avatar" thành "avatarURL" cho khớp với Client gửi lên
+        String avatar = payload.has("avatarURL") ? payload.get("avatarURL").getAsString() : "";
+
+        // Gọi DB cập nhật
+        boolean updateOk = userDAO.updateProfile(this.clientId, desc, avatar);
+
+        if (updateOk) {
+            sendResponse(new Response<>("SUCCESS", "Cập nhật thành công", null)); // Chú ý: Đổi lại status thành SUCCESS để khớp dòng 159 bên Client
+        } else {
+            sendResponse(new Response<>("ERROR", "Lỗi cập nhật", null));
+        }
+    }
+
+    private void handleTransaction(String input) {
+        JsonObject json = JsonParser.parseString(input).getAsJsonObject();
+        double amount = json.get("payload").getAsDouble();
+
+        // Giả sử userDAO có hàm updateBalance xử lý cộng/trừ tiền trong CSDL
+        boolean transOk = userDAO.updateBalance(this.clientId, amount);
+
+        if (transOk) {
+            // Frontend cũ cần payload/data là số tiền thay đổi để update UI
+            sendResponse(new Response<>("TRANSACTION_SUCCESS", "Giao dịch đã được xử lý!", amount));
+        } else {
+            sendResponse(new Response<>("TRANSACTION_FAILED", "Giao dịch bị từ chối (Số dư không đủ).", null));
         }
     }
 
     public synchronized void sendResponse(Response<?> response) {
         String json = gson.toJson(response);
-        out.println(json);
-        out.flush();
+        if (out != null) {
+            out.println(json);
+            out.flush();
+        }
     }
-    // Thêm vào ClientHandler
+
     public synchronized void sendSystemMessage(String action, String message, Object payload) {
-        //Gson gson = new Gson();
-        // Đóng gói vào Object Response giống hệt các xử lý LOGIN, REGISTER...
         Response<Object> response = new Response<>(action, message, payload);
         String json = gson.toJson(response);
         if (out != null) {

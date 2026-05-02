@@ -10,7 +10,8 @@ CREATE TABLE `user` (
   `avatarURL` MEDIUMTEXT DEFAULT NULL,
   PRIMARY KEY (`accountName`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
+INSERT INTO user (accountName, password, nickname, balance, description, avatarURL)
+VALUES ('admin', 'admin', 'Quản trị viên', 0, 'Tài khoản điều hành hệ thống', 'null');
 CREATE TABLE `auction_session` (
   `id` int NOT NULL AUTO_INCREMENT,
   `startTime` datetime NOT NULL,

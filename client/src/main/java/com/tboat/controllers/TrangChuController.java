@@ -9,6 +9,7 @@ import com.tboat.models.AuctionSession;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.ImageUtils;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -43,7 +44,7 @@ public class TrangChuController extends BaseController implements Initializable,
     @FXML private Button btnPostItem;
     @FXML private Button btnHistory1;
 
-    private Gson gson = new Gson();
+    private Gson gson = GsonUtils.getInstance();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -84,25 +85,18 @@ public class TrangChuController extends BaseController implements Initializable,
                     if (itemContainer != null) {
                         itemContainer.getChildren().clear();
                     }
-
                     for (JsonElement element : auctionArray) {
                         JsonObject dataObj = element.getAsJsonObject();
 
+                        // 1. LẤY DỮ LIỆU CƠ BẢN (GIỮ NGUYÊN CODE CŨ AN TOÀN CỦA BẠN)
                         int id = dataObj.has("id") ? dataObj.get("id").getAsInt() : 0;
                         String name = dataObj.has("name") ? dataObj.get("name").getAsString() : "Sản phẩm chưa có tên";
                         double currentPrice = dataObj.has("currentPrice") ? dataObj.get("currentPrice").getAsDouble() : 0.0;
                         String statusString = dataObj.has("statusOfAuction") ? dataObj.get("statusOfAuction").getAsString() : "ONGOING";
-
-                        // ĐÃ FIX: Đổi "image" thành "imageURL" cho khớp với Model ở server
                         String imageBase64 = dataObj.has("imageURL") ? dataObj.get("imageURL").getAsString() : "";
-
                         double bidIncrease = dataObj.has("bidIncrease") ? dataObj.get("bidIncrease").getAsDouble() : 0.0;
                         String description = dataObj.has("description") ? dataObj.get("description").getAsString() : "Không có mô tả";
-                        String highestBidder = dataObj.has("highestBidderAccount") ? dataObj.get("highestBidderAccount").getAsString() : "";
-                        // ĐÃ FIX: Xóa tiền tố thừa của Base64 (nếu có)
-                        if (imageBase64.startsWith("data:image")) {
-                            imageBase64 = imageBase64.substring(imageBase64.indexOf(",") + 1);
-                        }
+                        String highestBidder = dataObj.has("highestBidderAccount") && !dataObj.get("highestBidderAccount").isJsonNull() ? dataObj.get("highestBidderAccount").getAsString() : "";
 
                         AuctionSession session = new AuctionSession();
                         session.setId(id);
@@ -112,13 +106,28 @@ public class TrangChuController extends BaseController implements Initializable,
                         session.setDescription(description);
                         session.setHighestBidderAccount(highestBidder);
 
-                        // Gắn chuỗi ảnh vào model
-                        session.setImageURL(imageBase64);
-
                         try {
                             session.setStatusOfAuction(StatusOfAuction.valueOf(statusString));
                         } catch (Exception ignored) {}
 
+                        if (imageBase64.startsWith("data:image")) {
+                            imageBase64 = imageBase64.substring(imageBase64.indexOf(",") + 1);
+                        }
+                        session.setImageURL(imageBase64);
+                        try {
+                            if (dataObj.has("endTime") && !dataObj.get("endTime").isJsonNull()) {
+                                String endStr = dataObj.get("endTime").getAsString();
+                                if (endStr.contains(" ")) endStr = endStr.replace(" ", "T");
+                                session.setEndTime(java.time.LocalDateTime.parse(endStr));
+                            }
+                            if (dataObj.has("startTime") && !dataObj.get("startTime").isJsonNull()) {
+                                String startStr = dataObj.get("startTime").getAsString();
+                                if (startStr.contains(" ")) startStr = startStr.replace(" ", "T");
+                                session.setStartTime(java.time.LocalDateTime.parse(startStr));
+                            }
+                        } catch (Exception e) {
+                            System.out.println("⚠️ Lỗi đọc ngày tháng của sản phẩm ID " + id + ": " + e.getMessage());
+                        }
                         VBox productCard = createProductCard(session);
                         itemContainer.getChildren().add(productCard);
                     }
@@ -202,15 +211,11 @@ public class TrangChuController extends BaseController implements Initializable,
 
         btnBid.setOnAction(event -> {
             try {
-                FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/auction.fxml"));
-                Parent root = loader.load();
+                AuctionController controller = changeSceneAndGetController(btnBid, "auction.fxml");
 
-                AuctionController controller = loader.getController();
-                controller.setItemData(session);
-
-                Stage stage = (Stage) btnBid.getScene().getWindow();
-                stage.setScene(new Scene(root));
-                stage.show();
+                if (controller != null) {
+                    controller.setItemData(session); // Truyền dữ liệu sang trang mới
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }

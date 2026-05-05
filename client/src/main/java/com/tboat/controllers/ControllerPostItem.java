@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.ImageUtils; // THÊM IMPORT NÀY
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -41,7 +42,7 @@ public class ControllerPostItem extends BaseController implements Initializable,
 
     private Stage stage;
     private File selectedFile;
-    private Gson gson = new Gson();
+    private Gson gson = GsonUtils.getInstance();
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {

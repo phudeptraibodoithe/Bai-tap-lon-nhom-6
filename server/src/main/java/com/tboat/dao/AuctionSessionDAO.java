@@ -63,7 +63,7 @@ public class AuctionSessionDAO {
 
     public List<AuctionSession> getAuctionsBySeller(String accountName) {
         List<AuctionSession> list = new ArrayList<>();
-        String sql = "SELECT * FROM auction_session WHERE sellerAccount = ?";
+        String sql = "SELECT * FROM auction_session WHERE sellerAccount = ? ORDER BY id DESC";
 
         try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
@@ -168,7 +168,6 @@ public class AuctionSessionDAO {
         return null;
     }
 
-    // Hàm dùng trong Transaction
     public boolean updateSessionPriceAndHighest(Connection conn, int sessionId, String bidderAccount, double newPrice) throws SQLException {
         String sql = "UPDATE auction_session SET currentPrice = ?, highestBidderAccount = ? WHERE id = ? AND currentPrice < ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {

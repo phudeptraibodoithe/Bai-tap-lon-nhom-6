@@ -40,6 +40,37 @@ public abstract class BaseController {
         }
     }
 
+    public <T> T changeSceneAndGetController(Node node, String fxmlFileName) {
+        if (this instanceof SocketListener) {
+            ((SocketListener) this).unregisterSocket();
+            System.out.println("[System] Đã tự động hủy đăng ký Socket cho: " + this.getClass().getSimpleName());
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/" + fxmlFileName));
+            root = loader.load(); // Sử dụng biến root của class hiện tại
+
+            T nextController = loader.getController(); // Lấy controller của trang mới
+
+            if (nextController instanceof SocketListener) {
+                ((SocketListener) nextController).registerSocket();
+                System.out.println("[System] Đã tự động đăng ký Socket cho Controller mới: " + nextController.getClass().getSimpleName());
+            }
+
+            scene = node.getScene(); // Sử dụng biến scene của class hiện tại
+            scene.getStylesheets().clear();
+            scene.getStylesheets().add(getClass().getResource("/styles/Button.css").toExternalForm());
+            scene.setRoot(root);
+
+            // Trả về controller để truyền dữ liệu
+            return nextController;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     @FXML public void switchToMenu(Event event) {
         changeScene((Node) event.getSource(), "TrangChu.fxml");
     }
@@ -62,6 +93,11 @@ public abstract class BaseController {
 
     @FXML public void switchToManager(ActionEvent event){changeScene((Node) event.getSource(), "manager.fxml");}
 
+    @FXML public void switchToAdminProfile(ActionEvent event){changeScene((Node) event.getSource(), "adminProfile.fxml");}
+
+    @FXML public void switchToWalletAdmin(ActionEvent event){changeScene((Node) event.getSource(), "adminNapRut.fxml");}
+
+
     @FXML public void switchToLogin(ActionEvent event) throws IOException {
         changeScene((Node) event.getSource(),"login.fxml");
     }
@@ -73,6 +109,7 @@ public abstract class BaseController {
     @FXML public void switchToStart(MouseEvent event) throws IOException {
         changeScene((Node) event.getSource(),"start.fxml");
     }
+
     @FXML public void switchToAdmin(ActionEvent event) throws IOException {
         changeScene((Node) event.getSource(),"Admin.fxml");
     }

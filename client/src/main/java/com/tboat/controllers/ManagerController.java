@@ -9,6 +9,7 @@ import com.tboat.models.AuctionSession;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -32,12 +33,12 @@ public class ManagerController extends BaseController implements Initializable, 
     @FXML private TableView<AuctionSession> tableMyItems;
     @FXML private TableColumn<AuctionSession, Integer> colId;
     @FXML private TableColumn<AuctionSession, String> colName;
-    @FXML private TableColumn<AuctionSession, String> colRole;
+    @FXML private TableColumn<AuctionSession, String> colType;
     @FXML private TableColumn<AuctionSession, Double> colPrice;
     @FXML private TableColumn<AuctionSession, StatusOfAuction> colStatus;
     @FXML private TableColumn<AuctionSession, Void> colAction;
 
-    private Gson gson = new Gson();
+    private Gson gson = GsonUtils.getInstance();
 
     // Danh sách để chứa dữ liệu cho TableView
     private ObservableList<AuctionSession> listMyItems = FXCollections.observableArrayList();
@@ -62,6 +63,7 @@ public class ManagerController extends BaseController implements Initializable, 
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("statusOfAuction"));
+        colType.setCellValueFactory(new PropertyValueFactory<>("type"));
 
         // Định dạng cột Giá tiền (Thêm dấu phẩy và chữ VNĐ)
         colPrice.setCellValueFactory(new PropertyValueFactory<>("currentPrice"));
@@ -77,21 +79,6 @@ public class ManagerController extends BaseController implements Initializable, 
             }
         });
 
-        // Cột Loại: Hiển thị mặc định chữ "Người Bán" (Seller) vì đây là hàng của mình
-        colRole.setCellFactory(column -> new TableCell<AuctionSession, String>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty) {
-                    setText(null);
-                } else {
-                    setText("Người Bán");
-                    setStyle("-fx-text-fill: #2980b9; -fx-font-weight: bold; -fx-alignment: CENTER;");
-                }
-            }
-        });
-
-        // Cột Thao tác: Tạo nút "Chi tiết"
         colAction.setCellFactory(new Callback<TableColumn<AuctionSession, Void>, TableCell<AuctionSession, Void>>() {
             @Override
             public TableCell<AuctionSession, Void> call(final TableColumn<AuctionSession, Void> param) {
@@ -129,7 +116,7 @@ public class ManagerController extends BaseController implements Initializable, 
     public void loadMyAuctions() {
         String myUsername = UserSession.getInstance().getUsername();
         JsonObject request = new JsonObject();
-        request.addProperty("action", "GET_MY_AUCTIONS"); // Bạn nhớ đổi tên action cho khớp với Server
+        request.addProperty("action", "GET_MY_AUCTIONS");
         request.addProperty("payload", myUsername);
 
         SocketManager.getInstance().send(gson.toJson(request));
@@ -158,7 +145,7 @@ public class ManagerController extends BaseController implements Initializable, 
                         session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
                         session.setName(dataObj.has("name") ? dataObj.get("name").getAsString() : "No name");
                         session.setCurrentPrice(dataObj.has("currentPrice") ? dataObj.get("currentPrice").getAsDouble() : 0.0);
-
+                        session.setType(dataObj.has("type") ? dataObj.get("type").getAsString() : "Chưa phân loại");
                         String statusString = dataObj.has("statusOfAuction") ? dataObj.get("statusOfAuction").getAsString() : "ONGOING";
                         try {
                             session.setStatusOfAuction(StatusOfAuction.valueOf(statusString));

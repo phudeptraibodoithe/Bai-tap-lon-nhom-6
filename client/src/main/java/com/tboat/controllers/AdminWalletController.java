@@ -18,7 +18,7 @@ import javafx.scene.control.TextField;
 import java.net.URL;
 import java.util.ResourceBundle;
 
-public class NapRutController extends BaseController implements Initializable, SocketListener {
+public class AdminWalletController extends BaseController implements Initializable, SocketListener {
 
     @FXML private Label lblBalance;
     @FXML private Button btnTabDeposit;

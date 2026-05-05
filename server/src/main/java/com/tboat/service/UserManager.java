@@ -29,24 +29,16 @@ public class UserManager {
     }
 
     public ResponseCode login(String account, String password, ClientHandler handler) {
-        // KIỂM TRA: Nếu user đã có trong Map onlineUsers, không cho login nữa
         if (onlineUsers.containsKey(account)) {
             System.out.println("[UserManager]: Từ chối login - User " + account + " đang online.");
             return ResponseCode.ALREADY_LOGGED_IN;
         }
-
-        User user = userDAO.getUser(account);
-        if (user == null) {
-            return ResponseCode.NOT_FOUND;
-        }
-
-        if (user.getPassword().equals(password)) {
+        ResponseCode loginStatus = userDAO.checkLogin(account, password);
+        if (loginStatus == ResponseCode.SUCCESS) {
             onlineUsers.put(account, handler);
             System.out.println("[UserManager]: User " + account + " is now ONLINE.");
-            return ResponseCode.SUCCESS;
-        } else {
-            return ResponseCode.WRONG_PASSWORD;
         }
+        return loginStatus;
     }
 
     public void logout(String account) {

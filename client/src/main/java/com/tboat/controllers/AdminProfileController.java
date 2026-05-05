@@ -22,11 +22,10 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
 
-public class ControllerProfile extends BaseController implements Initializable, SocketListener {
+public class AdminProfileController extends BaseController implements Initializable, SocketListener {
 
     private Stage stage;
     private String imagePath;
@@ -36,7 +35,7 @@ public class ControllerProfile extends BaseController implements Initializable, 
     private static final double CIRCLE_RADIUS = 110.0;
 
     @FXML private ImageView myImageView;
-    @FXML private Label nickname, balance, err;
+    @FXML private Label nickname, balance, err, thongbao;
     @FXML private TextArea desc;
 
     private Gson gson = GsonUtils.getInstance();
@@ -59,6 +58,7 @@ public class ControllerProfile extends BaseController implements Initializable, 
 
     private void updateUI(String nick, double bal, String avt, String description) {
         nickname.setText(nick);
+        // Đã giữ lại phần hiển thị số dư cho Admin
         balance.setText(String.format("%,.0f VNĐ", bal));
         desc.setText(description == null ? "" : description);
         loadUserAvatar(avt);
@@ -69,7 +69,6 @@ public class ControllerProfile extends BaseController implements Initializable, 
 
         String imageData;
         if (selectedFile != null) {
-            // Dùng tiện ích xịn sò để mã hóa ảnh
             imageData = ImageUtils.fileToBase64(selectedFile);
         } else {
             imageData = UserSession.getInstance().getUser().getAvatarURL();
@@ -97,9 +96,7 @@ public class ControllerProfile extends BaseController implements Initializable, 
             }
 
             Image image;
-            // Nếu là chuỗi Base64 dài ngoằng (không phải link web hay file cứng)
             if (!pathOrBase64.startsWith("file:/") && !pathOrBase64.startsWith("http")) {
-                // Dùng hàm giải mã Base64 sang ảnh
                 image = ImageUtils.base64ToImage(pathOrBase64);
             } else {
                 image = new Image(pathOrBase64, true);
@@ -129,7 +126,7 @@ public class ControllerProfile extends BaseController implements Initializable, 
         Stage alertStage = (Stage) alert.getDialogPane().getScene().getWindow();
         alertStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/logo.png")));
         alert.setHeaderText(null);
-        alert.setContentText("Bạn có chắc chắn muốn đăng xuất không?");
+        alert.setContentText("Bạn có chắc chắn muốn đăng xuất khỏi tài khoản Quản trị không?");
         ButtonType btnYes = new ButtonType("Có", ButtonBar.ButtonData.OK_DONE);
         ButtonType btnNo = new ButtonType("Không", ButtonBar.ButtonData.CANCEL_CLOSE);
         alert.getButtonTypes().setAll(btnYes, btnNo);
@@ -141,8 +138,6 @@ public class ControllerProfile extends BaseController implements Initializable, 
 
             UserSession.getInstance().cleanUserSession();
 
-            // Chú ý: Hàm changeScene trong BaseController đang nhận tham số (Button, String).
-            // Nếu báo lỗi ở đoạn này, bạn hãy tự sửa lại tham số truyền vào cho đúng nhé!
             Button btnSource = (Button) e.getSource();
             changeScene(btnSource, "start.fxml");
         }
@@ -159,13 +154,14 @@ public class ControllerProfile extends BaseController implements Initializable, 
 
         if (alert.showAndWait().orElse(btnNo) == btnYes) {
             Button btnSource = (Button) e.getSource();
-            changeScene(btnSource, "profile.fxml");
+            // ĐIỂM KHÁC BIỆT: Điều hướng về file adminProfile.fxml
+            changeScene(btnSource, "adminProfile.fxml");
         }
     }
 
     public void uploadImage(MouseEvent event) {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Chọn ảnh đại diện");
+        fileChooser.setTitle("Chọn ảnh đại diện Admin");
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif")
         );
@@ -200,7 +196,6 @@ public class ControllerProfile extends BaseController implements Initializable, 
                 String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
 
                 if ("SUCCESS".equals(status)) {
-                    // 1. Load Profile
                     if (message.contains("Thông tin") && jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull()) {
                         JsonObject data = jsonResponse.getAsJsonObject("payload");
 
@@ -209,30 +204,32 @@ public class ControllerProfile extends BaseController implements Initializable, 
                         String avt = data.has("avatarURL") ? data.get("avatarURL").getAsString() : "";
                         String description = data.has("description") ? data.get("description").getAsString() : "";
 
-                        updateUI(nick, bal, avt, description); // Tái sử dụng hàm cho gọn
+                        updateUI(nick, bal, avt, description);
 
                         user.setNickname(nick);
                         user.setBalance(bal);
                         user.setAvatar(avt);
                         user.setDescription(description);
                     }
-                    // 2. Update thành công
                     else if (message.contains("Cập nhật")) {
                         user.setDescription(desc.getText());
                         if (selectedFile != null) {
                             user.setAvatar(ImageUtils.fileToBase64(selectedFile));
                         }
-                        err.setStyle("-fx-text-fill: green;");
-                        err.setText("Cập nhật hồ sơ thành công!!");
+                        if (err != null) {
+                            err.setStyle("-fx-text-fill: green;");
+                            err.setText("Cập nhật hồ sơ Admin thành công!!");
+                        }
                     }
-                    // 3. Log out
                     else if (message.contains("Đã đăng xuất")) {
-                        System.out.println("Đăng xuất hoàn tất.");
+                        System.out.println("Admin đã đăng xuất hoàn tất.");
                     }
                 }
                 else if ("ERROR".equals(status) || "FAILED".equals(status)) {
-                    err.setStyle("-fx-text-fill: red;");
-                    err.setText("Lỗi: " + message);
+                    if (err != null) {
+                        err.setStyle("-fx-text-fill: red;");
+                        err.setText("Lỗi: " + message);
+                    }
                 }
 
             } catch (Exception e) {

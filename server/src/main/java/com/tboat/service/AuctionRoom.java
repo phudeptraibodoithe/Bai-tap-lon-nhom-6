@@ -148,10 +148,14 @@ public class AuctionRoom {
      * Gửi thông báo JSON tới tất cả người dùng trong phòng
      */
     public void broadcast(String action, String message, Object payload) {
+        if (subscribers.isEmpty()) return; // Tối ưu: Nếu phòng trống thì khỏi tốn công chạy đa luồng
         for (ClientHandler client : subscribers) {
-            // Dùng Executor riêng để không làm nghẽn hệ thống
             CompletableFuture.runAsync(() -> {
-                client.sendSystemMessage(action, message, payload);
+                try {
+                    client.sendSystemMessage(action, message, payload);
+                } catch (Exception e) {
+                    System.err.println("[Broadcast]: Lỗi gửi tin cho một Client: " + e.getMessage());
+                }
             }, ServerMain.broadcastExecutor);
         }
     }

@@ -1,9 +1,9 @@
 package com.tboat.models;
 
 public class Participation {
-    private String accountName;    // Khóa ngoại từ bảng User
-    private int auctionSessionId;  // Khóa ngoại từ bảng Auction_Session
-    private String roleType;       // "BIDDER" hoặc "SELLER"
+    private String accountName;
+    private int auctionSessionId;
+    private String roleType;
 
     public Participation() {}
 

@@ -6,6 +6,7 @@ import com.google.gson.JsonParser;
 import com.tboat.models.User;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.ImageUtils;
 import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
@@ -38,7 +39,7 @@ public class ControllerProfile extends BaseController implements Initializable, 
     @FXML private Label nickname, balance, err;
     @FXML private TextArea desc;
 
-    private Gson gson = new Gson();
+    private Gson gson = GsonUtils.getInstance();
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {

@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -30,7 +31,7 @@ public class NapRutController extends BaseController implements Initializable, S
     private final String CORRECT_PIN = "123456";
     private boolean isDepositMode = true;
 
-    private Gson gson = new Gson();
+    private Gson gson = GsonUtils.getInstance();
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle){

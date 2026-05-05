@@ -4,9 +4,12 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.models.AuctionSession;
+import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
-import com.tboat.utilsclient.ImageUtils; // THÊM IMPORT NÀY
+import com.tboat.utils.GsonUtils;
+import com.tboat.utilsclient.ImageUtils;
+import com.tboat.utilsclient.AuctionTimer;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -31,20 +34,46 @@ public class AuctionController extends BaseController implements SocketListener 
     @FXML private Label Description;
     @FXML private Label CurrentPrice;
     @FXML private Label HighestBidder;
-    @FXML private Label NextPrice;
 
     @FXML private TextField BidAmount;
     @FXML private Button btnBid;
 
     private AuctionSession currentSession;
-    private Gson gson = new Gson();
+    private Gson gson = GsonUtils.getInstance();
+    private AuctionTimer auctionTimer;
 
+    public void setItemData(AuctionSession item) {
+        if (item == null) return;
+        this.currentSession = item;
+        System.out.println("🕒 KIỂM TRA THỜI GIAN KẾT THÚC: " + currentSession.getEndTime());
+        updateUI();
+
+        // NẾU CÓ THỜI GIAN KẾT THÚC, GỌI CLASS ĐẾM GIỜ
+        if (currentSession.getEndTime() != null) {
+            if (auctionTimer != null) auctionTimer.stop();
+
+            auctionTimer = new AuctionTimer(
+                    currentSession.getEndTime(),
+                    // Hàm onTick (Mỗi giây trôi qua)
+                    timeString -> {
+                        TimeRemaining.setText(timeString);
+                    },
+                    // Hàm onFinish (Khi hết giờ)
+                    () -> {
+                        TimeRemaining.setText("00 : 00 : 00");
+                        TimeRemaining.setStyle("-fx-text-fill: red;");
+                        if (btnBid != null) btnBid.setDisable(true);
+                    }
+            );
+            auctionTimer.start();
+        }
+    }
     @FXML
     public void initialize() {
         SocketManager.getInstance().subscribe(this);
     }
 
-    public void setItemData(AuctionSession item) {
+    /*public void setItemData(AuctionSession item) {
         if (item == null) return;
 
         this.currentSession = item;
@@ -55,7 +84,7 @@ public class AuctionController extends BaseController implements SocketListener 
         request.addProperty("payload", item.getId());
 
         SocketManager.getInstance().send(gson.toJson(request));
-    }
+    }*/
 
     private void updateUI() {
         NameItem.setText(currentSession.getName());
@@ -65,9 +94,8 @@ public class AuctionController extends BaseController implements SocketListener 
         CurrentPrice.setText(String.format("%,.0f VNĐ", currentSession.getCurrentPrice()));
 
         double nextMin = currentSession.getCurrentPrice() + currentSession.getBidIncrease();
-        NextPrice.setText(String.format("Mức giá tối thiểu tiếp theo: %,.0f VNĐ", nextMin));
 
-        String statusText = "🏆 Trạng thái: " + currentSession.getStatusOfAuction().name();
+        String statusText = "🏆 Trạng thái: " + (currentSession.getStatusOfAuction() != null ? currentSession.getStatusOfAuction().name() : "ONGOING");
         String topBidder = currentSession.getHighestBidderAccount();
         if (topBidder != null && !topBidder.isEmpty() && !topBidder.equals("N/A")) {
             statusText += " | Đang dẫn đầu: " + topBidder;
@@ -83,7 +111,7 @@ public class AuctionController extends BaseController implements SocketListener 
     }
 
     @FXML
-    public void handlePlaceBid(ActionEvent event) {
+    public void PlaceBid(ActionEvent event) {
         String inputBid = BidAmount.getText();
 
         if (inputBid == null || inputBid.trim().isEmpty()) {
@@ -102,9 +130,6 @@ public class AuctionController extends BaseController implements SocketListener 
 
             JsonObject request = new JsonObject();
             request.addProperty("action", "BID");
-
-            // LƯU Ý NHỎ: Hỏi lại Backend xem họ có cần truyền thêm ID của phiên đấu giá vào đây không nhé?
-            // Ví dụ: Tạo thêm 1 JsonObject nhỏ chứa { "sessionId": currentSession.getId(), "price": bidValue }
             request.addProperty("payload", bidValue);
 
             SocketManager.getInstance().send(gson.toJson(request));
@@ -159,6 +184,33 @@ public class AuctionController extends BaseController implements SocketListener 
 
                     case "SERVER_READY":
                         System.out.println("Hệ thống: " + message);
+                        break;
+
+                    // ---> LUỒNG GIA HẠN THỜI GIAN <---
+                    case "TIME_EXTENDED":
+                        showAlert(Alert.AlertType.WARNING, "Đấu giá kịch tính!", message);
+                        break;
+
+                    // ---> LUỒNG KẾT THÚC PHIÊN <---
+                    case "AUCTION_FINISHED":
+                        currentSession.setStatusOfAuction(StatusOfAuction.ENDED);
+
+                        // Cập nhật người chiến thắng
+                        if (jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull()) {
+                            JsonObject payloadObj = jsonResponse.get("payload").getAsJsonObject();
+                            String winner = payloadObj.has("winner") ? payloadObj.get("winner").getAsString() : "Không có";
+                            double finalPrice = payloadObj.has("finalPrice") ? payloadObj.get("finalPrice").getAsDouble() : currentSession.getCurrentPrice();
+
+                            currentSession.setHighestBidderAccount(winner);
+                            currentSession.setCurrentPrice(finalPrice);
+                            updateUI();
+                        }
+
+                        // Khóa nút Đặt Giá lại vì đã kết thúc
+                        btnBid.setDisable(true);
+                        HighestBidder.setText("🏆 KẾT THÚC | Người chiến thắng: " + currentSession.getHighestBidderAccount());
+
+                        showAlert(Alert.AlertType.INFORMATION, "Kết thúc phiên đấu giá", message);
                         break;
 
                     case "FAILED":

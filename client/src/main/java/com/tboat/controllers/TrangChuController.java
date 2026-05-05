@@ -9,6 +9,7 @@ import com.tboat.models.AuctionSession;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.ImageUtils;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -43,7 +44,7 @@ public class TrangChuController extends BaseController implements Initializable,
     @FXML private Button btnPostItem;
     @FXML private Button btnHistory1;
 
-    private Gson gson = new Gson();
+    private Gson gson = GsonUtils.getInstance();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -62,7 +63,7 @@ public class TrangChuController extends BaseController implements Initializable,
         }
 
         JsonObject request = new JsonObject();
-        request.addProperty("action", "GET_ALL_AUCTIONS");
+        request.addProperty("action", "LIST_AVAILABLE");
         request.addProperty("payload", "");
 
         SocketManager.getInstance().send(gson.toJson(request));
@@ -84,7 +85,7 @@ public class TrangChuController extends BaseController implements Initializable,
                     if (itemContainer != null) {
                         itemContainer.getChildren().clear();
                     }
-
+                    /*
                     for (JsonElement element : auctionArray) {
                         JsonObject dataObj = element.getAsJsonObject();
 
@@ -93,13 +94,24 @@ public class TrangChuController extends BaseController implements Initializable,
                         double currentPrice = dataObj.has("currentPrice") ? dataObj.get("currentPrice").getAsDouble() : 0.0;
                         String statusString = dataObj.has("statusOfAuction") ? dataObj.get("statusOfAuction").getAsString() : "ONGOING";
 
-                        // Lấy chuỗi base64 ảnh từ JSON (Lưu ý: Hỏi Backend xem key chính xác là "image" hay "imageData")
-                        String imageBase64 = dataObj.has("image") ? dataObj.get("image").getAsString() : "";
+                        // ĐÃ FIX: Đổi "image" thành "imageURL" cho khớp với Model ở server
+                        String imageBase64 = dataObj.has("imageURL") ? dataObj.get("imageURL").getAsString() : "";
+
+                        double bidIncrease = dataObj.has("bidIncrease") ? dataObj.get("bidIncrease").getAsDouble() : 0.0;
+                        String description = dataObj.has("description") ? dataObj.get("description").getAsString() : "Không có mô tả";
+                        String highestBidder = dataObj.has("highestBidderAccount") ? dataObj.get("highestBidderAccount").getAsString() : "";
+                        // ĐÃ FIX: Xóa tiền tố thừa của Base64 (nếu có)
+                        if (imageBase64.startsWith("data:image")) {
+                            imageBase64 = imageBase64.substring(imageBase64.indexOf(",") + 1);
+                        }
 
                         AuctionSession session = new AuctionSession();
                         session.setId(id);
                         session.setName(name);
                         session.setCurrentPrice(currentPrice);
+                        session.setBidIncrease(bidIncrease);
+                        session.setDescription(description);
+                        session.setHighestBidderAccount(highestBidder);
 
                         // Gắn chuỗi ảnh vào model
                         session.setImageURL(imageBase64);
@@ -108,6 +120,87 @@ public class TrangChuController extends BaseController implements Initializable,
                             session.setStatusOfAuction(StatusOfAuction.valueOf(statusString));
                         } catch (Exception ignored) {}
 
+                        VBox productCard = createProductCard(session);
+                        itemContainer.getChildren().add(productCard);
+                    }
+
+                    for (JsonElement element : auctionArray) {
+                        JsonObject dataObj = element.getAsJsonObject();
+
+                        // 1. DÙNG GSON ĐỂ TỰ ĐỘNG LẮP RÁP TOÀN BỘ DỮ LIỆU (Bao gồm cả endTime, startTime...)
+                        AuctionSession session = gson.fromJson(dataObj, AuctionSession.class);
+
+                        // 2. Xử lý riêng cái tiền tố ảnh Base64 (giữ nguyên logic cũ của bạn)
+                        if (session.getImageURL() != null && session.getImageURL().startsWith("data:image")) {
+                            session.setImageURL(session.getImageURL().substring(session.getImageURL().indexOf(",") + 1));
+                        }
+
+                        // 3. Tạo giao diện và thêm vào màn hình
+                        VBox productCard = createProductCard(session);
+                        itemContainer.getChildren().add(productCard);
+                    }*/
+                    for (JsonElement element : auctionArray) {
+                        JsonObject dataObj = element.getAsJsonObject();
+
+                        // 1. LẤY DỮ LIỆU CƠ BẢN (GIỮ NGUYÊN CODE CŨ AN TOÀN CỦA BẠN)
+                        int id = dataObj.has("id") ? dataObj.get("id").getAsInt() : 0;
+                        String name = dataObj.has("name") ? dataObj.get("name").getAsString() : "Sản phẩm chưa có tên";
+                        double currentPrice = dataObj.has("currentPrice") ? dataObj.get("currentPrice").getAsDouble() : 0.0;
+                        String statusString = dataObj.has("statusOfAuction") ? dataObj.get("statusOfAuction").getAsString() : "ONGOING";
+                        String imageBase64 = dataObj.has("imageURL") ? dataObj.get("imageURL").getAsString() : "";
+                        double bidIncrease = dataObj.has("bidIncrease") ? dataObj.get("bidIncrease").getAsDouble() : 0.0;
+                        String description = dataObj.has("description") ? dataObj.get("description").getAsString() : "Không có mô tả";
+                        String highestBidder = dataObj.has("highestBidderAccount") && !dataObj.get("highestBidderAccount").isJsonNull() ? dataObj.get("highestBidderAccount").getAsString() : "";
+
+                        // 2. KHỞI TẠO SESSION
+                        AuctionSession session = new AuctionSession();
+                        session.setId(id);
+                        session.setName(name);
+                        session.setCurrentPrice(currentPrice);
+                        session.setBidIncrease(bidIncrease);
+                        session.setDescription(description);
+                        session.setHighestBidderAccount(highestBidder);
+
+                        try {
+                            session.setStatusOfAuction(StatusOfAuction.valueOf(statusString));
+                        } catch (Exception ignored) {}
+
+                        // 3. XỬ LÝ ẢNH
+                        if (imageBase64.startsWith("data:image")) {
+                            imageBase64 = imageBase64.substring(imageBase64.indexOf(",") + 1);
+                        }
+                        session.setImageURL(imageBase64);
+
+                        // =========================================================
+                        // 4. MẢNH GHÉP QUAN TRỌNG: LẤY THỜI GIAN ĐỂ CHẠY ĐỒNG HỒ
+                        // Dùng try-catch riêng để nếu lỗi ngày tháng cũng KHÔNG sập giao diện
+                        // =========================================================
+                        // =========================================================
+                        // 4. MẢNH GHÉP QUAN TRỌNG: LẤY THỜI GIAN ĐỂ CHẠY ĐỒNG HỒ
+                        // =========================================================
+                        try {
+                            if (dataObj.has("endTime") && !dataObj.get("endTime").isJsonNull()) {
+                                String endStr = dataObj.get("endTime").getAsString();
+
+                                // Xóa bộ Formatter cũ đi. Chuẩn hóa chuỗi (đổi dấu cách thành chữ T nếu có)
+                                if (endStr.contains(" ")) endStr = endStr.replace(" ", "T");
+
+                                // Hàm mặc định của Java xử lý cực mượt chuỗi có chữ T
+                                session.setEndTime(java.time.LocalDateTime.parse(endStr));
+                            }
+
+                            if (dataObj.has("startTime") && !dataObj.get("startTime").isJsonNull()) {
+                                String startStr = dataObj.get("startTime").getAsString();
+
+                                if (startStr.contains(" ")) startStr = startStr.replace(" ", "T");
+
+                                session.setStartTime(java.time.LocalDateTime.parse(startStr));
+                            }
+                        } catch (Exception e) {
+                            System.out.println("⚠️ Lỗi đọc ngày tháng của sản phẩm ID " + id + ": " + e.getMessage());
+                        }
+
+                        // 5. TẠO GIAO DIỆN THẺ SẢN PHẨM VÀ HIỂN THỊ
                         VBox productCard = createProductCard(session);
                         itemContainer.getChildren().add(productCard);
                     }
@@ -167,7 +260,8 @@ public class TrangChuController extends BaseController implements Initializable,
 
         Label lblName = new Label(session.getName());
         lblName.setFont(Font.font("System", FontWeight.BOLD, 20));
-        lblName.setTextFill(Color.web("#0A1128"));
+        // ĐÃ FIX: Dùng setStyle thay vì setTextFill để ép cứng màu chữ, tránh bị CSS đè
+        lblName.setStyle("-fx-text-fill: #0A1128;");
         lblName.setWrapText(true);
         lblName.setPrefHeight(55.0);
 
@@ -218,11 +312,13 @@ public class TrangChuController extends BaseController implements Initializable,
 
         Label lblTitle = new Label(title);
         lblTitle.setFont(Font.font("System", FontWeight.BOLD, 10));
-        lblTitle.setTextFill(Color.web("#9DA3B4"));
+        // ĐÃ FIX: Ép màu bằng CSS inline
+        lblTitle.setStyle("-fx-text-fill: #9DA3B4;");
 
         Label lblValue = new Label(value);
         lblValue.setFont(Font.font("System", FontWeight.BOLD, 16));
-        lblValue.setTextFill(Color.web(colorHex));
+        // ĐÃ FIX: Ép màu bằng CSS inline, nối chuỗi colorHex
+        lblValue.setStyle("-fx-text-fill: " + colorHex + ";");
 
         col.getChildren().addAll(lblTitle, lblValue);
         return col;

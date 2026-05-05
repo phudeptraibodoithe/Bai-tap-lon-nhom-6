@@ -9,6 +9,7 @@ import com.tboat.models.AuctionSession;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -37,7 +38,7 @@ public class ManagerController extends BaseController implements Initializable, 
     @FXML private TableColumn<AuctionSession, StatusOfAuction> colStatus;
     @FXML private TableColumn<AuctionSession, Void> colAction;
 
-    private Gson gson = new Gson();
+    private Gson gson = GsonUtils.getInstance();
 
     // Danh sách để chứa dữ liệu cho TableView
     private ObservableList<AuctionSession> listMyItems = FXCollections.observableArrayList();

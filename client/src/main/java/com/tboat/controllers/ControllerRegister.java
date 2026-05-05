@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.utils.GsonUtils;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -18,7 +19,7 @@ public class ControllerRegister extends BaseController implements SocketListener
     @FXML private PasswordField passText, repassText;
     @FXML private Label err;
 
-    private Gson gson = new Gson();
+    private Gson gson = GsonUtils.getInstance();
 
     @FXML
     public void submit(ActionEvent event) {

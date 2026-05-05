@@ -92,11 +92,6 @@
                                     <children>
                                         <ImageView fx:id="ItemImage" fitHeight="300.0" fitWidth="300.0" pickOnBounds="true" preserveRatio="true">
                                         </ImageView>
-                                        <Label text="[Ảnh Sản Phẩm]" textFill="#999999">
-                                            <font>
-                                                <Font size="18.0" />
-                                            </font>
-                                        </Label>
                                     </children>
                                 </StackPane>
 
@@ -107,7 +102,7 @@
                                                 <Font size="20.0" />
                                             </font>
                                         </Label>
-                                        <Label fx:id="TimeRemaining" text="04 : 12 : 48" textFill="#cc7a00">
+                                        <Label fx:id="TimeRemaining" textFill="#cc7a00">
                                             <font>
                                                 <Font name="System Bold" size="28.0" />
                                             </font>
@@ -170,7 +165,7 @@
                                         <HBox spacing="15.0">
                                             <children>
                                                 <TextField fx:id="BidAmount" prefHeight="55.0" promptText="Nhập mức giá bạn muốn trả..." style="-fx-font-size: 16px; -fx-background-radius: 5; -fx-border-color: #cccccc; -fx-border-radius: 5;" HBox.hgrow="ALWAYS" />
-                                                <Button mnemonicParsing="false" prefHeight="55.0" prefWidth="180.0" style="-fx-background-color: #0a1a3a; -fx-background-radius: 5; -fx-cursor: hand;" text="Place Bid" textFill="WHITE">
+                                                <Button mnemonicParsing="false" onAction="#PlaceBid" prefHeight="55.0" prefWidth="180.0" style="-fx-background-color: #0a1a3a; -fx-background-radius: 5; -fx-cursor: hand;" text="Place Bid" textFill="WHITE">
                                                     <font>
                                                         <Font name="System Bold" size="18.0" />
                                                     </font>

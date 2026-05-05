@@ -9,7 +9,6 @@ import com.tboat.models.User;
 public class ParticipationContext {
     private TransactionRole roleBehavior;
 
-    // Constructor nhận vào hành vi cụ thể (Bidder hoặc Seller)
     public ParticipationContext(TransactionRole roleBehavior) {
         this.roleBehavior = roleBehavior;
     }

@@ -10,12 +10,14 @@ import com.tboat.models.AuctionSession;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.models.User;
 
+import static com.tboat.database.DatabaseConnection.getConnection;
+
 
 public class AuctionSessionDAO {
     public int addAuctionSession(AuctionSession session) {
         String sql = "INSERT INTO auction_session (startTime, endTime, currentPrice, bidIncrease, status, sellerAccount, type, name, description, imageURL, highestBidderAccount) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection c = DatabaseConnection.getConnection();
+        try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             ps.setTimestamp(1, Timestamp.valueOf(session.getStartTime()));
@@ -63,7 +65,7 @@ public class AuctionSessionDAO {
         List<AuctionSession> list = new ArrayList<>();
         String sql = "SELECT * FROM auction_session WHERE sellerAccount = ?";
 
-        try (Connection c = DatabaseConnection.getConnection();
+        try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
             ps.setString(1, accountName);
@@ -81,7 +83,7 @@ public class AuctionSessionDAO {
     public boolean cancelAuction(int sessionId) {
         String sql = "UPDATE auction_session SET status = ? " +
                 "WHERE id = ? AND status NOT IN ('ENDED')";
-        try (Connection c = DatabaseConnection.getConnection();
+        try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
             ps.setString(1, StatusOfAuction.CANCELED.name());
@@ -101,7 +103,7 @@ public class AuctionSessionDAO {
                 "WHERE status NOT IN (?, ?) " +
                 "ORDER BY status DESC, startTime ASC";
 
-        try (Connection c = DatabaseConnection.getConnection();
+        try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
             // Dùng enum.name() hoặc enum.toString() đều được
@@ -124,7 +126,7 @@ public class AuctionSessionDAO {
     public List<AuctionSession> getPendingAuctions() {
         List<AuctionSession> list = new ArrayList<>();
         String sql = "SELECT * FROM auction_session WHERE status = 'PENDING'";
-        try (Connection conn = DatabaseConnection.getConnection();
+        try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
@@ -138,7 +140,7 @@ public class AuctionSessionDAO {
 
     public boolean updateSessionStatus(int sessionId, StatusOfAuction status) {
         String sql = "UPDATE auction_session SET status = ? WHERE id = ?";
-        try (Connection c = DatabaseConnection.getConnection();
+        try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, status.name()); // An toàn tuyệt đối
             ps.setInt(2, sessionId);
@@ -151,7 +153,7 @@ public class AuctionSessionDAO {
 
     public AuctionSession getAuctionById(int sessionId) {
         String sql = "SELECT * FROM auction_session WHERE id = ?";
-        try (Connection c = DatabaseConnection.getConnection();
+        try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
             ps.setInt(1, sessionId);
@@ -166,30 +168,27 @@ public class AuctionSessionDAO {
         return null;
     }
 
-    public boolean updateSessionPriceAndHighest(int sessionId, String bidderAccount, double newPrice) {
+    // Hàm dùng trong Transaction
+    public boolean updateSessionPriceAndHighest(Connection conn, int sessionId, String bidderAccount, double newPrice) throws SQLException {
         String sql = "UPDATE auction_session SET currentPrice = ?, highestBidderAccount = ? WHERE id = ? AND currentPrice < ?";
-        try (Connection c = DatabaseConnection.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setDouble(1, newPrice);
             ps.setString(2, bidderAccount);
             ps.setInt(3, sessionId);
             ps.setDouble(4, newPrice);
             return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
         }
     }
 
     public boolean updateEndTime(int sessionId, java.time.LocalDateTime newEndTime) {
         String sql = "UPDATE auction_session SET endTime = ? WHERE id = ?";
-        try (java.sql.Connection c = com.tboat.database.DatabaseConnection.getConnection();
-             java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+        try (Connection c = getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
 
-            ps.setTimestamp(1, java.sql.Timestamp.valueOf(newEndTime));
+            ps.setTimestamp(1, Timestamp.valueOf(newEndTime));
             ps.setInt(2, sessionId);
             return ps.executeUpdate() > 0;
-        } catch (java.sql.SQLException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
             return false;
         }

@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -25,7 +26,7 @@ import java.util.ResourceBundle;
 public class ControllerHistory extends BaseController implements Initializable, SocketListener {
 
     @FXML VBox lichsu;
-    private Gson gson = new Gson();
+    private Gson gson = GsonUtils.getInstance();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {

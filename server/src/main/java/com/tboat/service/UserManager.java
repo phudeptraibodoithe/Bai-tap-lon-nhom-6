@@ -25,15 +25,15 @@ public class UserManager {
     }
 
     public ResponseCode login(String account, String password, ClientHandler handler) {
-        User user = userDAO.getUser(account);
-        if (user == null) {
-            return ResponseCode.NOT_FOUND;
-        }
-
         // KIỂM TRA: Nếu user đã có trong Map onlineUsers, không cho login nữa
         if (onlineUsers.containsKey(account)) {
             System.out.println("[UserManager]: Từ chối login - User " + account + " đang online.");
             return ResponseCode.ALREADY_LOGGED_IN;
+        }
+
+        User user = userDAO.getUser(account);
+        if (user == null) {
+            return ResponseCode.NOT_FOUND;
         }
 
         if (user.getPassword().equals(password)) {

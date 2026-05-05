@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.ImageUtils; // THÊM IMPORT NÀY
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -41,11 +42,10 @@ public class ControllerPostItem extends BaseController implements Initializable,
 
     private Stage stage;
     private File selectedFile;
-    private Gson gson = new Gson();
+    private Gson gson = GsonUtils.getInstance();
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        // 1. Lắng nghe phản hồi từ Server
         SocketManager.getInstance().subscribe(this);
 
         setupPriceSpinners();
@@ -183,7 +183,6 @@ public class ControllerPostItem extends BaseController implements Initializable,
         double startPrice = priceSpinner.getValue();
         double bidInc = jumpSpinner.getValue();
 
-        // 2. Dùng ImageUtils thay vì tự viết lại hàm
         String base64Image = ImageUtils.fileToBase64(selectedFile);
 
         JsonObject request = new JsonObject();

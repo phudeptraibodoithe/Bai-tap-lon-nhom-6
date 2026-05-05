@@ -62,6 +62,11 @@ public abstract class BaseController {
 
     @FXML public void switchToManager(ActionEvent event){changeScene((Node) event.getSource(), "manager.fxml");}
 
+    @FXML public void switchToAdminProfile(ActionEvent event){changeScene((Node) event.getSource(), "adminProfile.fxml");}
+
+    @FXML public void switchToWalletAdmin(ActionEvent event){changeScene((Node) event.getSource(), "adminNapRut.fxml");}
+
+
     @FXML public void switchToLogin(ActionEvent event) throws IOException {
         changeScene((Node) event.getSource(),"login.fxml");
     }

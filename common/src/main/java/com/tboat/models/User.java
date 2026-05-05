@@ -28,14 +28,4 @@ public class User extends Person {
     public String getAvatarURL() {
         return avatarURL;
     }
-
-    // Methods
-    public void deposit(double amount) {
-        if (amount > 0) {
-            this.balance += amount;
-        }
-        else {
-            System.out.println("Invalid!");
-        }
-    }
 }

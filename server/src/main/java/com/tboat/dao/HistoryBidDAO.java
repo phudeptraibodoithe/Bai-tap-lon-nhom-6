@@ -7,11 +7,11 @@ import java.util.List;
 import com.tboat.database.DatabaseConnection;
 import com.tboat.models.Bid;
 import com.tboat.models.History;
-import com.tboat.models.User;
-import com.tboat.utils.ResponseCode;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HistoryBidDAO {
+    private static final Logger logger = LoggerFactory.getLogger(HistoryBidDAO.class);
 
     public boolean addHistory(History history) {
         String sql = "INSERT INTO history (auctionSessionId, winnerAccountName, finalPrice, completedAt) VALUES (?, ?, ?, ?)";
@@ -31,8 +31,7 @@ public class HistoryBidDAO {
 
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Lỗi khi thêm lịch sử (addHistory): " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Lỗi khi thêm lịch sử (addHistory): ", e);
             return false;
         }
     }
@@ -58,12 +57,12 @@ public class HistoryBidDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi khi lấy lịch sử theo accountName: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Lỗi khi lấy lịch sử theo accountName: ", e);
         }
         return list;
     }
 
+    // Hàm dùng trong Transaction
     public boolean addBid(Connection conn, int sessionId, String bidderAccount, double bidAmount) throws SQLException {
         String sql = "INSERT INTO bid (auctionSessionId, bidderAccount, bidAmount, bidTime) VALUES (?, ?, ?, NOW())";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -97,7 +96,7 @@ public class HistoryBidDAO {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi lấy bids theo session: ", e);
         }
         return bidList;
     }

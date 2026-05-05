@@ -94,6 +94,11 @@
                         <!-- Thêm minWidth cho TextField để nó không bị bóp nghẹt -->
                         <TextField fx:id="txtSearch" minWidth="200.0" prefHeight="40.0" prefWidth="300.0" promptText="Tìm kiếm tên sản phẩm hoặc ID..." style="-fx-background-radius: 5;" />
                         <Button minWidth="-Infinity" mnemonicParsing="false" prefHeight="40.0" style="-fx-background-color: #3498db; -fx-cursor: hand;" text="Tìm kiếm" textFill="WHITE" />
+                  <Label fx:id="err" prefHeight="17.0" prefWidth="379.0">
+                     <font>
+                        <Font size="14.0" />
+                     </font>
+                  </Label>
                         <Region HBox.hgrow="ALWAYS" />
                     </children>
                 </HBox>

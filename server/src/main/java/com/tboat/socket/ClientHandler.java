@@ -23,16 +23,16 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 public class ClientHandler implements Runnable {
-    private Socket socket;
+    private final Socket socket;
     private PrintWriter out;
     private String clientId = "Guest";
     private AuctionRoom currentRoom;
-    private UserManager userManager = UserManager.getInstance();
-    private UserDAO userDAO = new UserDAO();
-    private HistoryBidDAO historyDAO = new HistoryBidDAO();
-    private AuctionSessionDAO auctionDAO = new AuctionSessionDAO();
-    private SellerService sellerService=new SellerService();
-    private ParticipationDAO participationDAO=new ParticipationDAO();
+    private final UserManager userManager = UserManager.getInstance();
+    private final UserDAO userDAO = new UserDAO();
+    private final HistoryBidDAO historyDAO = new HistoryBidDAO();
+    private final AuctionSessionDAO auctionDAO = new AuctionSessionDAO();
+    private final SellerService sellerService=new SellerService();
+    private final ParticipationDAO participationDAO=new ParticipationDAO();
     private static final List<String> PUBLIC_ACTIONS = Arrays.asList(
             "LOGIN", "REGISTER", "LIST_AVAILABLE", "GET_PENDING_ITEMS", "APPROVE_ITEM", "REJECT_ITEM"
     );
@@ -182,28 +182,25 @@ public class ClientHandler implements Runnable {
             JsonObject json = JsonParser.parseString(input).getAsJsonObject();
             JsonObject payload = json.getAsJsonObject("payload");
 
-            AuctionSession session = new AuctionSession();
-
-            session.setName(payload.get("name").getAsString());
-            session.setDescription(payload.get("description").getAsString());
-            session.setType(payload.get("type").getAsString());
-            session.setImageURL(payload.get("imageURL").getAsString());
-            session.setCurrentPrice(payload.get("currentPrice").getAsDouble());
-            session.setBidIncrease(payload.get("bidIncrease").getAsDouble());
-
+            // 1. Trích xuất toàn bộ dữ liệu từ JSON trước
+            String type = payload.get("type").getAsString();
+            String name = payload.get("name").getAsString();
+            String description = payload.get("description").getAsString();
+            String imageURL = payload.get("imageURL").getAsString();
+            double currentPrice = payload.get("currentPrice").getAsDouble();
+            double bidIncrease = payload.get("bidIncrease").getAsDouble();
             LocalDateTime startTime = LocalDateTime.parse(payload.get("startTime").getAsString());
             LocalDateTime endTime = LocalDateTime.parse(payload.get("endTime").getAsString());
-            session.setStartTime(startTime);
-            session.setEndTime(endTime);
 
-            session.setSellerAccountName(this.clientId);
+            AuctionFactory factory = AuctionFactoryProducer.getFactory(type);
+            AuctionSession session = factory.createAuctionSession(
+                    startTime, endTime, currentPrice, bidIncrease,
+                    this.clientId, name, description, imageURL
+            );
             session.setStatusOfAuction(StatusOfAuction.PENDING);
-
-            // Lưu vào DB
             int id = auctionDAO.addAuctionSession(session);
-
             if (id > 0) {
-                Participation p=new Participation(this.clientId,id,"SELLER");
+                Participation p = new Participation(this.clientId, id, "SELLER");
                 participationDAO.addParticipation(p);
                 sendResponse(new Response<>("SUCCESS", "Đăng sản phẩm thành công, đang chờ duyệt", id));
             } else {

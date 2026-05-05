@@ -2,7 +2,7 @@ package com.tboat.models;
 
 import java.time.LocalDateTime;
 
-public class AuctionSession {
+public abstract class AuctionSession {
     private int id;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
@@ -33,6 +33,7 @@ public class AuctionSession {
         this.imageURL = imageURL;
         this.highestBidderAccount = highestBidderAccount;
     }
+    public AuctionSession() {}
 
     public AuctionSession(LocalDateTime startTime, LocalDateTime endTime, double currentPrice,
                           double bidIncrease, String sellerAccountName, String type, String name,
@@ -46,7 +47,7 @@ public class AuctionSession {
         this.name = name;
         this.description = description;
         this.imageURL = imageURL;
-        this.highestBidderAccount = null; // Mặc định là chưa có ai
+        this.highestBidderAccount = null;
         updateStatusBasedOnTime();
     }
 
@@ -109,9 +110,6 @@ public class AuctionSession {
     public void setImageURL(String imageURL) {
         this.imageURL = imageURL;
     }
-
-    // 1. THÊM CONSTRUCTOR TRỐNG (BẮT BUỘC để dùng được new AuctionSession())
-    public AuctionSession() {}
 
     // 2. THÊM CÁC SETTER CÒN THIẾU
     public void setId(int id) { this.id = id; }

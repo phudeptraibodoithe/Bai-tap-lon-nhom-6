@@ -20,7 +20,6 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-
 import java.io.File;
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -38,7 +37,7 @@ public class AdminProfileController extends BaseController implements Initializa
     @FXML private Label nickname, balance, err, thongbao;
     @FXML private TextArea desc;
 
-    private Gson gson = GsonUtils.getInstance();
+    private final Gson gson = GsonUtils.getInstance();
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {

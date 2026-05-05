@@ -1,19 +1,17 @@
 package com.tboat.dao;
 
-
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-
-import com.tboat.database.DatabaseConnection;
-import com.tboat.models.AuctionSession;
-import com.tboat.models.StatusOfAuction;
-import com.tboat.models.User;
+import com.tboat.models.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.tboat.database.DatabaseConnection.getConnection;
 
-
 public class AuctionSessionDAO {
+    private static final Logger logger = LoggerFactory.getLogger(AuctionSessionDAO.class);
+
     public int addAuctionSession(AuctionSession session) {
         String sql = "INSERT INTO auction_session (startTime, endTime, currentPrice, bidIncrease, status, sellerAccount, type, name, description, imageURL, highestBidderAccount) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -39,26 +37,28 @@ public class AuctionSessionDAO {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi thêm AuctionSession: ", e);
         }
         return -1;
     }
 
     private AuctionSession mapResultSetToAuctionSession(ResultSet rs) throws SQLException {
-        return new AuctionSession(
-                rs.getInt("id"),
+        String type = rs.getString("type");
+        AuctionFactory factory = AuctionFactoryProducer.getFactory(type);
+        AuctionSession session = factory.createAuctionSession(
                 rs.getTimestamp("startTime").toLocalDateTime(),
                 rs.getTimestamp("endTime").toLocalDateTime(),
                 rs.getDouble("currentPrice"),
                 rs.getDouble("bidIncrease"),
-                StatusOfAuction.valueOf(rs.getString("status")),
                 rs.getString("sellerAccount"),
-                rs.getString("type"),
                 rs.getString("name"),
                 rs.getString("description"),
-                rs.getString("imageURL"),
-                rs.getString("highestBidderAccount")
+                rs.getString("imageURL")
         );
+        session.setId(rs.getInt("id"));
+        session.setStatusOfAuction(StatusOfAuction.valueOf(rs.getString("status")));
+        session.setHighestBidderAccount(rs.getString("highestBidderAccount"));
+        return session;
     }
 
     public List<AuctionSession> getAuctionsBySeller(String accountName) {
@@ -75,7 +75,7 @@ public class AuctionSessionDAO {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi lấy Auctions by Seller: ", e);
         }
         return list;
     }
@@ -91,22 +91,20 @@ public class AuctionSessionDAO {
 
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi hủy Auction: ", e);
             return false;
         }
     }
 
     public List<AuctionSession> getAvailableAuctions() {
         List<AuctionSession> list = new ArrayList<>();
-        // Thêm dấu cách trước chữ WHERE và trước chữ ORDER để không bị dính chuỗi
         String sql = "SELECT * FROM auction_session " +
                 "WHERE status NOT IN (?, ?) " +
-                "ORDER BY status DESC, startTime ASC";
+                "ORDER BY status DESC, endTime ASC";
 
         try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
-            // Dùng enum.name() hoặc enum.toString() đều được
             ps.setString(1, StatusOfAuction.PENDING.name());
             ps.setString(2, StatusOfAuction.CANCELED.name());
 
@@ -116,9 +114,7 @@ public class AuctionSessionDAO {
                 }
             }
         } catch (SQLException e) {
-            // In ra lỗi để debug nếu câu SQL có vấn đề
-            System.err.println("Lỗi truy vấn getAvailableAuctions: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Lỗi truy vấn getAvailableAuctions: ", e);
         }
         return list;
     }
@@ -130,10 +126,10 @@ public class AuctionSessionDAO {
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
-                list.add(mapResultSetToAuctionSession(rs)); // Dùng luôn hàm helper này
+                list.add(mapResultSetToAuctionSession(rs));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi lấy Pending Auctions: ", e);
         }
         return list;
     }
@@ -146,7 +142,7 @@ public class AuctionSessionDAO {
             ps.setInt(2, sessionId);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi cập nhật Session Status: ", e);
             return false;
         }
     }
@@ -163,7 +159,7 @@ public class AuctionSessionDAO {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi lấy Auction by ID: ", e);
         }
         return null;
     }
@@ -188,7 +184,7 @@ public class AuctionSessionDAO {
             ps.setInt(2, sessionId);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi cập nhật End Time: ", e);
             return false;
         }
     }

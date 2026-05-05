@@ -19,14 +19,15 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-
 import java.net.URL;
 import java.util.ResourceBundle;
+import java.util.logging.Logger;
 
 public class ControllerHistory extends BaseController implements Initializable, SocketListener {
 
     @FXML VBox lichsu;
-    private Gson gson = GsonUtils.getInstance();
+    private final Gson gson = GsonUtils.getInstance();
+    private static final Logger log = Logger.getLogger(ControllerHistory.class.getName());
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -51,11 +52,10 @@ public class ControllerHistory extends BaseController implements Initializable, 
                 JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
                 String status = jsonResponse.get("status").getAsString();
 
-                // Kiểm tra payload có phải JsonArray không để phân biệt với các SUCCESS khác
                 if ("SUCCESS".equals(status) && jsonResponse.has("payload") && jsonResponse.get("payload").isJsonArray()) {
-                    JsonArray historyArray = jsonResponse.getAsJsonArray("payload"); // Đổi từ data -> payload
+                    JsonArray historyArray = jsonResponse.getAsJsonArray("payload");
 
-                    lichsu.getChildren().clear(); // Dọn dẹp lại lần nữa trước khi render
+                    lichsu.getChildren().clear();
 
                     for (JsonElement element : historyArray) {
                         JsonObject dataObj = element.getAsJsonObject();
@@ -75,7 +75,7 @@ public class ControllerHistory extends BaseController implements Initializable, 
                     }
                 }
             } catch (Exception e) {
-                System.out.println("❌ KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
+                log.severe("KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
                 e.printStackTrace();
             }
         });

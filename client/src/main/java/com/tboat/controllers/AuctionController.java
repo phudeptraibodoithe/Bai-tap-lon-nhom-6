@@ -39,7 +39,7 @@ public class AuctionController extends BaseController implements SocketListener 
     @FXML private Button btnBid;
 
     private AuctionSession currentSession;
-    private Gson gson = GsonUtils.getInstance();
+    private final Gson gson = GsonUtils.getInstance();
     private AuctionTimer auctionTimer;
     private boolean isUserSeller = false;
 

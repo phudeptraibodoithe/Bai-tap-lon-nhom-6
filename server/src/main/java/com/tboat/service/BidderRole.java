@@ -6,11 +6,14 @@ import com.tboat.dao.UserDAO;
 import com.tboat.database.DatabaseConnection;
 import com.tboat.models.AuctionSession;
 import com.tboat.models.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 
 public class BidderRole implements TransactionRole {
+    private static final Logger logger = LoggerFactory.getLogger(BidderRole.class);
 
     /**
      * Logic đấu giá chuẩn:
@@ -38,7 +41,7 @@ public class BidderRole implements TransactionRole {
             boolean isCharged = userDAO.updateBalance(conn, bidderAccount, -amount);
             if (!isCharged) {
                 conn.rollback();
-                System.err.println("Giao dịch thất bại: Số dư không đủ!");
+                logger.error("Giao dịch thất bại: Số dư không đủ!");
                 return false;
             }
 
@@ -46,7 +49,7 @@ public class BidderRole implements TransactionRole {
             boolean isSessionUpdated = sessionDAO.updateSessionPriceAndHighest(conn, sessionId, bidderAccount, amount);
             if (!isSessionUpdated) {
                 conn.rollback();
-                System.err.println("Giao dịch thất bại: Không thể cập nhật phiên (Có thể người khác đã đặt giá cao hơn)!");
+                logger.error("Giao dịch thất bại: Không thể cập nhật phiên (Có thể người khác đã đặt giá cao hơn)!");
                 return false;
             }
 
@@ -55,7 +58,7 @@ public class BidderRole implements TransactionRole {
                 boolean isRefunded = userDAO.updateBalance(conn, previousBidder, previousPrice);
                 if (!isRefunded) {
                     conn.rollback();
-                    System.err.println("Giao dịch thất bại: Lỗi hoàn tiền cho người cũ!");
+                    logger.error("Giao dịch thất bại: Lỗi hoàn tiền cho người cũ!");
                     return false;
                 }
             }
@@ -64,7 +67,7 @@ public class BidderRole implements TransactionRole {
             boolean isBidRecorded = bidDAO.addBid(conn, sessionId, bidderAccount, amount);
             if (!isBidRecorded) {
                 conn.rollback();
-                System.err.println("Giao dịch thất bại: Lỗi lưu lịch sử bid!");
+                logger.error("Giao dịch thất bại: Lỗi lưu lịch sử bid!");
                 return false;
             }
 

@@ -5,6 +5,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.tboat.models.AuctionFactory;
+import com.tboat.models.AuctionFactoryProducer;
 import com.tboat.models.AuctionSession;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.SocketListener;
@@ -12,14 +14,10 @@ import com.tboat.socket.SocketManager;
 import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.ImageUtils;
 import javafx.application.Platform;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.effect.DropShadow;
@@ -29,22 +27,22 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import javafx.stage.Stage;
-
 import java.net.URL;
+import java.time.LocalDateTime;
 import java.util.ResourceBundle;
+import java.util.logging.Logger;
 
 public class TrangChuController extends BaseController implements Initializable, SocketListener {
 
     @FXML private FlowPane itemContainer;
 
-    // Các nút điều hướng (Nên có fx:id trong FXML)
     @FXML private Button btnHome;
     @FXML private Button btnHistory;
     @FXML private Button btnPostItem;
     @FXML private Button btnHistory1;
 
-    private Gson gson = GsonUtils.getInstance();
+    private final Gson gson = GsonUtils.getInstance();
+    private static final Logger logger = Logger.getLogger(TrangChuController.class.getName());
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -87,9 +85,8 @@ public class TrangChuController extends BaseController implements Initializable,
                     }
                     for (JsonElement element : auctionArray) {
                         JsonObject dataObj = element.getAsJsonObject();
-
-                        // 1. LẤY DỮ LIỆU CƠ BẢN (GIỮ NGUYÊN CODE CŨ AN TOÀN CỦA BẠN)
                         int id = dataObj.has("id") ? dataObj.get("id").getAsInt() : 0;
+                        String type = dataObj.has("type") ? dataObj.get("type").getAsString() : "Khác";
                         String name = dataObj.has("name") ? dataObj.get("name").getAsString() : "Sản phẩm chưa có tên";
                         double currentPrice = dataObj.has("currentPrice") ? dataObj.get("currentPrice").getAsDouble() : 0.0;
                         String statusString = dataObj.has("statusOfAuction") ? dataObj.get("statusOfAuction").getAsString() : "ONGOING";
@@ -97,18 +94,27 @@ public class TrangChuController extends BaseController implements Initializable,
                         double bidIncrease = dataObj.has("bidIncrease") ? dataObj.get("bidIncrease").getAsDouble() : 0.0;
                         String description = dataObj.has("description") ? dataObj.get("description").getAsString() : "Không có mô tả";
                         String highestBidder = dataObj.has("highestBidderAccount") && !dataObj.get("highestBidderAccount").isJsonNull() ? dataObj.get("highestBidderAccount").getAsString() : "";
-
-                        AuctionSession session = new AuctionSession();
+                        String sellerAccount = dataObj.has("sellerAccountName") && !dataObj.get("sellerAccountName").isJsonNull() ? dataObj.get("sellerAccountName").getAsString() : "N/A";
+                        LocalDateTime startTime = LocalDateTime.now();
+                        if (dataObj.has("startTime") && !dataObj.get("startTime").isJsonNull()) {
+                            startTime = LocalDateTime.parse(dataObj.get("startTime").getAsString());
+                        }
+                        LocalDateTime endTime = LocalDateTime.now().plusDays(1);
+                        if (dataObj.has("endTime") && !dataObj.get("endTime").isJsonNull()) {
+                            endTime = LocalDateTime.parse(dataObj.get("endTime").getAsString());
+                        }
+                        AuctionFactory factory = AuctionFactoryProducer.getFactory(type);
+                        AuctionSession session = factory.createAuctionSession(
+                                startTime, endTime, currentPrice, bidIncrease,
+                                sellerAccount, name, description, imageBase64
+                        );
                         session.setId(id);
-                        session.setName(name);
-                        session.setCurrentPrice(currentPrice);
-                        session.setBidIncrease(bidIncrease);
-                        session.setDescription(description);
                         session.setHighestBidderAccount(highestBidder);
-
                         try {
                             session.setStatusOfAuction(StatusOfAuction.valueOf(statusString));
-                        } catch (Exception ignored) {}
+                        } catch (IllegalArgumentException e) {
+                            session.setStatusOfAuction(StatusOfAuction.ONGOING);
+                        }
 
                         if (imageBase64.startsWith("data:image")) {
                             imageBase64 = imageBase64.substring(imageBase64.indexOf(",") + 1);
@@ -126,7 +132,7 @@ public class TrangChuController extends BaseController implements Initializable,
                                 session.setStartTime(java.time.LocalDateTime.parse(startStr));
                             }
                         } catch (Exception e) {
-                            System.out.println("⚠️ Lỗi đọc ngày tháng của sản phẩm ID " + id + ": " + e.getMessage());
+                            logger.warning("⚠️ Lỗi đọc ngày tháng của sản phẩm ID " + id + ": " + e.getMessage());
                         }
                         VBox productCard = createProductCard(session);
                         itemContainer.getChildren().add(productCard);
@@ -134,7 +140,7 @@ public class TrangChuController extends BaseController implements Initializable,
                 }
             } catch (Exception e) {
                 if (response.contains("{")) {
-                    System.out.println("❌ LỖI ĐỌC JSON TRANG CHỦ: " + response);
+                    logger.severe("❌ LỖI ĐỌC JSON TRANG CHỦ: " + response);
                     e.printStackTrace();
                 }
             }

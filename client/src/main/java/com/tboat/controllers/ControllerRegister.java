@@ -12,6 +12,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import java.util.logging.Logger;
 
 public class ControllerRegister extends BaseController implements SocketListener {
 
@@ -19,7 +20,8 @@ public class ControllerRegister extends BaseController implements SocketListener
     @FXML private PasswordField passText, repassText;
     @FXML private Label err;
 
-    private Gson gson = GsonUtils.getInstance();
+    private final Gson gson = GsonUtils.getInstance();
+    private static final Logger logger = Logger.getLogger(ControllerRegister.class.getName());
 
     @FXML
     public void submit(ActionEvent event) {
@@ -84,7 +86,7 @@ public class ControllerRegister extends BaseController implements SocketListener
             } catch (Exception e) {
                 err.setStyle("-fx-text-fill: red;");
                 err.setText("Lỗi đọc dữ liệu từ Server!");
-                System.out.println("❌ KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
+                logger.severe("❌ KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
             }
         });
     }

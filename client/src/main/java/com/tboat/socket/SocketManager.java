@@ -5,14 +5,14 @@ import java.io.*;
 import java.net.Socket;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.logging.Logger;
 
 public class SocketManager {
+    private static final Logger log = Logger.getLogger(SocketManager.class.getName());
     private static SocketManager instance;
     private Socket socket;
     private PrintWriter out;
     private BufferedReader in;
-
-    // Danh sách an toàn cho đa luồng để chứa các người nhận tin
     private final List<SocketListener> listeners = new CopyOnWriteArrayList<>();
 
     private SocketManager() {}
@@ -29,7 +29,7 @@ public class SocketManager {
             this.socket = new Socket(ip, port);
             this.out = new PrintWriter(socket.getOutputStream(), true);
             this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            System.out.println("[SocketManager] Kết nối thành công đến " + ip + ":" + port);
+            log.info("[SocketManager] Kết nối thành công đến " + ip + ":" + port);
 
             startListening();
         }
@@ -51,9 +51,6 @@ public class SocketManager {
                 String response;
                 while (socket != null && !socket.isClosed() && (response = in.readLine()) != null) {
                     final String msg = response;
-
-                    // Duyệt danh sách và gửi tin nhắn cho mọi Subscriber
-                    // Platform.runLater đảm bảo cập nhật UI JavaFX an toàn từ thread khác
                     Platform.runLater(() -> {
                         for (SocketListener listener : listeners) {
                             listener.handleServerResponse(msg);
@@ -61,7 +58,7 @@ public class SocketManager {
                     });
                 }
             } catch (IOException e) {
-                System.err.println("[SocketManager] Mất kết nối server.");
+                log.severe("[SocketManager] Mất kết nối server.");
                 close();
             }
         });

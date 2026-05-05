@@ -6,6 +6,7 @@ import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import com.tboat.utils.GsonUtils;
+import com.tboat.utilsclient.CurrencyFormatter;
 import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -17,6 +18,7 @@ import javafx.scene.control.TextField;
 
 import java.net.URL;
 import java.util.ResourceBundle;
+import java.util.logging.Logger;
 
 public class NapRutController extends BaseController implements Initializable, SocketListener {
 
@@ -30,16 +32,35 @@ public class NapRutController extends BaseController implements Initializable, S
     private double currentBalance = UserSession.getInstance().getBalance();
     private final String CORRECT_PIN = "123456";
     private boolean isDepositMode = true;
-
-    private Gson gson = GsonUtils.getInstance();
+    private final Gson gson = GsonUtils.getInstance();
+    private static final Logger logger = Logger.getLogger(NapRutController.class.getName());
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle){
         updateBalanceLabel();
+        setupAmountFieldFormat();
         txtPin.setText("123456");
         btnTabDeposit.setOnAction(event -> switchToDepositMode());
         btnTabWithdraw.setOnAction(event -> switchToWithdrawMode());
         btnSubmit.setOnAction(event -> handleTransaction());
+    }
+
+    private void setupAmountFieldFormat() {
+        txtAmount.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal) {
+                Double value = CurrencyFormatter.parse(txtAmount.getText());
+                if (value > 0) {
+                    txtAmount.setText(CurrencyFormatter.format(value));
+                }
+            } else {
+                Double value = CurrencyFormatter.parse(txtAmount.getText());
+                if (value == 0.0) {
+                    txtAmount.setText("");
+                } else {
+                    txtAmount.setText(String.format("%.0f", value));
+                }
+            }
+        });
     }
 
     private void switchToDepositMode() {
@@ -61,7 +82,7 @@ public class NapRutController extends BaseController implements Initializable, S
     }
 
     private void updateBalanceLabel() {
-        lblBalance.setText(String.format("%,.0f", currentBalance));
+        lblBalance.setText(CurrencyFormatter.format(currentBalance));
     }
 
     private void handleTransaction() {
@@ -78,8 +99,14 @@ public class NapRutController extends BaseController implements Initializable, S
             return;
         }
 
+        String cleanText = amountText.replaceAll("(?i)VNĐ", "").replaceAll("[\\s,.]", "");
+        if (!cleanText.matches("\\d+")) {
+            showAlert(Alert.AlertType.ERROR, "Lỗi nhập liệu", "Vui lòng chỉ nhập số hợp lệ vào ô Số tiền.");
+            return;
+        }
+
         try {
-            double amount = Double.parseDouble(amountText);
+            double amount = CurrencyFormatter.parse(amountText);
 
             if (amount <= 0) {
                 showAlert(Alert.AlertType.ERROR, "Lỗi số tiền", "Số tiền giao dịch phải lớn hơn 0!");
@@ -94,8 +121,8 @@ public class NapRutController extends BaseController implements Initializable, S
 
             SocketManager.getInstance().send(gson.toJson(request));
 
-        } catch (NumberFormatException e) {
-            showAlert(Alert.AlertType.ERROR, "Lỗi nhập liệu", "Vui lòng chỉ nhập số vào ô Số tiền.");
+        } catch (Exception e) {
+            showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Đã xảy ra lỗi khi xử lý số tiền.");
         }
     }
 
@@ -110,7 +137,6 @@ public class NapRutController extends BaseController implements Initializable, S
                 String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
 
                 if ("SUCCESS".equals(status)) {
-                    // Đọc lượng tiền thay đổi từ payload thay vì data
                     if (jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull()) {
                         double changedAmount = jsonResponse.get("payload").getAsDouble();
                         double newBalance = UserSession.getInstance().getUser().getBalance() + changedAmount;
@@ -118,6 +144,7 @@ public class NapRutController extends BaseController implements Initializable, S
                         UserSession.getInstance().getUser().setBalance(newBalance);
                         currentBalance = newBalance;
                         updateBalanceLabel();
+                        txtAmount.setText("");
 
                         String successMsg = message.isEmpty() ? "Giao dịch đã được xử lý thành công!" : message;
                         showAlert(Alert.AlertType.INFORMATION, "Thành công", successMsg);
@@ -129,7 +156,7 @@ public class NapRutController extends BaseController implements Initializable, S
 
             } catch (Exception e) {
                 showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Lỗi đọc dữ liệu từ Server.");
-                System.out.println("❌ KHÔNG THỂ ĐỌC JSON NẠP/RÚT: " + response);
+                logger.severe("❌ KHÔNG THỂ ĐỌC JSON NẠP/RÚT: " + response);
             }
         });
     }

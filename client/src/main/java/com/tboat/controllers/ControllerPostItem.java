@@ -6,7 +6,8 @@ import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import com.tboat.utils.GsonUtils;
-import com.tboat.utilsclient.ImageUtils; // THÊM IMPORT NÀY
+import com.tboat.utilsclient.CurrencyStringConverter;
+import com.tboat.utilsclient.ImageUtils;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -20,15 +21,13 @@ import javafx.scene.shape.Rectangle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
-
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
-import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ResourceBundle;
+import java.util.logging.Logger;
 
 public class ControllerPostItem extends BaseController implements Initializable, SocketListener {
     @FXML private TextField nameItem;
@@ -42,7 +41,8 @@ public class ControllerPostItem extends BaseController implements Initializable,
 
     private Stage stage;
     private File selectedFile;
-    private Gson gson = GsonUtils.getInstance();
+    private final Gson gson = GsonUtils.getInstance();
+    private static final Logger log = Logger.getLogger(ControllerPostItem.class.getName());
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -50,24 +50,17 @@ public class ControllerPostItem extends BaseController implements Initializable,
 
         setupPriceSpinners();
         setupDateTimeLogic();
-        typeComboBox.getItems().addAll("Điện tử", "Thời trang", "Đồ gia dụng", "Trang sức", "Sách", "Khác");
+        typeComboBox.getItems().addAll("Điện tử", "Thời trang", "Trang sức", "Khác");
     }
 
     private void setupPriceSpinners() {
         SpinnerValueFactory.DoubleSpinnerValueFactory valueFactory1 = new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, 0.0, 10000.0);
         SpinnerValueFactory.DoubleSpinnerValueFactory valueFactory2 = new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 0.0, 0.0, 10000.0);
-        DecimalFormat formatter = new DecimalFormat("#,###");
 
-        StringConverter<Double> converter = new StringConverter<>() {
-            @Override public String toString(Double v) { return v == null ? "0" : formatter.format(v) + " VNĐ"; }
-            @Override public Double fromString(String s) {
-                try { return s == null || s.isEmpty() ? 0.0 : Double.parseDouble(s.replaceAll("[^\\d.]", "")); }
-                catch (Exception e) { return 0.0; }
-            }
-        };
+        CurrencyStringConverter currencyConverter = new CurrencyStringConverter();
+        valueFactory1.setConverter(currencyConverter);
+        valueFactory2.setConverter(currencyConverter);
 
-        valueFactory1.setConverter(converter);
-        valueFactory2.setConverter(converter);
         priceSpinner.setValueFactory(valueFactory1);
         jumpSpinner.setValueFactory(valueFactory2);
         priceSpinner.setEditable(true);
@@ -246,7 +239,6 @@ public class ControllerPostItem extends BaseController implements Initializable,
         alert.getButtonTypes().setAll(btnYes, btnNo);
 
         if (alert.showAndWait().orElse(btnNo) == btnYes) {
-            // 3. Tận dụng hàm changeScene của BaseController cho gọn
             changeScene((Node) e.getSource(), "postItem.fxml");
         }
     }
@@ -273,7 +265,7 @@ public class ControllerPostItem extends BaseController implements Initializable,
                 }
             } catch (Exception e) {
                 showError("Lỗi đọc dữ liệu từ server.");
-                System.out.println("❌ KHÔNG THỂ ĐỌC JSON POST ITEM: " + response);
+                log.severe("KHÔNG THỂ ĐỌC JSON POST ITEM: " + response);
             }
         });
     }

@@ -14,7 +14,6 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-
 import java.net.URL;
 import java.util.ResourceBundle;
 
@@ -30,8 +29,7 @@ public class AdminWalletController extends BaseController implements Initializab
     private double currentBalance = UserSession.getInstance().getBalance();
     private final String CORRECT_PIN = "123456";
     private boolean isDepositMode = true;
-
-    private Gson gson = GsonUtils.getInstance();
+    private final Gson gson = GsonUtils.getInstance();
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle){

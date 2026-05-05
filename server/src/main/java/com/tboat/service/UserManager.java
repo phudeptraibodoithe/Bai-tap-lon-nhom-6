@@ -4,14 +4,16 @@ import com.tboat.dao.UserDAO;
 import com.tboat.models.User;
 import com.tboat.socket.ClientHandler;
 import com.tboat.utils.ResponseCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UserManager {
     private final UserDAO userDAO = new UserDAO();
     private static final Map<String, ClientHandler> onlineUsers = new ConcurrentHashMap<>();
-
-    // Thêm cơ chế Singleton
+    private static final Logger logger = LoggerFactory.getLogger(UserManager.class);
     private static volatile UserManager instance;
     private UserManager() {} // Khóa hàm khởi tạo
 
@@ -30,13 +32,13 @@ public class UserManager {
 
     public ResponseCode login(String account, String password, ClientHandler handler) {
         if (onlineUsers.containsKey(account)) {
-            System.out.println("[UserManager]: Từ chối login - User " + account + " đang online.");
+            logger.warn("[UserManager]: Từ chối login - User {} đang online.", account);
             return ResponseCode.ALREADY_LOGGED_IN;
         }
         ResponseCode loginStatus = userDAO.checkLogin(account, password);
         if (loginStatus == ResponseCode.SUCCESS) {
             onlineUsers.put(account, handler);
-            System.out.println("[UserManager]: User " + account + " is now ONLINE.");
+            logger.info("[UserManager]: User {} is now ONLINE.", account);
         }
         return loginStatus;
     }
@@ -44,7 +46,7 @@ public class UserManager {
     public void logout(String account) {
         if (account != null) {
             onlineUsers.remove(account);
-            System.out.println("[UserManager]: User " + account + " logged out.");
+            logger.info("[UserManager]: User {} logged out.", account);
         }
     }
 

@@ -2,7 +2,7 @@ package com.tboat.models; // Đảm bảo đúng package của bạn
 
 public class Request<T> {
     private String action;
-    private T payload; // Đây là nơi chứa dữ liệu (User, AuctionSession, Double...)
+    private T payload;
 
     public Request() {}
 
@@ -19,7 +19,6 @@ public class Request<T> {
         this.action = action;
     }
 
-    // Phương thức mà ClientHandler đang báo lỗi thiếu:
     public T getPayload() {
         return payload;
     }

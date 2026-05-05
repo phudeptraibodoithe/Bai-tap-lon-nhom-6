@@ -5,6 +5,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.tboat.models.AuctionFactory;
+import com.tboat.models.AuctionFactoryProducer;
 import com.tboat.models.AuctionSession;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.SocketListener;
@@ -23,13 +25,14 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.util.Callback;
-
 import java.net.URL;
+import java.time.LocalDateTime;
 import java.util.ResourceBundle;
+import java.util.logging.Logger;
 
 public class ManagerController extends BaseController implements Initializable, SocketListener {
 
-    // 1. LIÊN KẾT CÁC ID TỪ FXML
+
     @FXML private TableView<AuctionSession> tableMyItems;
     @FXML private TableColumn<AuctionSession, Integer> colId;
     @FXML private TableColumn<AuctionSession, String> colName;
@@ -38,9 +41,8 @@ public class ManagerController extends BaseController implements Initializable, 
     @FXML private TableColumn<AuctionSession, StatusOfAuction> colStatus;
     @FXML private TableColumn<AuctionSession, Void> colAction;
 
-    private Gson gson = GsonUtils.getInstance();
-
-    // Danh sách để chứa dữ liệu cho TableView
+    private final Gson gson = GsonUtils.getInstance();
+    private static final Logger logger = Logger.getLogger(ManagerController.class.getName());
     private ObservableList<AuctionSession> listMyItems = FXCollections.observableArrayList();
 
     @Override
@@ -64,8 +66,6 @@ public class ManagerController extends BaseController implements Initializable, 
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("statusOfAuction"));
         colType.setCellValueFactory(new PropertyValueFactory<>("type"));
-
-        // Định dạng cột Giá tiền (Thêm dấu phẩy và chữ VNĐ)
         colPrice.setCellValueFactory(new PropertyValueFactory<>("currentPrice"));
         colPrice.setCellFactory(column -> new TableCell<AuctionSession, Double>() {
             @Override
@@ -88,7 +88,7 @@ public class ManagerController extends BaseController implements Initializable, 
                         btn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-cursor: hand;");
                         btn.setOnAction((ActionEvent event) -> {
                             AuctionSession data = getTableView().getItems().get(getIndex());
-                            System.out.println("Bạn vừa bấm vào sản phẩm: " + data.getName());
+                            logger.info("Bạn vừa bấm vào sản phẩm: " + data.getName());
                             // Bạn có thể viết code chuyển sang trang Item/Auction ở đây
                         });
                     }
@@ -105,8 +105,6 @@ public class ManagerController extends BaseController implements Initializable, 
                 };
             }
         });
-
-        // Gắn danh sách trống vào bảng
         tableMyItems.setItems(listMyItems);
     }
 
@@ -134,30 +132,44 @@ public class ManagerController extends BaseController implements Initializable, 
 
                 if ("SUCCESS".equals(status) && jsonResponse.has("payload") && jsonResponse.get("payload").isJsonArray()) {
                     JsonArray myArray = jsonResponse.getAsJsonArray("payload");
-
-                    // Xóa dữ liệu cũ trong bảng
                     listMyItems.clear();
 
                     for (JsonElement element : myArray) {
                         JsonObject dataObj = element.getAsJsonObject();
 
-                        AuctionSession session = new AuctionSession();
+                        String type = dataObj.has("type") ? dataObj.get("type").getAsString() : "Khác";
+                        String name = dataObj.has("name") ? dataObj.get("name").getAsString() : "No name";
+                        double currentPrice = dataObj.has("currentPrice") ? dataObj.get("currentPrice").getAsDouble() : 0.0;
+                        double bidIncrease = dataObj.has("bidIncrease") ? dataObj.get("bidIncrease").getAsDouble() : 0.0;
+                        String sellerAccount = dataObj.has("sellerAccountName") && !dataObj.get("sellerAccountName").isJsonNull() ? dataObj.get("sellerAccountName").getAsString() : "";
+                        String description = dataObj.has("description") && !dataObj.get("description").isJsonNull() ? dataObj.get("description").getAsString() : "";
+                        String imageURL = dataObj.has("imageURL") && !dataObj.get("imageURL").isJsonNull() ? dataObj.get("imageURL").getAsString() : "";
+                        LocalDateTime startTime = LocalDateTime.now();
+                        if (dataObj.has("startTime") && !dataObj.get("startTime").isJsonNull()) {
+                            startTime = LocalDateTime.parse(dataObj.get("startTime").getAsString());
+                        }
+                        LocalDateTime endTime = LocalDateTime.now().plusDays(1);
+                        if (dataObj.has("endTime") && !dataObj.get("endTime").isJsonNull()) {
+                            endTime = LocalDateTime.parse(dataObj.get("endTime").getAsString());
+                        }
+                        AuctionFactory factory = AuctionFactoryProducer.getFactory(type);
+                        AuctionSession session = factory.createAuctionSession(
+                                startTime, endTime, currentPrice, bidIncrease,
+                                sellerAccount, name, description, imageURL
+                        );
                         session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
-                        session.setName(dataObj.has("name") ? dataObj.get("name").getAsString() : "No name");
-                        session.setCurrentPrice(dataObj.has("currentPrice") ? dataObj.get("currentPrice").getAsDouble() : 0.0);
-                        session.setType(dataObj.has("type") ? dataObj.get("type").getAsString() : "Chưa phân loại");
                         String statusString = dataObj.has("statusOfAuction") ? dataObj.get("statusOfAuction").getAsString() : "ONGOING";
                         try {
                             session.setStatusOfAuction(StatusOfAuction.valueOf(statusString));
-                        } catch (Exception ignored) {}
-
-                        // Thêm sản phẩm vào danh sách, TableView sẽ tự động hiển thị
+                        } catch (Exception ignored) {
+                            session.setStatusOfAuction(StatusOfAuction.ONGOING);
+                        }
                         listMyItems.add(session);
                     }
                 }
             } catch (Exception e) {
                 if (response.contains("{")) {
-                    System.out.println("❌ LỖI ĐỌC JSON TRANG MANAGER: " + response);
+                    logger.severe("❌ LỖI ĐỌC JSON TRANG MANAGER: " + response);
                     e.printStackTrace();
                 }
             }

@@ -5,6 +5,7 @@ import com.google.gson.reflect.TypeToken;
 import com.tboat.models.AuctionSession;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.utils.GsonUtils;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -20,10 +21,10 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import java.lang.reflect.Type;
 import java.net.URL;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
+import java.util.logging.Logger;
 
 public class AdminController extends BaseController implements Initializable, SocketListener {
 
@@ -38,11 +39,9 @@ public class AdminController extends BaseController implements Initializable, So
     @FXML private TableColumn<AuctionSession, Void> colReject;
     @FXML private Label err;
 
+    private static final Logger log = Logger.getLogger(AdminController.class.getName());
     private ObservableList<AuctionSession> sessionList;
-    private Gson gson = new GsonBuilder()
-            .registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>)
-                    (json, typeOfT, context) -> LocalDateTime.parse(json.getAsString()))
-            .create();
+    private final Gson gson = GsonUtils.getInstance();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -77,9 +76,7 @@ public class AdminController extends BaseController implements Initializable, So
                         JsonObject request = new JsonObject();
                         request.addProperty("action", actionType);
                         request.addProperty("payload", session.getId());
-                        SocketManager.getInstance().send(gson.toJson(request));
-
-                        System.out.println("Gửi lệnh (" + actionType + ") cho: " + session.getName());
+                        log.info("Gửi lệnh (" + actionType + ") cho: " + session.getName());
                         SocketManager.getInstance().send(gson.toJson(request));
 
                         getTableView().getItems().remove(session);
@@ -105,7 +102,6 @@ public class AdminController extends BaseController implements Initializable, So
         Platform.runLater(() -> {
             try {
                 JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                // Dự phòng trường hợp key của Server là "action" thay vì "status"
                 String status = jsonResponse.has("status") ? jsonResponse.get("status").getAsString() : jsonResponse.get("action").getAsString();
                 String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
 
@@ -134,10 +130,10 @@ public class AdminController extends BaseController implements Initializable, So
                         err.setStyle("-fx-text-fill: red;");
                         err.setText("Lỗi: " + message);
                     }
-                    System.out.println("❌ LỖI TỪ SERVER: " + message);
+                    log.severe("LỖI TỪ SERVER: " + message);
                 }
             } catch (Exception e) {
-                System.out.println("❌ KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
+                log.severe("KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
                 e.printStackTrace();
             }
         });

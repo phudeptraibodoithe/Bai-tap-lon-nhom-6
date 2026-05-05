@@ -6,8 +6,11 @@ import com.tboat.dao.ParticipationDAO;
 import com.tboat.dao.UserDAO;
 import com.tboat.models.AuctionSession;
 import com.tboat.models.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BiddingService {
+    private static final Logger logger = LoggerFactory.getLogger(BiddingService.class);
 
     private UserDAO userDAO;
     private AuctionSessionDAO sessionDAO;
@@ -24,12 +27,12 @@ public class BiddingService {
     public boolean placeBid(String bidderAccount, int sessionId, double newPrice) {
         AuctionSession session = sessionDAO.getAuctionById(sessionId);
         if (session == null) {
-            System.err.println("Lỗi: Không tìm thấy phiên đấu giá " + sessionId);
+            logger.error("Lỗi: Không tìm thấy phiên đấu giá {}", sessionId);
             return false;
         }
         User user = userDAO.getUser(bidderAccount);
         if (user == null) {
-            System.err.println("Lỗi: Không tìm thấy user " + bidderAccount);
+            logger.error("Lỗi: Không tìm thấy user {}", bidderAccount);
             return false;
         }
         double previousPrice = session.getCurrentPrice();

@@ -1,6 +1,5 @@
 package com.tboat.dao;
 
-
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,11 +8,14 @@ import com.tboat.database.DatabaseConnection;
 import com.tboat.models.AuctionSession;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.models.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.tboat.database.DatabaseConnection.getConnection;
 
-
 public class AuctionSessionDAO {
+    private static final Logger logger = LoggerFactory.getLogger(AuctionSessionDAO.class);
+
     public int addAuctionSession(AuctionSession session) {
         String sql = "INSERT INTO auction_session (startTime, endTime, currentPrice, bidIncrease, status, sellerAccount, type, name, description, imageURL, highestBidderAccount) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -39,7 +41,7 @@ public class AuctionSessionDAO {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi thêm AuctionSession: ", e);
         }
         return -1;
     }
@@ -75,7 +77,7 @@ public class AuctionSessionDAO {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi lấy Auctions by Seller: ", e);
         }
         return list;
     }
@@ -91,7 +93,7 @@ public class AuctionSessionDAO {
 
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi hủy Auction: ", e);
             return false;
         }
     }
@@ -117,8 +119,7 @@ public class AuctionSessionDAO {
             }
         } catch (SQLException e) {
             // In ra lỗi để debug nếu câu SQL có vấn đề
-            System.err.println("Lỗi truy vấn getAvailableAuctions: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Lỗi truy vấn getAvailableAuctions: ", e);
         }
         return list;
     }
@@ -133,7 +134,7 @@ public class AuctionSessionDAO {
                 list.add(mapResultSetToAuctionSession(rs)); // Dùng luôn hàm helper này
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi lấy Pending Auctions: ", e);
         }
         return list;
     }
@@ -146,7 +147,7 @@ public class AuctionSessionDAO {
             ps.setInt(2, sessionId);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi cập nhật Session Status: ", e);
             return false;
         }
     }
@@ -163,87 +164,34 @@ public class AuctionSessionDAO {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi lấy Auction by ID: ", e);
         }
         return null;
     }
 
-    public boolean updateSessionPriceAndHighest(int sessionId, String bidderAccount, double newPrice) {
+    // Hàm dùng trong Transaction
+    public boolean updateSessionPriceAndHighest(Connection conn, int sessionId, String bidderAccount, double newPrice) throws SQLException {
         String sql = "UPDATE auction_session SET currentPrice = ?, highestBidderAccount = ? WHERE id = ? AND currentPrice < ?";
-        try (Connection c = getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setDouble(1, newPrice);
             ps.setString(2, bidderAccount);
             ps.setInt(3, sessionId);
             ps.setDouble(4, newPrice);
             return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
         }
     }
 
     public boolean updateEndTime(int sessionId, java.time.LocalDateTime newEndTime) {
         String sql = "UPDATE auction_session SET endTime = ? WHERE id = ?";
-        try (java.sql.Connection c = getConnection();
-             java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+        try (Connection c = getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
 
-            ps.setTimestamp(1, java.sql.Timestamp.valueOf(newEndTime));
+            ps.setTimestamp(1, Timestamp.valueOf(newEndTime));
             ps.setInt(2, sessionId);
             return ps.executeUpdate() > 0;
-        } catch (java.sql.SQLException e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            logger.error("Lỗi khi cập nhật End Time: ", e);
             return false;
-        }
-    }
-
-    public boolean finalizeAuctionTransaction(int sessionId, String winner, double finalPrice, String seller) {
-        // Đảm bảo tên Table và Column khớp 100% với hàm addAuctionSession của bạn
-        String sqlStatus = "UPDATE auction_session SET status = ?, currentPrice = ?, highestBidderAccount = ? WHERE id = ?";
-        String sqlHistory = "INSERT INTO history_bids (session_id, bidder_account, bid_price, bid_time) VALUES (?, ?, ?, NOW())";
-        String sqlSeller = "UPDATE users SET balance = balance + ? WHERE account_name = ?";
-
-        Connection conn = null;
-        try {
-            conn = getConnection();
-            conn.setAutoCommit(false); // BẮT ĐẦU TRANSACTION
-
-            // 1. Cập nhật trạng thái phiên
-            try (PreparedStatement psStatus = conn.prepareStatement(sqlStatus)) {
-                psStatus.setString(1, "ENDED");
-                psStatus.setDouble(2, finalPrice);
-                psStatus.setString(3, winner);
-                psStatus.setInt(4, sessionId);
-                psStatus.executeUpdate();
-            }
-
-            // 2. Lưu lịch sử đặt giá
-            try (PreparedStatement psHistory = conn.prepareStatement(sqlHistory)) {
-                psHistory.setInt(1, sessionId);
-                psHistory.setString(2, winner);
-                psHistory.setDouble(3, finalPrice);
-                psHistory.executeUpdate();
-            }
-
-            // 3. Cộng tiền cho người bán
-            try (PreparedStatement psSeller = conn.prepareStatement(sqlSeller)) {
-                psSeller.setDouble(1, finalPrice);
-                psSeller.setString(2, seller);
-                psSeller.executeUpdate();
-            }
-
-            conn.commit(); // Hoàn tất giao dịch
-            return true;
-        } catch (Exception e) {
-            if (conn != null) {
-                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
-            }
-            e.printStackTrace();
-            return false;
-        } finally {
-            if (conn != null) {
-                try { conn.close(); } catch (SQLException e) { e.printStackTrace(); }
-            }
         }
     }
 }

@@ -28,24 +28,18 @@
                         <Font size="15.0" />
                      </font>
                   </Label>
-                    <TextField fx:id="signText" layoutX="25.0" layoutY="261.0" prefHeight="25.0" prefWidth="314.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-highlight-fill: #E95C20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);" />
-                    <Label layoutX="27.0" layoutY="232.0" prefHeight="25.0" prefWidth="142.0" text="Tên Đăng Nhập">
+                    <TextField fx:id="signText" layoutX="25.0" layoutY="284.0" prefHeight="25.0" prefWidth="314.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-highlight-fill: #E95C20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);" />
+                    <Label layoutX="27.0" layoutY="255.0" prefHeight="25.0" prefWidth="142.0" text="Tên Đăng Nhập">
                         <font>
                             <Font size="16.0" />
                         </font>
                     </Label>
-                    <Label layoutX="25.0" layoutY="286.0" prefHeight="17.0" prefWidth="104.0" text="Mật Khẩu">
+                    <Label layoutX="25.0" layoutY="323.0" prefHeight="17.0" prefWidth="104.0" text="Mật Khẩu">
                         <font>
                             <Font size="16.0" />
                         </font>
                     </Label>
-                    <PasswordField fx:id="passText" layoutX="25.0" layoutY="311.0" prefHeight="25.0" prefWidth="314.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-highlight-fill: #E95C20;" />
-                  <TextField fx:id="ipText" layoutX="25.0" layoutY="377.0" prefHeight="25.0" prefWidth="314.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-highlight-fill: #E95C20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);" />
-                  <Label layoutX="27.0" layoutY="348.0" prefHeight="25.0" prefWidth="142.0" text="Ipv4 Server">
-                     <font>
-                        <Font size="16.0" />
-                     </font>
-                  </Label>
+                    <PasswordField fx:id="passText" layoutX="25.0" layoutY="348.0" prefHeight="25.0" prefWidth="314.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-highlight-fill: #E95C20;" />
                </children></AnchorPane>
               <ImageView fitHeight="240.0" fitWidth="437.0" layoutX="189.0" onMouseClicked="#switchToStart" pickOnBounds="true" preserveRatio="true" style="-fx-cursor: hand;">
                   <image>

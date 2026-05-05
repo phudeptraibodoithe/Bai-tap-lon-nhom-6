@@ -22,6 +22,8 @@ public abstract class Person {
         this.balance = balance;
     }
 
+    public Person(){}
+
     // Setters
     public void setNickname(String nickname) {
         this.nickname = nickname;

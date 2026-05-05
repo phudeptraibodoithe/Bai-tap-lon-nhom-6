@@ -4,12 +4,16 @@ import com.tboat.ServerMain;
 import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.dao.HistoryBidDAO;
 import com.tboat.dao.UserDAO;
+import com.tboat.database.DatabaseConnection;
 import com.tboat.models.AuctionSession;
 import com.tboat.models.History;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.ClientHandler;
 import com.tboat.utils.ResponseCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.sql.Connection;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -18,6 +22,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class AuctionRoom {
+    private static final Logger logger = LoggerFactory.getLogger(AuctionRoom.class);
+
     private final int sessionId;
     private double currentPrice;
     private String lastBidder;
@@ -77,25 +83,67 @@ public class AuctionRoom {
             if (lastBidder != null) {
                 String seller = session.getSellerAccountName();
 
-                // GỌI TRANSACTION DUY NHẤT Ở ĐÂY
-                boolean success = sessionDAO.finalizeAuctionTransaction(sessionId, lastBidder, currentPrice, seller);
+                try {
+                    // 1. Cập nhật trạng thái phiên thành ENDED
+                    boolean statusOk = sessionDAO.updateSessionStatus(sessionId, StatusOfAuction.ENDED);
 
-                if (success) {
-                    Map<String, Object> payload = new HashMap<>();
-                    payload.put("winner", lastBidder);
-                    payload.put("finalPrice", currentPrice);
-                    broadcast("AUCTION_FINISHED", "Phiên đấu giá kết thúc thành công!", payload);
-                } else {
-                    // Xử lý lỗi hệ thống nếu transaction thất bại
-                    System.err.println("[CRITICAL]: Không thể chốt phiên " + sessionId);
+                    // 2. Thêm vào bảng lịch sử
+                    History history = new History(sessionId, lastBidder, currentPrice, LocalDateTime.now());
+                    boolean historyOk = historyDAO.addHistory(history);
+
+                    // 3. Gọi hàm chia tiền
+                    boolean paymentOk = divideMoney(seller, currentPrice);
+
+                    // 4. Kiểm tra
+                    if (statusOk && historyOk && paymentOk) {
+                        Map<String, Object> payload = new HashMap<>();
+                        payload.put("winner", lastBidder);
+                        payload.put("finalPrice", currentPrice);
+                        broadcast("AUCTION_FINISHED", "Phiên đấu giá kết thúc thành công!", payload);
+                        logger.info("[Server]: ✅ Đã chốt phiên {} thành công!", sessionId);
+                    } else {
+                        logger.error("[CRITICAL]: Lỗi chốt phiên {} (DB thất bại)", sessionId);
+                    }
+                } catch (Exception e) {
+                    logger.error("[CRITICAL]: Ngoại lệ khi chốt phiên {}", sessionId, e);
                 }
+
             } else {
-                // Trường hợp không ai thèm mua
+                // Trường hợp không ai mua
                 sessionDAO.updateSessionStatus(sessionId, StatusOfAuction.ENDED);
                 broadcast("AUCTION_FINISHED", "Kết thúc, không có người thắng", null);
             }
         }
         AuctionManager.getInstance().removeRoom(sessionId);
+    }
+
+    /**
+     * Xử lý chia tiền: 10% cho Admin, 90% cho người bán
+     * Trả về true nếu giao dịch an toàn và thành công
+     */
+    private boolean divideMoney(String sellerAccount, double totalAmount) {
+        double adminFee = totalAmount * 0.10;
+        double sellerRevenue = totalAmount - adminFee;
+
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            conn.setAutoCommit(false);
+
+            boolean adminOk = userDAO.updateBalance(conn, "admin", adminFee);
+            boolean sellerOk = userDAO.updateBalance(conn, sellerAccount, sellerRevenue);
+
+            if (adminOk && sellerOk) {
+                conn.commit();
+                logger.info("[Payment]: Đã chia tiền -> Admin: {}, Seller: {}", adminFee, sellerRevenue);
+                return true;
+            } else {
+                conn.rollback(); // Lỗi 1 trong 2 thì hoàn tiền
+                logger.error("[Payment]: Lỗi khi cập nhật số dư, đã Rollback!");
+                return false;
+            }
+        } catch (Exception e) {
+            logger.error("[Payment]: Lỗi ngoại lệ khi chia tiền", e);
+            return false;
+        }
     }
 
     /**

@@ -26,6 +26,11 @@
             </ImageView>
                 <Button mnemonicParsing="false" onAction="#switchToMenu" style="-fx-background-color: transparent;" text="Trang chủ" />
                 <Button mnemonicParsing="false" onAction="#switchToHistory" style="-fx-background-color: transparent;" text="Lịch sử" />
+            <Button mnemonicParsing="false" onAction="#switchToManager" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Quản lý sản phẩm">
+               <font>
+                  <Font size="14.0" />
+               </font>
+            </Button>
             <Button mnemonicParsing="false" onAction="#switchToPostItem" style="-fx-background-color: transparent;" text="Đăng sản phẩm" />
             <Button mnemonicParsing="false" onAction="#switchToProfile" style="-fx-background-color: transparent;" text="Profile" />
             <Button fx:id="btnHome" mnemonicParsing="false" style="-fx-background-color: #F0F4FF; -fx-padding: 8 18; -fx-background-radius: 8; -fx-cursor: hand;" text="Nạp/Rút" textFill="#0A1128">

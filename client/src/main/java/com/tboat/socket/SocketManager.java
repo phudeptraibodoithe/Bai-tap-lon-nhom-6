@@ -5,8 +5,11 @@ import java.io.*;
 import java.net.Socket;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.logging.Logger;
 
 public class SocketManager {
+    private static final Logger log = Logger.getLogger(SocketManager.class.getName());
+
     private static SocketManager instance;
     private Socket socket;
     private PrintWriter out;
@@ -29,7 +32,7 @@ public class SocketManager {
             this.socket = new Socket(ip, port);
             this.out = new PrintWriter(socket.getOutputStream(), true);
             this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            System.out.println("[SocketManager] Kết nối thành công đến " + ip + ":" + port);
+            log.info("[SocketManager] Kết nối thành công đến " + ip + ":" + port);
 
             startListening();
         }
@@ -61,7 +64,7 @@ public class SocketManager {
                     });
                 }
             } catch (IOException e) {
-                System.err.println("[SocketManager] Mất kết nối server.");
+                log.severe("[SocketManager] Mất kết nối server.");
                 close();
             }
         });
@@ -87,6 +90,7 @@ public class SocketManager {
             e.printStackTrace();
         }
     }
+
     public boolean isConnected() {
         return socket != null && socket.isConnected() && !socket.isClosed();
     }

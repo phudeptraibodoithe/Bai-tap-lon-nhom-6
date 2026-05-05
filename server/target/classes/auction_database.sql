@@ -18,8 +18,8 @@ CREATE TABLE `auction_session` (
   `endTime` datetime NOT NULL,
   `currentPrice` double NOT NULL,
   `bidIncrease` double NOT NULL,
-  `status` varchar(50) NOT NULL, -- NOT_STARTED, ONGOING, ENDED, PENDING, CANCELED
-  `sellerAccount` varchar(50) NOT NULL, -- Khóa ngoại trỏ về User
+  `status` varchar(50) NOT NULL,
+  `sellerAccount` varchar(50) NOT NULL,
   `type` varchar(50) NOT NULL,
   `name` varchar(100) NOT NULL,
   `highestBidderAccount` varchar(100) DEFAULT NULL,

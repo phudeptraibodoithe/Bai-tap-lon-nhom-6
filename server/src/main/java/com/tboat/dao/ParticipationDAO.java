@@ -2,6 +2,8 @@ package com.tboat.dao;
 
 import com.tboat.database.DatabaseConnection;
 import com.tboat.models.Participation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -9,6 +11,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class ParticipationDAO {
+    private static final Logger logger = LoggerFactory.getLogger(ParticipationDAO.class);
 
     public Participation getRoleType(String accountName, int auctionSessionId) {
         String sql = "SELECT * FROM participation WHERE accountName = ? and auctionSessionId=?";
@@ -24,7 +27,7 @@ public class ParticipationDAO {
                 }
             }
         } catch (SQLException e) { // Dùng SQLException thay vì Exception chung
-            e.printStackTrace();
+            logger.error("Lỗi khi lấy Role Type: ", e);
         }
         return null;
     }
@@ -38,7 +41,7 @@ public class ParticipationDAO {
             ps.setString(3, p.getRoleType());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi thêm Participation: ", e);
             return false;
         }
     }

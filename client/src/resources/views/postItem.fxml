@@ -3,6 +3,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.Cursor?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
@@ -35,6 +36,11 @@
                 <Button mnemonicParsing="false" onAction="#switchToHistory" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Lịch sử ">
                     <font><Font size="14.0" /></font>
                 </Button>
+            <Button mnemonicParsing="false" onAction="#switchToManager" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Quản lý sản phẩm">
+               <font>
+                  <Font size="14.0" />
+               </font>
+            </Button>
                 <Button mnemonicParsing="false" style="-fx-background-color: #F0F4FF; -fx-padding: 8 18; -fx-background-radius: 8; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Đăng sản phẩm ">
                     <font><Font name="System Bold" size="14.0" /></font>
                 </Button>
@@ -146,10 +152,19 @@
 
                                         <VBox spacing="8.0">
                                             <children>
+                                                <Label style="-fx-text-fill: #0A1128;" text="Loại sản phẩm">
+                                                    <font><Font name="System Bold" size="13.0" /></font>
+                                                </Label>
+                                                <ComboBox fx:id="typeComboBox" maxWidth="Infinity" prefHeight="45.0" promptText="Chọn loại sản phẩm..." style="-fx-background-color: #F4F5F7; -fx-background-radius: 10;" />
+                                            </children>
+                                        </VBox>
+
+                                        <VBox spacing="8.0">
+                                            <children>
                                                 <Label style="-fx-text-fill: #0A1128;" text="Mô tả chi tiết">
                                                     <font><Font name="System Bold" size="13.0" /></font>
                                                 </Label>
-                                                <TextArea fx:id="inforItem" prefHeight="198.0" prefWidth="506.0" promptText="Thông tin sản phẩm, tình trạng..." style="-fx-control-inner-background: #F4F5F7; -fx-background-radius: 10; -fx-background-color: transparent; -fx-padding: 5;" wrapText="true">
+                                                <TextArea fx:id="inforItem" prefHeight="233.0" prefWidth="506.0" promptText="Thông tin sản phẩm, tình trạng..." style="-fx-control-inner-background: #F4F5F7; -fx-background-radius: 10; -fx-background-color: transparent; -fx-padding: 5;" wrapText="true">
                                                     <font><Font size="14.0" /></font>
                                                 </TextArea>
                                             </children>
@@ -184,10 +199,10 @@
                                                     <font><Font name="System Bold" size="14.0" /></font>
                                                 </Label>
                                                 <Region HBox.hgrow="ALWAYS" />
-                                                <Button fx:id="cancle" mnemonicParsing="false" onAction="#canclePost" prefHeight="45.0" prefWidth="120.0" style="-fx-background-color: #FFF0F0; -fx-background-radius: 10; -fx-text-fill: #E63946; -fx-cursor: hand;" text="XÓA TRANG">
+                                                <Button mnemonicParsing="false" onAction="#canclePost" prefHeight="45.0" prefWidth="120.0" style="-fx-background-color: #FFF0F0; -fx-background-radius: 10; -fx-text-fill: #E63946; -fx-cursor: hand;" text="XÓA TRANG">
                                                     <font><Font name="System Bold" size="14.0" /></font>
                                                 </Button>
-                                                <Button fx:id="submit" mnemonicParsing="false" onAction="#postItem" prefHeight="45.0" prefWidth="150.0" style="-fx-background-color: #08103F; -fx-background-radius: 10; -fx-cursor: hand; -fx-text-fill: WHITE;" text="XÁC NHẬN ĐĂNG">
+                                                <Button mnemonicParsing="false" onAction="#postItem" prefHeight="45.0" prefWidth="150.0" style="-fx-background-color: #08103F; -fx-background-radius: 10; -fx-cursor: hand; -fx-text-fill: WHITE;" text="XÁC NHẬN ĐĂNG">
                                                     <font><Font name="System Bold" size="14.0" /></font>
                                                 </Button>
                                             </children>

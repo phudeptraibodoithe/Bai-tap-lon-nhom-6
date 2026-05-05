@@ -5,11 +5,9 @@ import com.google.gson.reflect.TypeToken;
 import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.dao.HistoryBidDAO;
 import com.tboat.dao.UserDAO;
+import com.tboat.database.DatabaseConnection;
 import com.tboat.models.*;
-import com.tboat.service.AuctionManager;
-import com.tboat.service.AuctionRoom;
-import com.tboat.service.AuctionTimerService;
-import com.tboat.service.UserManager;
+import com.tboat.service.*;
 import com.tboat.utils.ResponseCode;
 
 import java.io.BufferedReader;
@@ -18,6 +16,8 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.lang.reflect.Type;
 import java.net.Socket;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,6 +32,7 @@ public class ClientHandler implements Runnable {
     private UserDAO userDAO = new UserDAO();
     private HistoryBidDAO historyDAO = new HistoryBidDAO();
     private AuctionSessionDAO auctionDAO = new AuctionSessionDAO();
+    private SellerService sellerService=new SellerService();
     private static final List<String> PUBLIC_ACTIONS = Arrays.asList(
             "LOGIN", "REGISTER", "LIST_AVAILABLE", "GET_PENDING_ITEMS", "APPROVE_ITEM", "REJECT_ITEM"
     );
@@ -88,7 +89,7 @@ public class ClientHandler implements Runnable {
                 case "PROFILE": handleProfile(); break;
                 case "UPDATE_PROFILE": handleUpdateProfile(input); break;
                 case "TRANSACTION": handleTransaction(input); break;
-
+                case "CANCEL_AUCTION": handleCancelAuction(input); break;
                 case "LOGOUT":
                     userManager.logout(this.clientId);
                     this.clientId = "Guest";
@@ -235,6 +236,27 @@ public class ClientHandler implements Runnable {
             sendResponse(new Response<>("ERROR", "Lỗi lấy danh sách: " + e.getMessage(), null));
         }
     }
+
+    private void handleCancelAuction(String input) {
+        try {
+            JsonObject json = JsonParser.parseString(input).getAsJsonObject();
+            int sessionId = json.get("payload").getAsInt();
+
+            boolean success = sellerService.cancelAuction(this.clientId, sessionId);
+
+            if (success) {
+                AuctionManager.getInstance().removeRoom(sessionId);
+                sendResponse(new Response<>("SUCCESS", "Đã hủy phiên đấu giá thành công", sessionId));
+                sendSystemMessage("AUCTION_CANCELED", "Phiên " + sessionId + " đã bị người bán hủy", sessionId);
+            } else {
+                sendResponse(new Response<>("ERROR", "Không thể hủy (Bạn không phải chủ phiên hoặc đã có người đặt giá)", null));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendResponse(new Response<>("ERROR", "Dữ liệu yêu cầu hủy không hợp lệ", null));
+        }
+    }
+
     private void handleApproveItem(String input, Gson gson) {
         try {
             JsonObject json = JsonParser.parseString(input).getAsJsonObject();
@@ -317,15 +339,18 @@ public class ClientHandler implements Runnable {
     private void handleTransaction(String input) {
         JsonObject json = JsonParser.parseString(input).getAsJsonObject();
         double amount = json.get("payload").getAsDouble();
-
-        // Giả sử userDAO có hàm updateBalance xử lý cộng/trừ tiền trong CSDL
-        boolean transOk = userDAO.updateBalance(this.clientId, amount);
-
-        if (transOk) {
-            // Frontend cũ cần payload/data là số tiền thay đổi để update UI
-            sendResponse(new Response<>("TRANSACTION_SUCCESS", "Giao dịch đã được xử lý!", amount));
-        } else {
-            sendResponse(new Response<>("TRANSACTION_FAILED", "Giao dịch bị từ chối (Số dư không đủ).", null));
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            boolean transOk = userDAO.updateBalance(conn, this.clientId, amount);
+            if (transOk) {
+                // ĐÃ SỬA: Đổi "TRANSACTION_SUCCESS" thành "SUCCESS" cho khớp với dòng 90 NapRutController
+                sendResponse(new Response<>("SUCCESS", "Giao dịch đã được xử lý!", amount));
+            } else {
+                // ĐÃ SỬA: Đổi "TRANSACTION_FAILED" thành "FAILED" cho khớp với dòng 101 NapRutController
+                sendResponse(new Response<>("FAILED", "Giao dịch bị từ chối (Số dư không đủ).", null));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            sendResponse(new Response<>("ERROR", "Lỗi kết nối cơ sở dữ liệu", null));
         }
     }
 

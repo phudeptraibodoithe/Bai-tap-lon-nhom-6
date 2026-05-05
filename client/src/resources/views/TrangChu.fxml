@@ -31,6 +31,11 @@
                 <Button fx:id="btnHistory" mnemonicParsing="false" onAction="#switchToHistory" style="-fx-background-color: transparent; -fx-cursor: hand;" text="Lịch sử" textFill="#0A1128">
                     <font><Font size="14.0" /></font>
                 </Button>
+            <Button mnemonicParsing="false" onAction="#switchToManager" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Quản lý sản phẩm">
+               <font>
+                  <Font size="14.0" />
+               </font>
+            </Button>
                 <Button fx:id="btnPostItem" mnemonicParsing="false" onAction="#switchToPostItem" style="-fx-background-color: transparent; -fx-cursor: hand;" text="Đăng sản phẩm" textFill="#0A1128">
                     <font><Font size="14.0" /></font>
                 </Button>
@@ -83,7 +88,7 @@
 
                 <ScrollPane fitToWidth="true" hbarPolicy="NEVER" style="-fx-background-color: transparent; -fx-background: transparent;" VBox.vgrow="ALWAYS">
                     <content>
-                        <FlowPane hgap="35.0" vgap="35.0">
+                        <FlowPane fx:id="itemContainer" hgap="35.0" vgap="35.0">
                             <padding>
                                 <Insets bottom="20.0" left="10.0" right="10.0" top="10.0" />
                             </padding>

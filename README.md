@@ -8,7 +8,7 @@ Kiến trúc mạng: Java Socket (Mô hình Client-Server, TCP/IP)
 
 Cơ sở dữ liệu: MySQL
 
-Design Pattern: Strategy Pattern, Observer Pattern, Singleton Pattern, Abstract Factory Pattern
+Design Pattern: Strategy Pattern, Observer Pattern, Singleton Pattern, Factory Method Pattern
 
 🌟 Tính năng chính
 Đăng nhập/Đăng ký và quản lý hồ sơ người dùng, lịch sử giao dịch.

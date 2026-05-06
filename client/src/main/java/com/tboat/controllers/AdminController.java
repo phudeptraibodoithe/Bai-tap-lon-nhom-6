@@ -6,19 +6,19 @@ import com.tboat.models.AuctionSession;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import com.tboat.utils.GsonUtils;
+import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Node;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.image.Image;
+import javafx.stage.Stage;
+
 import java.lang.reflect.Type;
 import java.net.URL;
 import java.util.ArrayList;
@@ -95,6 +95,30 @@ public class AdminController extends BaseController implements Initializable, So
                 }
             }
         });
+    }
+
+    public void logout(ActionEvent e) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Xác nhận đăng xuất");
+        DialogPane dialogPane = alert.getDialogPane();
+        Stage alertStage = (Stage) alert.getDialogPane().getScene().getWindow();
+        alertStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/logo.png")));
+        alert.setHeaderText(null);
+        alert.setContentText("Bạn có chắc chắn muốn đăng xuất khỏi tài khoản Quản trị không?");
+        ButtonType btnYes = new ButtonType("Có", ButtonBar.ButtonData.OK_DONE);
+        ButtonType btnNo = new ButtonType("Không", ButtonBar.ButtonData.CANCEL_CLOSE);
+        alert.getButtonTypes().setAll(btnYes, btnNo);
+
+        if (alert.showAndWait().orElse(btnNo) == btnYes) {
+            JsonObject request = new JsonObject();
+            request.addProperty("action", "LOGOUT");
+            SocketManager.getInstance().send(gson.toJson(request));
+
+            UserSession.getInstance().cleanUserSession();
+
+            Button btnSource = (Button) e.getSource();
+            changeScene(btnSource, "start.fxml");
+        }
     }
 
     @Override

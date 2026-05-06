@@ -54,24 +54,47 @@ public class ControllerPostItem extends BaseController implements Initializable,
     }
 
     private void setupPriceSpinners() {
-        SpinnerValueFactory.DoubleSpinnerValueFactory valueFactory1 = new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, 0.0, 10000.0);
-        SpinnerValueFactory.DoubleSpinnerValueFactory valueFactory2 = new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 0.0, 0.0, 10000.0);
+        SpinnerValueFactory.DoubleSpinnerValueFactory priceFactory =
+                new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, 0.0, 10000.0);
+
+        SpinnerValueFactory.DoubleSpinnerValueFactory jumpFactory =
+                new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, 0.0, 5000.0);
 
         CurrencyStringConverter currencyConverter = new CurrencyStringConverter();
-        valueFactory1.setConverter(currencyConverter);
-        valueFactory2.setConverter(currencyConverter);
+        priceFactory.setConverter(currencyConverter);
+        jumpFactory.setConverter(currencyConverter);
 
-        priceSpinner.setValueFactory(valueFactory1);
-        jumpSpinner.setValueFactory(valueFactory2);
+        priceSpinner.setValueFactory(priceFactory);
+        jumpSpinner.setValueFactory(jumpFactory);
+
         priceSpinner.setEditable(true);
         jumpSpinner.setEditable(true);
+
+        commitEditorText(priceSpinner);
+        commitEditorText(jumpSpinner);
 
         priceSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 double maxJump = newVal * 0.5;
-                valueFactory2.setMax(maxJump);
-                if (jumpSpinner.getValue() > maxJump) {
-                    valueFactory2.setValue(maxJump);
+                jumpFactory.setMax(maxJump > 0 ? maxJump : 1e18); // Nếu giá 0 thì cho max lớn
+                if (jumpSpinner.getValue() > maxJump && newVal > 0) {
+                    jumpFactory.setValue(maxJump);
+                }
+            }
+        });
+    }
+
+    /**
+     * Hàm hỗ trợ để Spinner cập nhật giá trị ngay khi người dùng gõ xong (mất focus)
+     */
+    private <T> void commitEditorText(Spinner<T> spinner) {
+        spinner.getEditor().focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal) { // Khi mất focus
+                String text = spinner.getEditor().getText();
+                StringConverter<T> converter = spinner.getValueFactory().getConverter();
+                if (converter != null) {
+                    T value = converter.fromString(text);
+                    spinner.getValueFactory().setValue(value);
                 }
             }
         });

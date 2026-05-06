@@ -3,6 +3,8 @@ package com.tboat.service;
 import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.models.AuctionSession;
 import com.tboat.models.StatusOfAuction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -10,6 +12,9 @@ import java.util.Map;
 import java.util.concurrent.*;
 
 public class AuctionTimerService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuctionTimerService.class);
+
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
     private final Map<Integer, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
     private static volatile AuctionTimerService instance;
@@ -34,30 +39,22 @@ public class AuctionTimerService {
 
         cancelTask(sessionId);
 
-        // ==========================================
-        // TRƯỜNG HỢP 1: Đã quá hạn kết thúc
-        // ==========================================
         if (now.isAfter(endTime)) {
-            System.out.println("[Timer]: Phiên " + sessionId + " đã quá hạn, tiến hành ĐÓNG VÀ THÔNG BÁO.");
-            // SỬA Ở ĐÂY: Gọi hàm closeAuction để nó gửi thông báo AUCTION_FINISHED cho Client
+            log.info("[Timer] Phiên {} đã quá hạn, tiến hành ĐÓNG VÀ THÔNG BÁO.", sessionId);
             closeAuction(sessionId);
             return;
         }
 
-        // ==========================================
-        // TRƯỜNG HỢP 2: Chưa tới giờ -> Hẹn giờ mở cửa
-        // ==========================================
         if (now.isBefore(startTime)) {
             long delayToStart = Duration.between(now, startTime).getSeconds();
             dao.updateSessionStatus(sessionId, StatusOfAuction.NOT_STARTED);
 
-            System.out.println("[Timer]: Phiên " + sessionId + " sẽ tự động BẮT ĐẦU sau " + delayToStart + " giây.");
+            log.info("[Timer] Phiên {} sẽ tự động BẮT ĐẦU sau {} giây.", sessionId, delayToStart);
 
             ScheduledFuture<?> startFuture = scheduler.schedule(() -> {
-                System.out.println("[Timer]: ĐẾN GIỜ! Phiên " + sessionId + " bắt đầu nhận Bid.");
+                log.info("[Timer] ĐẾN GIỜ! Phiên {} bắt đầu nhận Bid.", sessionId);
                 dao.updateSessionStatus(sessionId, StatusOfAuction.ONGOING);
 
-                // Gửi thông báo cho mọi người trong phòng
                 AuctionRoom room = AuctionManager.getInstance().getRoom(sessionId);
                 if (room != null) {
                     room.broadcast("AUCTION_STARTED", "Phiên đấu giá đã chính thức bắt đầu!", null);
@@ -67,13 +64,9 @@ public class AuctionTimerService {
             }, delayToStart, TimeUnit.SECONDS);
 
             scheduledTasks.put(sessionId, startFuture);
-        }
-        // ==========================================
-        // TRƯỜNG HỢP 3: Đang diễn ra -> Mở luôn
-        // ==========================================
-        else {
+        } else {
             dao.updateSessionStatus(sessionId, StatusOfAuction.ONGOING);
-            System.out.println("[Timer]: Phiên " + sessionId + " được mở BẮT ĐẦU ngay lập tức.");
+            log.info("[Timer] Phiên {} được mở BẮT ĐẦU ngay lập tức.", sessionId);
 
             AuctionRoom room = AuctionManager.getInstance().getRoom(sessionId);
             if (room != null) {
@@ -89,11 +82,11 @@ public class AuctionTimerService {
         long delay = Duration.between(LocalDateTime.now(), endTime).getSeconds();
 
         if (delay <= 0) {
-            closeAuction(sessionId); // Hàm này chứa lệnh gọi room.finishAuction() (có gửi broadcast)
+            closeAuction(sessionId);
             return;
         }
 
-        System.out.println("[Timer]: Phiên " + sessionId + " sẽ tự động CHỐT ĐƠN sau " + delay + " giây.");
+        log.info("[Timer] Phiên {} sẽ tự động CHỐT ĐƠN sau {} giây.", sessionId, delay);
         ScheduledFuture<?> future = scheduler.schedule(() -> closeAuction(sessionId), delay, TimeUnit.SECONDS);
         scheduledTasks.put(sessionId, future);
     }
@@ -119,12 +112,10 @@ public class AuctionTimerService {
         scheduledTasks.remove(sessionId);
         AuctionRoom room = AuctionManager.getInstance().getRoom(sessionId);
         if (room != null) {
-            // LỆNH NÀY CHÍNH LÀ LÚC SERVER GỬI THÔNG BÁO KẾT THÚC CHO CLIENT
             room.finishAuction();
         } else {
-            // Nếu phòng không có ai thì chỉ cần update Database
             dao.updateSessionStatus(sessionId, StatusOfAuction.ENDED);
-            System.out.println("[Timer]: Phiên " + sessionId + " đã kết thúc (Không có người chơi trong phòng).");
+            log.info("[Timer] Phiên {} đã kết thúc (Không có người chơi trong phòng).", sessionId);
         }
     }
 }

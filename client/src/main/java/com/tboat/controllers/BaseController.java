@@ -77,10 +77,9 @@ public abstract class BaseController {
     @FXML public void switchToWallet(ActionEvent event) { changeScene((Node) event.getSource(), "NapRut.fxml"); }
     @FXML public void switchToProfile(ActionEvent event) { changeScene((Node) event.getSource(), "profile.fxml"); }
     @FXML public void switchToManager(ActionEvent event) { changeScene((Node) event.getSource(), "manager.fxml"); }
-    @FXML public void switchToAdminProfile(ActionEvent event) { changeScene((Node) event.getSource(), "adminProfile.fxml"); }
-    @FXML public void switchToWalletAdmin(ActionEvent event) { changeScene((Node) event.getSource(), "adminNapRut.fxml"); }
+    @FXML public void switchToWalletAdmin(ActionEvent event) { changeScene((Node) event.getSource(), "adminWallet.fxml"); }
     @FXML public void switchToLogin(ActionEvent event) throws IOException { changeScene((Node) event.getSource(), "login.fxml"); }
     @FXML public void switchToRegister(ActionEvent event) throws IOException { changeScene((Node) event.getSource(), "register.fxml"); }
     @FXML public void switchToStart(MouseEvent event) throws IOException { changeScene((Node) event.getSource(), "start.fxml"); }
-    @FXML public void switchToAdmin(ActionEvent event) throws IOException { changeScene((Node) event.getSource(), "Admin.fxml"); }
+    @FXML public void switchToAdmin(ActionEvent event) throws IOException { changeScene((Node) event.getSource(), "admin.fxml"); }
 }

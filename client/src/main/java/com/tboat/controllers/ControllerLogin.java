@@ -76,7 +76,7 @@ public class ControllerLogin extends BaseController implements SocketListener {
 
                             String role = payload.has("role") ? payload.get("role").getAsString() : "";
                             if ("admin".equalsIgnoreCase(signText.getText().trim()) || "ADMIN".equalsIgnoreCase(role)) {
-                                changeScene(err, "Admin.fxml");
+                                changeScene(err, "admin.fxml");
                                 break;
                             }
 
@@ -87,7 +87,6 @@ public class ControllerLogin extends BaseController implements SocketListener {
 
                             User loggedUser = new User(signText.getText(), null, nickname, balance, description, avatarURL);
                             UserSession.getInstance().createUserSession(loggedUser);
-
                             changeScene(err, "TrangChu.fxml");
                         }
                         break;

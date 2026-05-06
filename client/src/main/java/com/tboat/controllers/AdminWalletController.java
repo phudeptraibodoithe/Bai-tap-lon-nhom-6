@@ -6,14 +6,18 @@ import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import com.tboat.utils.GsonUtils;
+import com.tboat.utilsclient.CurrencyFormatter;
 import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.net.URL;
 import java.util.ResourceBundle;
 
@@ -29,15 +33,44 @@ public class AdminWalletController extends BaseController implements Initializab
     private double currentBalance = UserSession.getInstance().getBalance();
     private final String CORRECT_PIN = "123456";
     private boolean isDepositMode = true;
+    private static final Logger log = LoggerFactory.getLogger(AdminWalletController.class);
     private final Gson gson = GsonUtils.getInstance();
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle){
+        SocketManager.getInstance().subscribe(this); // Đừng quên subscribe socket
         updateBalanceLabel();
+        setupAmountFieldFormat(); // Thêm hàm format khi gõ
         txtPin.setText("123456");
         btnTabDeposit.setOnAction(event -> switchToDepositMode());
         btnTabWithdraw.setOnAction(event -> switchToWithdrawMode());
         btnSubmit.setOnAction(event -> handleTransaction());
+    }
+
+    private void setupAmountFieldFormat() {
+        txtAmount.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == null || newValue.isEmpty()) return;
+
+            // Chỉ lấy số
+            String cleanString = newValue.replaceAll("[^\\d]", "");
+            if (cleanString.isEmpty()) {
+                txtAmount.setText("");
+                return;
+            }
+
+            try {
+                double parsed = Double.parseDouble(cleanString);
+                // Dùng formatInput để chỉ có dấu phẩy, không có chữ "VNĐ" khi đang gõ
+                String formatted = CurrencyFormatter.formatInput(parsed);
+
+                if (!newValue.equals(formatted)) {
+                    txtAmount.setText(formatted);
+                    Platform.runLater(() -> txtAmount.positionCaret(formatted.length()));
+                }
+            } catch (NumberFormatException e) {
+                txtAmount.setText(oldValue);
+            }
+        });
     }
 
     private void switchToDepositMode() {
@@ -56,6 +89,30 @@ public class AdminWalletController extends BaseController implements Initializab
 
         btnSubmit.setText("XÁC NHẬN RÚT TIỀN");
         btnSubmit.setStyle("-fx-background-color: #e67e22; -fx-background-radius: 5; -fx-cursor: hand;");
+    }
+
+    public void logout(ActionEvent e) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Xác nhận đăng xuất");
+        DialogPane dialogPane = alert.getDialogPane();
+        Stage alertStage = (Stage) alert.getDialogPane().getScene().getWindow();
+        alertStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/logo.png")));
+        alert.setHeaderText(null);
+        alert.setContentText("Bạn có chắc chắn muốn đăng xuất khỏi tài khoản Quản trị không?");
+        ButtonType btnYes = new ButtonType("Có", ButtonBar.ButtonData.OK_DONE);
+        ButtonType btnNo = new ButtonType("Không", ButtonBar.ButtonData.CANCEL_CLOSE);
+        alert.getButtonTypes().setAll(btnYes, btnNo);
+
+        if (alert.showAndWait().orElse(btnNo) == btnYes) {
+            JsonObject request = new JsonObject();
+            request.addProperty("action", "LOGOUT");
+            SocketManager.getInstance().send(gson.toJson(request));
+
+            UserSession.getInstance().cleanUserSession();
+
+            Button btnSource = (Button) e.getSource();
+            changeScene(btnSource, "start.fxml");
+        }
     }
 
     private void updateBalanceLabel() {
@@ -77,7 +134,7 @@ public class AdminWalletController extends BaseController implements Initializab
         }
 
         try {
-            double amount = Double.parseDouble(amountText);
+            double amount = CurrencyFormatter.parse(amountText);
 
             if (amount <= 0) {
                 showAlert(Alert.AlertType.ERROR, "Lỗi số tiền", "Số tiền giao dịch phải lớn hơn 0!");
@@ -92,8 +149,8 @@ public class AdminWalletController extends BaseController implements Initializab
 
             SocketManager.getInstance().send(gson.toJson(request));
 
-        } catch (NumberFormatException e) {
-            showAlert(Alert.AlertType.ERROR, "Lỗi nhập liệu", "Vui lòng chỉ nhập số vào ô Số tiền.");
+        } catch (Exception e) {
+            showAlert(Alert.AlertType.ERROR, "Lỗi định dạng", "Vui lòng nhập số hợp lệ.");
         }
     }
 
@@ -127,7 +184,7 @@ public class AdminWalletController extends BaseController implements Initializab
 
             } catch (Exception e) {
                 showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Lỗi đọc dữ liệu từ Server.");
-                System.out.println("❌ KHÔNG THỂ ĐỌC JSON NẠP/RÚT: " + response);
+                log.error("Không thể đọc JSON nạp/rút từ server: {} | Exception: {}", response, e.getMessage(), e);
             }
         });
     }

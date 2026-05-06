@@ -188,4 +188,24 @@ public class AuctionSessionDAO {
             return false;
         }
     }
+
+    public boolean updateAuction(int sessionId, String name, String description, String imageURL, double currentPrice, double bidIncrease) {
+        String sql = "UPDATE auction_session SET name = ?, description = ?, imageURL = ?, " +
+                "currentPrice = ?, bidIncrease = ? WHERE id = ?";
+        try (Connection c = getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setString(1, name);
+            ps.setString(2, description);
+            ps.setString(3, imageURL);
+            ps.setDouble(4, currentPrice);
+            ps.setDouble(5, bidIncrease);
+            ps.setInt(6, sessionId);
+
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            logger.error("Lỗi khi cập nhật thông tin Auction: ", e);
+            return false;
+        }
+    }
 }

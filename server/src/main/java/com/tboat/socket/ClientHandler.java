@@ -10,6 +10,8 @@ import com.tboat.database.DatabaseConnection;
 import com.tboat.models.*;
 import com.tboat.service.*;
 import com.tboat.utils.ResponseCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -23,6 +25,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 public class ClientHandler implements Runnable {
+
+    private static final Logger log = LoggerFactory.getLogger(ClientHandler.class);
     private final Socket socket;
     private PrintWriter out;
     private String clientId = "Guest";
@@ -31,8 +35,8 @@ public class ClientHandler implements Runnable {
     private final UserDAO userDAO = new UserDAO();
     private final HistoryBidDAO historyDAO = new HistoryBidDAO();
     private final AuctionSessionDAO auctionDAO = new AuctionSessionDAO();
-    private final SellerService sellerService=new SellerService();
-    private final ParticipationDAO participationDAO=new ParticipationDAO();
+    private final SellerService sellerService = new SellerService();
+    private final ParticipationDAO participationDAO = new ParticipationDAO();
     private static final List<String> PUBLIC_ACTIONS = Arrays.asList(
             "LOGIN", "REGISTER", "LIST_AVAILABLE", "GET_PENDING_ITEMS", "APPROVE_ITEM", "REJECT_ITEM"
     );
@@ -52,7 +56,6 @@ public class ClientHandler implements Runnable {
         try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
             this.out = new PrintWriter(socket.getOutputStream(), true);
 
-            // Đã sửa: Gửi lời chào bằng chuẩn JSON thay vì chuỗi thô
             sendSystemMessage("SERVER_READY", "Chào mừng bạn đến với hệ thống đấu giá TBoat!", null);
 
             String inputLine;
@@ -60,7 +63,7 @@ public class ClientHandler implements Runnable {
                 handleCommand(inputLine.trim());
             }
         } catch (IOException e) {
-            System.out.println("Kết nối với " + clientId + " bị ngắt.");
+            log.info("Kết nối với {} bị ngắt.", clientId);
         } finally {
             cleanUp();
         }
@@ -93,6 +96,7 @@ public class ClientHandler implements Runnable {
                 case "GET_HISTORY": handleGetHistory(input); break;
                 case "GET_MY_AUCTIONS": handleGetMyAuctions(input); break;
                 case "GET_SESSION_BIDS": handleGetSessionBids(input); break;
+                case "EDIT_ITEM": handleEditItem(input, gson); break;
                 case "LOGOUT":
                     userManager.logout(this.clientId);
                     this.clientId = "Guest";
@@ -103,7 +107,7 @@ public class ClientHandler implements Runnable {
                     sendResponse(new Response<>("ERROR", "Lệnh không xác định", null));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Lỗi xử lý yêu cầu từ client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi xử lý yêu cầu", null));
         }
     }
@@ -182,7 +186,6 @@ public class ClientHandler implements Runnable {
             JsonObject json = JsonParser.parseString(input).getAsJsonObject();
             JsonObject payload = json.getAsJsonObject("payload");
 
-            // 1. Trích xuất toàn bộ dữ liệu từ JSON trước
             String type = payload.get("type").getAsString();
             String name = payload.get("name").getAsString();
             String description = payload.get("description").getAsString();
@@ -207,7 +210,40 @@ public class ClientHandler implements Runnable {
                 sendResponse(new Response<>("ERROR", "Lỗi lưu dữ liệu vào Database", null));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Lỗi xử lý POST_ITEM từ client {}: {}", clientId, e.getMessage(), e);
+            sendResponse(new Response<>("ERROR", "Dữ liệu gửi lên không hợp lệ!", null));
+        }
+    }
+
+    private void handleEditItem(String input, Gson gson) {
+        try {
+            JsonObject json = JsonParser.parseString(input).getAsJsonObject();
+            JsonObject payload = json.getAsJsonObject("payload");
+
+            String type = payload.get("type").getAsString();
+            AuctionFactory factory = AuctionFactoryProducer.getFactory(type);
+
+            AuctionSession updatedData = factory.createAuctionSession(
+                    null, null,
+                    payload.get("currentPrice").getAsDouble(),
+                    payload.get("bidIncrease").getAsDouble(),
+                    this.clientId,
+                    payload.get("name").getAsString(),
+                    payload.get("description").getAsString(),
+                    payload.get("imageURL").getAsString()
+            );
+
+            updatedData.setId(payload.get("id").getAsInt());
+            boolean success = sellerService.editAuction(this.clientId, updatedData);
+
+            if (success) {
+                sendResponse(new Response<>("SUCCESS", "Cập nhật thông tin sản phẩm thành công!", updatedData.getId()));
+            } else {
+                sendResponse(new Response<>("ERROR", "Không thể cập nhật: Phiên đã bắt đầu, đã có người bid hoặc lỗi quyền sở hữu.", null));
+            }
+        } catch (Exception e) {
+            // ✅ SỬA: e.printStackTrace() → log.error
+            log.error("Lỗi xử lý EDIT_ITEM từ client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Dữ liệu gửi lên không hợp lệ!", null));
         }
     }
@@ -243,7 +279,8 @@ public class ClientHandler implements Runnable {
                 sendResponse(new Response<>("ERROR", "Phòng đấu giá không tồn tại hoặc đã đóng.", null));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // ✅ SỬA: e.printStackTrace() → log.error
+            log.error("Lỗi xử lý JOIN từ client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi xử lý hệ thống khi vào phòng", null));
         }
     }
@@ -252,16 +289,16 @@ public class ClientHandler implements Runnable {
         try {
             List<AuctionSession> pendingItems = auctionDAO.getPendingAuctions();
 
-            // Đảm bảo không bao giờ trả về null, trả về danh sách rỗng [] nếu không có bài
             if (pendingItems == null) {
                 pendingItems = new ArrayList<>();
             }
 
-            // Gửi response về, message phải khớp 100% với Client đang check
             sendResponse(new Response<>("SUCCESS", "Danh sách chờ duyệt", pendingItems));
-            System.out.println("[Server]: Đã gửi danh sách chờ duyệt cho Admin.");
+            // ✅ SỬA: System.out.println → log.debug
+            log.debug("[Server] Đã gửi danh sách chờ duyệt cho Admin.");
         } catch (Exception e) {
-            e.printStackTrace();
+            // ✅ SỬA: e.printStackTrace() → log.error
+            log.error("Lỗi lấy danh sách PENDING: {}", e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi lấy danh sách: " + e.getMessage(), null));
         }
     }
@@ -280,7 +317,8 @@ public class ClientHandler implements Runnable {
             sendResponse(new Response<>("SUCCESS", "Lấy lịch sử thành công", historyList));
 
         } catch (Exception e) {
-            e.printStackTrace();
+            // ✅ SỬA: e.printStackTrace() → log.error
+            log.error("Lỗi xử lý GET_HISTORY cho client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi xử lý lấy lịch sử đấu giá: " + e.getMessage(), null));
         }
     }
@@ -299,7 +337,8 @@ public class ClientHandler implements Runnable {
             sendResponse(new Response<>("SUCCESS", "Lấy danh sách sản phẩm thành công", myList));
 
         } catch (Exception e) {
-            e.printStackTrace();
+            // ✅ SỬA: e.printStackTrace() → log.error
+            log.error("Lỗi xử lý GET_MY_AUCTIONS cho client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi xử lý lấy danh sách sản phẩm: " + e.getMessage(), null));
         }
     }
@@ -314,7 +353,8 @@ public class ClientHandler implements Runnable {
             }
             sendResponse(new Response<>("SUCCESS", "Lấy danh sách Bid thành công", bidList));
         } catch (Exception e) {
-            e.printStackTrace();
+            // ✅ SỬA: e.printStackTrace() → log.error
+            log.error("Lỗi xử lý GET_SESSION_BIDS từ client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi xử lý lấy danh sách Bid: " + e.getMessage(), null));
         }
     }
@@ -331,10 +371,11 @@ public class ClientHandler implements Runnable {
                 sendResponse(new Response<>("SUCCESS", "Đã hủy phiên đấu giá thành công", sessionId));
                 sendSystemMessage("AUCTION_CANCELED", "Phiên " + sessionId + " đã bị người bán hủy", sessionId);
             } else {
-                sendResponse(new Response<>("ERROR", "Không thể hủy (Bạn không phải chủ phiên hoặc đã có người đặt giá)", null));
+                sendResponse(new Response<>("ERROR", "Không thể hủy (đã có người đặt giá)", null));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // ✅ SỬA: e.printStackTrace() → log.error
+            log.error("Lỗi xử lý CANCEL_AUCTION từ client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Dữ liệu yêu cầu hủy không hợp lệ", null));
         }
     }
@@ -348,12 +389,14 @@ public class ClientHandler implements Runnable {
             if (session != null) {
                 AuctionTimerService.getInstance().scheduleAuction(session);
                 sendResponse(new Response<>("SUCCESS", "Đã duyệt! Hệ thống sẽ tự động canh giờ.", sessionId));
-                System.out.println("[Server]: Admin đã duyệt phiên ID: " + sessionId);
+                // ✅ SỬA: System.out.println → log.info
+                log.info("[Server] Admin đã duyệt phiên ID: {}", sessionId);
             } else {
                 sendResponse(new Response<>("ERROR", "Không tìm thấy sản phẩm cần duyệt (Lỗi Database)", null));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // ✅ SỬA: e.printStackTrace() → log.error
+            log.error("Lỗi xử lý APPROVE_ITEM từ client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi xử lý duyệt sản phẩm: " + e.getMessage(), null));
         }
     }
@@ -367,12 +410,14 @@ public class ClientHandler implements Runnable {
 
             if (success) {
                 sendResponse(new Response<>("SUCCESS", "Đã từ chối sản phẩm", sessionId));
-                System.out.println("[Server]: Admin đã từ chối phiên ID: " + sessionId);
+                // ✅ SỬA: System.out.println → log.info
+                log.info("[Server] Admin đã từ chối phiên ID: {}", sessionId);
             } else {
                 sendResponse(new Response<>("ERROR", "Không thể thực hiện từ chối (Lỗi Database)", null));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // ✅ SỬA: e.printStackTrace() → log.error
+            log.error("Lỗi xử lý REJECT_ITEM từ client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi xử lý từ chối sản phẩm: " + e.getMessage(), null));
         }
     }
@@ -380,7 +425,6 @@ public class ClientHandler implements Runnable {
     private void handleProfile() {
         User fullUser = userDAO.getUser(this.clientId);
         if (fullUser != null) {
-            // Gửi trả status PROFILE_INFO khớp với Frontend gốc
             sendResponse(new Response<>("PROFILE_INFO", "Thông tin hồ sơ", fullUser));
         } else {
             sendResponse(new Response<>("ERROR", "Không tìm thấy người dùng", null));
@@ -392,15 +436,12 @@ public class ClientHandler implements Runnable {
         JsonObject payload = json.getAsJsonObject("payload");
 
         String desc = payload.has("description") ? payload.get("description").getAsString() : "";
-
-        // ĐÃ SỬA: Đổi "avatar" thành "avatarURL" cho khớp với Client gửi lên
         String avatar = payload.has("avatarURL") ? payload.get("avatarURL").getAsString() : "";
 
-        // Gọi DB cập nhật
         boolean updateOk = userDAO.updateProfile(this.clientId, desc, avatar);
 
         if (updateOk) {
-            sendResponse(new Response<>("SUCCESS", "Cập nhật thành công", null)); // Chú ý: Đổi lại status thành SUCCESS để khớp dòng 159 bên Client
+            sendResponse(new Response<>("SUCCESS", "Cập nhật thành công", null));
         } else {
             sendResponse(new Response<>("ERROR", "Lỗi cập nhật", null));
         }
@@ -412,14 +453,13 @@ public class ClientHandler implements Runnable {
         try (Connection conn = DatabaseConnection.getConnection()) {
             boolean transOk = userDAO.updateBalance(conn, this.clientId, amount);
             if (transOk) {
-                // ĐÃ SỬA: Đổi "TRANSACTION_SUCCESS" thành "SUCCESS" cho khớp với dòng 90 NapRutController
                 sendResponse(new Response<>("SUCCESS", "Giao dịch đã được xử lý!", amount));
             } else {
-                // ĐÃ SỬA: Đổi "TRANSACTION_FAILED" thành "FAILED" cho khớp với dòng 101 NapRutController
                 sendResponse(new Response<>("FAILED", "Giao dịch bị từ chối (Số dư không đủ).", null));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            // ✅ SỬA: e.printStackTrace() → log.error
+            log.error("Lỗi kết nối DB khi xử lý TRANSACTION cho client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi kết nối cơ sở dữ liệu", null));
         }
     }
@@ -445,13 +485,15 @@ public class ClientHandler implements Runnable {
         try {
             if (clientId != null && !clientId.equals("Guest")) {
                 userManager.logout(clientId);
-                System.out.println("[Server]: Đã giải phóng tài nguyên cho user: " + clientId);
+                // ✅ SỬA: System.out.println → log.info
+                log.info("[Server] Đã giải phóng tài nguyên cho user: {}", clientId);
             }
             if (currentRoom != null) currentRoom.removeSubscriber(this);
             if (out != null) out.close();
             if (socket != null) socket.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            // ✅ SỬA: e.printStackTrace() → log.error
+            log.error("Lỗi đóng kết nối socket cho client {}: {}", clientId, e.getMessage(), e);
         }
     }
 }

@@ -46,21 +46,62 @@ public class NapRutController extends BaseController implements Initializable, S
     }
 
     private void setupAmountFieldFormat() {
-        txtAmount.focusedProperty().addListener((obs, oldVal, newVal) -> {
-            if (!newVal) {
-                Double value = CurrencyFormatter.parse(txtAmount.getText());
-                if (value > 0) {
-                    txtAmount.setText(CurrencyFormatter.format(value));
+        txtAmount.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == null || newValue.isEmpty()) return;
+
+            String cleanString = newValue.replaceAll("[^\\d]", "");
+            if (cleanString.isEmpty()) {
+                txtAmount.setText("");
+                return;
+            }
+
+            try {
+                double parsed = Double.parseDouble(cleanString);
+                String formatted = CurrencyFormatter.formatInput(parsed);
+                if (!newValue.equals(formatted)) {
+                    txtAmount.setText(formatted);
+                    Platform.runLater(() -> txtAmount.positionCaret(formatted.length()));
                 }
-            } else {
-                Double value = CurrencyFormatter.parse(txtAmount.getText());
-                if (value == 0.0) {
-                    txtAmount.setText("");
-                } else {
-                    txtAmount.setText(String.format("%.0f", value));
-                }
+            } catch (NumberFormatException e) {
+                txtAmount.setText(oldValue);
             }
         });
+    }
+
+    private void handleTransaction() {
+        String amountText = txtAmount.getText();
+        String pinText = txtPin.getText();
+
+        if (amountText.trim().isEmpty() || pinText.trim().isEmpty()) {
+            showAlert(Alert.AlertType.WARNING, "Lỗi nhập liệu", "Vui lòng nhập đầy đủ Số tiền và Mã PIN!");
+            return;
+        }
+
+        if (!pinText.equals(CORRECT_PIN)) {
+            showAlert(Alert.AlertType.ERROR, "Sai mã PIN", "Mã PIN không chính xác. Vui lòng thử lại!");
+            return;
+        }
+
+        try {
+            double amount = CurrencyFormatter.parse(amountText);
+
+            if (amount <= 0) {
+                showAlert(Alert.AlertType.ERROR, "Lỗi số tiền", "Số tiền giao dịch phải lớn hơn 0!");
+                return;
+            }
+
+            btnSubmit.setDisable(true);
+            double amountToSend = isDepositMode ? amount : -amount;
+
+            JsonObject request = new JsonObject();
+            request.addProperty("action", "TRANSACTION");
+            request.addProperty("payload", amountToSend);
+
+            SocketManager.getInstance().send(gson.toJson(request));
+
+        } catch (Exception e) {
+            showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Đã xảy ra lỗi khi xử lý số tiền.");
+        }
     }
 
     private void switchToDepositMode() {
@@ -83,47 +124,6 @@ public class NapRutController extends BaseController implements Initializable, S
 
     private void updateBalanceLabel() {
         lblBalance.setText(CurrencyFormatter.format(currentBalance));
-    }
-
-    private void handleTransaction() {
-        String amountText = txtAmount.getText();
-        String pinText = txtPin.getText();
-
-        if (amountText.trim().isEmpty() || pinText.trim().isEmpty()) {
-            showAlert(Alert.AlertType.WARNING, "Lỗi nhập liệu", "Vui lòng nhập đầy đủ Số tiền và Mã PIN!");
-            return;
-        }
-
-        if (!pinText.equals(CORRECT_PIN)) {
-            showAlert(Alert.AlertType.ERROR, "Sai mã PIN", "Mã PIN không chính xác. Vui lòng thử lại!");
-            return;
-        }
-
-        String cleanText = amountText.replaceAll("(?i)VNĐ", "").replaceAll("[\\s,.]", "");
-        if (!cleanText.matches("\\d+")) {
-            showAlert(Alert.AlertType.ERROR, "Lỗi nhập liệu", "Vui lòng chỉ nhập số hợp lệ vào ô Số tiền.");
-            return;
-        }
-
-        try {
-            double amount = CurrencyFormatter.parse(amountText);
-
-            if (amount <= 0) {
-                showAlert(Alert.AlertType.ERROR, "Lỗi số tiền", "Số tiền giao dịch phải lớn hơn 0!");
-                return;
-            }
-            btnSubmit.setDisable(true);
-            double amountToSend = isDepositMode ? amount : -amount;
-
-            JsonObject request = new JsonObject();
-            request.addProperty("action", "TRANSACTION");
-            request.addProperty("payload", amountToSend);
-
-            SocketManager.getInstance().send(gson.toJson(request));
-
-        } catch (Exception e) {
-            showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Đã xảy ra lỗi khi xử lý số tiền.");
-        }
     }
 
     @Override

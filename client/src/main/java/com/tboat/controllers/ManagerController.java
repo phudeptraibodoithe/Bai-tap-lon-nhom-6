@@ -188,7 +188,6 @@ public class ManagerController extends BaseController implements Initializable, 
             } catch (Exception e) {
                 if (response.contains("{")) {
                     logger.severe("❌ LỖI ĐỌC JSON TRANG MANAGER: " + response);
-                    e.printStackTrace();
                 }
             }
         });

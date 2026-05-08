@@ -59,6 +59,9 @@ public abstract class AuctionSession {
         this.name = name;
     }
     public void updateStatusBasedOnTime() {
+        if (this.startTime == null || this.endTime == null) {
+            return;
+        }
         LocalDateTime now = LocalDateTime.now();
         if (now.isBefore(startTime)) {
             this.statusOfAuction = StatusOfAuction.NOT_STARTED;

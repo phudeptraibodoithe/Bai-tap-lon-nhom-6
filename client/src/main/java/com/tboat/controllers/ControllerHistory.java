@@ -76,7 +76,6 @@ public class ControllerHistory extends BaseController implements Initializable, 
                 }
             } catch (Exception e) {
                 log.severe("KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
-                e.printStackTrace();
             }
         });
     }

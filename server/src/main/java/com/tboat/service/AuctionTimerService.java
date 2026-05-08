@@ -33,6 +33,14 @@ public class AuctionTimerService {
 
     public void scheduleAuction(AuctionSession session) {
         int sessionId = session.getId();
+        StatusOfAuction currentStatus = session.getStatusOfAuction();
+        if (currentStatus == StatusOfAuction.PENDING ||
+                currentStatus == StatusOfAuction.CANCELED ||
+                currentStatus == StatusOfAuction.ENDED) {
+            log.warn("[Timer] Phiên {} đang chờ duyệt (PENDING), không đưa vào hệ thống tự động.", sessionId);
+            return;
+        }
+
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startTime = session.getStartTime();
         LocalDateTime endTime = session.getEndTime();
@@ -52,15 +60,21 @@ public class AuctionTimerService {
             log.info("[Timer] Phiên {} sẽ tự động BẮT ĐẦU sau {} giây.", sessionId, delayToStart);
 
             ScheduledFuture<?> startFuture = scheduler.schedule(() -> {
-                log.info("[Timer] ĐẾN GIỜ! Phiên {} bắt đầu nhận Bid.", sessionId);
-                dao.updateSessionStatus(sessionId, StatusOfAuction.ONGOING);
+                AuctionSession currentSession = dao.getAuctionById(sessionId);
+                if (currentSession != null && currentSession.getStatusOfAuction() == StatusOfAuction.NOT_STARTED) {
 
-                AuctionRoom room = AuctionManager.getInstance().getRoom(sessionId);
-                if (room != null) {
-                    room.broadcast("AUCTION_STARTED", "Phiên đấu giá đã chính thức bắt đầu!", null);
+                    log.info("[Timer] ĐẾN GIỜ! Phiên {} bắt đầu nhận Bid.", sessionId);
+                    dao.updateSessionStatus(sessionId, StatusOfAuction.ONGOING);
+
+                    AuctionRoom room = AuctionManager.getInstance().getRoom(sessionId);
+                    if (room != null) {
+                        room.broadcast("AUCTION_STARTED", "Phiên đấu giá đã chính thức bắt đầu!", null);
+                    }
+
+                    scheduleAuctionClose(sessionId, endTime);
+                } else {
+                    log.warn("[Timer] Bỏ qua chuyển ONGOING. Phiên {} đã bị đổi trạng thái hoặc không tồn tại.", sessionId);
                 }
-
-                scheduleAuctionClose(sessionId, endTime);
             }, delayToStart, TimeUnit.SECONDS);
 
             scheduledTasks.put(sessionId, startFuture);
@@ -72,7 +86,6 @@ public class AuctionTimerService {
             if (room != null) {
                 room.broadcast("AUCTION_STARTED", "Phiên đấu giá hiện đang diễn ra, bạn có thể đặt giá!", null);
             }
-
             scheduleAuctionClose(sessionId, endTime);
         }
     }

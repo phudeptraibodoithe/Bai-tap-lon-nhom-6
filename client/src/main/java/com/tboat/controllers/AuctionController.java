@@ -37,11 +37,6 @@ import java.time.format.DateTimeFormatter;
 
 public class AuctionController extends BaseController implements SocketListener {
 
-    @FXML private Button btnHome;
-    @FXML private Button btnHistory;
-    @FXML private Button btnPostItem;
-    @FXML private Button btnProfile;
-
     @FXML private ImageView ItemImage;
     @FXML private Label TimeRemaining;
     @FXML private Label NameItem;
@@ -52,10 +47,7 @@ public class AuctionController extends BaseController implements SocketListener 
     @FXML private Label HighestBidder;
     @FXML private TextField BidAmount;
     @FXML private Button btnBid;
-
-    // Đã khai báo nhãn thông báo mới
     @FXML private Label thongbao;
-
     @FXML private TableView<BidEntry> tableBidHistory;
     @FXML private TableColumn<BidEntry, String> colBidTime;
     @FXML private TableColumn<BidEntry, String> colBidUser;
@@ -342,11 +334,11 @@ public class AuctionController extends BaseController implements SocketListener 
 
                                     if (timeElement.isJsonPrimitive() && timeElement.getAsJsonPrimitive().isNumber()) {
                                         long timestamp = timeElement.getAsLong();
-                                        java.time.LocalDateTime dateTime = java.time.LocalDateTime.ofInstant(
+                                        LocalDateTime dateTime = LocalDateTime.ofInstant(
                                                 java.time.Instant.ofEpochMilli(timestamp),
                                                 java.time.ZoneId.systemDefault()
                                         );
-                                        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
                                         time = dateTime.format(formatter);
                                     }
                                     else {

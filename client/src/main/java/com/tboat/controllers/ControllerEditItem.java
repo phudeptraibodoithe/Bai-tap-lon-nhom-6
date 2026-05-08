@@ -38,11 +38,14 @@ public class ControllerEditItem extends BaseController implements Initializable,
     @FXML private DatePicker datePickerStart, datePickerEnd;
     @FXML private Spinner<Integer> hourStart, minuteStart, hourEnd, minuteEnd;
     @FXML private ComboBox<String> typeComboBox;
+    @FXML private Button btnSaveItem;
+    @FXML private Button btnDeleteItem;
+    @FXML private Button btnCancelEdit;
 
     private Stage stage;
     private File selectedFile;
     private int currentSessionId;
-    private String currentImageBase64 = null; // Lưu ảnh cũ nếu người dùng không chọn ảnh mới
+    private String currentImageBase64 = null;
 
     private Gson gson = GsonUtils.getInstance();
     private static final Logger log = Logger.getLogger(ControllerEditItem.class.getName());
@@ -93,6 +96,23 @@ public class ControllerEditItem extends BaseController implements Initializable,
                 myImageView.setClip(clip);
             }
         }
+        if (session.getStartTime() != null && session.getStartTime().isBefore(java.time.LocalDateTime.now())) {
+            thongbao.setStyle("-fx-text-fill: red;");
+            thongbao.setText("Phiên đấu giá đã bắt đầu, không thể chỉnh sửa!");
+
+            if (btnSaveItem != null) btnSaveItem.setDisable(true);
+            nameItem.setDisable(true);
+            inforItem.setDisable(true);
+            typeComboBox.setDisable(true);
+            priceSpinner.setDisable(true);
+            jumpSpinner.setDisable(true);
+            datePickerStart.setDisable(true);
+            datePickerEnd.setDisable(true);
+            hourStart.setDisable(true);
+            minuteStart.setDisable(true);
+            hourEnd.setDisable(true);
+            minuteEnd.setDisable(true);
+        }
     }
 
     // ====================================================================
@@ -101,6 +121,12 @@ public class ControllerEditItem extends BaseController implements Initializable,
     public void saveItem(ActionEvent e) {
         String name = nameItem.getText();
         String infor = inforItem.getText();
+        String type = typeComboBox.getValue();
+
+        java.time.LocalDateTime startTime = java.time.LocalDateTime.of(datePickerStart.getValue(),
+                java.time.LocalTime.of(hourStart.getValue(), minuteStart.getValue()));
+        java.time.LocalDateTime endTime = java.time.LocalDateTime.of(datePickerEnd.getValue(),
+                java.time.LocalTime.of(hourEnd.getValue(), minuteEnd.getValue()));
 
         if (name.isEmpty() || infor.isEmpty()) {
             showError("Tên và mô tả không được để trống!");
@@ -122,8 +148,10 @@ public class ControllerEditItem extends BaseController implements Initializable,
         payload.addProperty("imageURL", base64Image);
         payload.addProperty("currentPrice", priceSpinner.getValue());
         payload.addProperty("bidIncrease", jumpSpinner.getValue());
-
+        payload.addProperty("type", type);
         request.add("payload", payload);
+        payload.addProperty("startTime", startTime.toString());
+        payload.addProperty("endTime", endTime.toString());
         SocketManager.getInstance().send(gson.toJson(request));
 
         thongbao.setStyle("-fx-text-fill: blue;");
@@ -196,6 +224,38 @@ public class ControllerEditItem extends BaseController implements Initializable,
         configureSpinner(minuteStart, 0, 59, nowTime.getMinute(), minuteConverter);
         configureSpinner(hourEnd, 0, 23, nowTime.plusHours(1).getHour(), hourConverter);
         configureSpinner(minuteEnd, 0, 59, nowTime.getMinute(), minuteConverter);
+
+        java.time.LocalDate today = java.time.LocalDate.now();
+        datePickerStart.setDayCellFactory(picker -> new DateCell() {
+            @Override
+            public void updateItem(java.time.LocalDate date, boolean empty) {
+                super.updateItem(date, empty);
+                setDisable(empty || date.compareTo(today) < 0);
+            }
+        });
+
+        datePickerStart.valueProperty().addListener((obs, oldVal, newVal) -> validateStartTime());
+        hourStart.valueProperty().addListener((obs, oldVal, newVal) -> validateStartTime());
+        minuteStart.valueProperty().addListener((obs, oldVal, newVal) -> validateStartTime());
+    }
+
+    private void validateStartTime() {
+        if (datePickerStart.getValue() == null) return;
+
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalTime nowTime = java.time.LocalTime.now();
+        java.time.LocalDate selectedDate = datePickerStart.getValue();
+        if (selectedDate.isEqual(today)) {
+            int selectedHour = hourStart.getValue();
+            int selectedMinute = minuteStart.getValue();
+            if (selectedHour < nowTime.getHour()) {
+                hourStart.getValueFactory().setValue(nowTime.getHour());
+                minuteStart.getValueFactory().setValue(nowTime.getMinute());
+            }
+            else if (selectedHour == nowTime.getHour() && selectedMinute < nowTime.getMinute()) {
+                minuteStart.getValueFactory().setValue(nowTime.getMinute());
+            }
+        }
     }
 
     private StringConverter<Integer> createTimeConverter(String suffix) {
@@ -249,20 +309,41 @@ public class ControllerEditItem extends BaseController implements Initializable,
 
                 if ("SUCCESS".equals(status)) {
                     if (message.contains("Cập nhật thông tin")) {
-                        Alert alert = new Alert(Alert.AlertType.INFORMATION, "Đã cập nhật sản phẩm thành công!");
-                        alert.showAndWait();
+                        showStyledAlert(Alert.AlertType.INFORMATION, "Cập nhật thành công", "Đã cập nhật sản phẩm thành công!");
                         changeScene(thongbao, "manager.fxml");
                     } else if (message.contains("Đã hủy phiên")) {
-                        Alert alert = new Alert(Alert.AlertType.INFORMATION, "Đã xóa sản phẩm thành công!");
-                        alert.showAndWait();
+                        showStyledAlert(Alert.AlertType.INFORMATION, "Xóa thành công", "Đã xóa sản phẩm thành công!");
                         changeScene(thongbao, "manager.fxml");
                     }
                 } else if ("ERROR".equals(status) || "FAILED".equals(status)) {
+                    showStyledAlert(Alert.AlertType.ERROR, "Lỗi", message);
                     showError(message);
                 }
             } catch (Exception e) {
-                showError("Lỗi đọc dữ liệu từ server.");
+                showStyledAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Lỗi đọc dữ liệu từ server.");
             }
         });
+    }
+    // ====================================================================
+    // HÀM TIỆN ÍCH TẠO THÔNG BÁO ĐẸP (SỬ DỤNG DIALOGPANE)
+    // ====================================================================
+    private void showStyledAlert(Alert.AlertType type, String title, String content) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        DialogPane dialogPane = alert.getDialogPane();
+        try {
+            URL cssUrl = getClass().getResource("/styles/Button.css");
+            if (cssUrl != null) {
+                dialogPane.getStylesheets().add(cssUrl.toExternalForm());
+            }
+            Stage alertStage = (Stage) dialogPane.getScene().getWindow();
+            alertStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/logo.png")));
+        } catch (Exception ex) {
+            log.warning("Không tải được CSS/Icon cho Alert: " + ex.getMessage());
+        }
+
+        alert.showAndWait();
     }
 }

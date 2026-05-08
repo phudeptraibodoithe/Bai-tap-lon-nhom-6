@@ -189,18 +189,21 @@ public class AuctionSessionDAO {
         }
     }
 
-    public boolean updateAuction(int sessionId, String name, String description, String imageURL, double currentPrice, double bidIncrease) {
+    public boolean updateAuction(AuctionSession session) {
         String sql = "UPDATE auction_session SET name = ?, description = ?, imageURL = ?, " +
-                "currentPrice = ?, bidIncrease = ? WHERE id = ?";
+                "currentPrice = ?, bidIncrease = ?, startTime = ?, endTime = ? WHERE id = ?";
+
         try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
-            ps.setString(1, name);
-            ps.setString(2, description);
-            ps.setString(3, imageURL);
-            ps.setDouble(4, currentPrice);
-            ps.setDouble(5, bidIncrease);
-            ps.setInt(6, sessionId);
+            ps.setString(1, session.getName());
+            ps.setString(2, session.getDescription());
+            ps.setString(3, session.getImageURL());
+            ps.setDouble(4, session.getCurrentPrice());
+            ps.setDouble(5, session.getBidIncrease());
+            ps.setTimestamp(6, java.sql.Timestamp.valueOf(session.getStartTime()));
+            ps.setTimestamp(7, java.sql.Timestamp.valueOf(session.getEndTime()));
+            ps.setInt(8, session.getId());
 
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {

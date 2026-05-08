@@ -158,7 +158,6 @@ public class AdminController extends BaseController implements Initializable, So
                 }
             } catch (Exception e) {
                 log.severe("KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
-                e.printStackTrace();
             }
         });
     }

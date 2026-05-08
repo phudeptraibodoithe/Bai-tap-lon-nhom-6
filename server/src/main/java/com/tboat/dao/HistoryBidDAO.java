@@ -62,7 +62,6 @@ public class HistoryBidDAO {
         return list;
     }
 
-    // Hàm dùng trong Transaction
     public boolean addBid(Connection conn, int sessionId, String bidderAccount, double bidAmount) throws SQLException {
         String sql = "INSERT INTO bid (auctionSessionId, bidderAccount, bidAmount, bidTime) VALUES (?, ?, ?, NOW())";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -75,7 +74,6 @@ public class HistoryBidDAO {
 
     public List<Bid> getBidsBySession(int sessionId) {
         List<Bid> bidList = new ArrayList<>();
-        // Sắp xếp bidAmount giảm dần để người dẫn đầu luôn ở trên cùng
         String sql = "SELECT * FROM bid WHERE auctionSessionId = ? ORDER BY bidAmount DESC, bidTime DESC";
 
         try (Connection conn = DatabaseConnection.getConnection();

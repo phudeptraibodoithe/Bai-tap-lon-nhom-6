@@ -18,7 +18,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox prefHeight="750.0" prefWidth="1100.0" style="-fx-background-color: #F8F9FA;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.ControllerEditItem">
+<VBox prefHeight="750.0" prefWidth="1100.0" style="-fx-background-color: #F8F9FA;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.ControllerEditItem">
     <children>
         <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="20.0" style="-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;">
             <padding>
@@ -202,13 +202,13 @@
                                                 <Region HBox.hgrow="ALWAYS" />
 
                                                 <!-- ĐÃ SỬA: Cụm 3 nút chức năng -->
-                                                <Button mnemonicParsing="false" onAction="#deleteItem" prefHeight="45.0" prefWidth="150.0" style="-fx-background-color: #FFF0F0; -fx-background-radius: 10; -fx-text-fill: #E63946; -fx-cursor: hand;" text="XÓA SẢN PHẨM">
+                                                <Button fx:id="btnDeleteItem" mnemonicParsing="false" onAction="#deleteItem" prefHeight="45.0" prefWidth="150.0" style="-fx-background-color: #FFF0F0; -fx-background-radius: 10; -fx-text-fill: #E63946; -fx-cursor: hand;" text="XÓA SẢN PHẨM">
                                                     <font><Font name="System Bold" size="14.0" /></font>
                                                 </Button>
-                                                <Button mnemonicParsing="false" onAction="#cancelEdit" prefHeight="45.0" prefWidth="130.0" style="-fx-background-color: #e0e0e0; -fx-background-radius: 10; -fx-text-fill: #333333; -fx-cursor: hand;" text="HỦY THAY ĐỔI">
+                                                <Button fx:id="btnCancelEdit" mnemonicParsing="false" onAction="#cancelEdit" prefHeight="45.0" prefWidth="130.0" style="-fx-background-color: #e0e0e0; -fx-background-radius: 10; -fx-text-fill: #333333; -fx-cursor: hand;" text="HỦY THAY ĐỔI">
                                                     <font><Font name="System Bold" size="14.0" /></font>
                                                 </Button>
-                                                <Button mnemonicParsing="false" onAction="#saveItem" prefHeight="45.0" prefWidth="150.0" style="-fx-background-color: #08103F; -fx-background-radius: 10; -fx-cursor: hand; -fx-text-fill: WHITE;" text="LƯU THAY ĐỔI">
+                                                <Button fx:id="btnSaveItem" mnemonicParsing="false" onAction="#saveItem" prefHeight="45.0" prefWidth="150.0" style="-fx-background-color: #08103F; -fx-background-radius: 10; -fx-cursor: hand; -fx-text-fill: WHITE;" text="LƯU THAY ĐỔI">
                                                     <font><Font name="System Bold" size="14.0" /></font>
                                                 </Button>
 

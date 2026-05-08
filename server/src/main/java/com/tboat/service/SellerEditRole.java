@@ -36,14 +36,7 @@ public class SellerEditRole implements TransactionRole {
             logger.warn("Từ chối Edit: Đã có người đặt giá.");
             return false;
         }
-        boolean isUpdated = sessionDAO.updateAuction(
-                session.getId(),
-                session.getName(),
-                session.getDescription(),
-                session.getImageURL(),
-                session.getCurrentPrice(),
-                session.getBidIncrease()
-        );
+        boolean isUpdated = sessionDAO.updateAuction(session);
         if (isUpdated) {
             logger.info("Thành công: Seller {} đã cập nhật thông tin phiên {}", user.getAccountName(), session.getId());
             return true;

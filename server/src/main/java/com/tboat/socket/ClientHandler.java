@@ -220,11 +220,13 @@ public class ClientHandler implements Runnable {
             JsonObject json = JsonParser.parseString(input).getAsJsonObject();
             JsonObject payload = json.getAsJsonObject("payload");
 
+            java.time.LocalDateTime startTime = java.time.LocalDateTime.parse(payload.get("startTime").getAsString());
+            java.time.LocalDateTime endTime = java.time.LocalDateTime.parse(payload.get("endTime").getAsString());
             String type = payload.get("type").getAsString();
             AuctionFactory factory = AuctionFactoryProducer.getFactory(type);
 
             AuctionSession updatedData = factory.createAuctionSession(
-                    null, null,
+                    startTime, endTime,
                     payload.get("currentPrice").getAsDouble(),
                     payload.get("bidIncrease").getAsDouble(),
                     this.clientId,
@@ -242,7 +244,6 @@ public class ClientHandler implements Runnable {
                 sendResponse(new Response<>("ERROR", "Không thể cập nhật: Phiên đã bắt đầu, đã có người bid hoặc lỗi quyền sở hữu.", null));
             }
         } catch (Exception e) {
-            // ✅ SỬA: e.printStackTrace() → log.error
             log.error("Lỗi xử lý EDIT_ITEM từ client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Dữ liệu gửi lên không hợp lệ!", null));
         }

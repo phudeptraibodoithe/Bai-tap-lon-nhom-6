@@ -37,7 +37,7 @@ public abstract class BaseController {
             scene.getStylesheets().add(getClass().getResource("/styles/Button.css").toExternalForm());
             scene.setRoot(root);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.severe("[System] Lỗi khi chuyển scene sang " + fxmlFileName + ": " + e.getMessage());
         }
     }
 
@@ -66,7 +66,7 @@ public abstract class BaseController {
             return nextController;
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.severe("[System] Lỗi khi chuyển scene sang " + fxmlFileName + ": " + e.getMessage());
             return null;
         }
     }

@@ -311,14 +311,12 @@ public class ClientHandler implements Runnable {
                 sendResponse(new Response<>("ERROR", "Bạn chưa đăng nhập!", null));
                 return;
             }
-            List<History> historyList = historyDAO.getHistoryByAccount(accountName);
-            if (historyList == null) {
+            List<Map<String, Object>> historyList = historyDAO.getHistoryByAccount(accountName);            if (historyList == null) {
                 historyList = new ArrayList<>();
             }
             sendResponse(new Response<>("SUCCESS", "Lấy lịch sử thành công", historyList));
 
         } catch (Exception e) {
-            // ✅ SỬA: e.printStackTrace() → log.error
             log.error("Lỗi xử lý GET_HISTORY cho client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi xử lý lấy lịch sử đấu giá: " + e.getMessage(), null));
         }

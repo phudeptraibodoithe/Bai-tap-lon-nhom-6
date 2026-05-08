@@ -2,7 +2,9 @@ package com.tboat.dao;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.tboat.database.DatabaseConnection;
 import com.tboat.models.Bid;
@@ -36,28 +38,32 @@ public class HistoryBidDAO {
         }
     }
 
-    public List<History> getHistoryByAccount(String accountName) {
-        List<History> list = new ArrayList<>();
-        String sql = "SELECT * FROM history WHERE winnerAccountName = ? ORDER BY completedAt DESC";
+    public List<Map<String, Object>> getHistoryByAccount(String accountName) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        // Thêm p.roleType vào câu SELECT
+        String sql = "SELECT p.auctionSessionId, p.roleType, s.name, h.winnerAccountName, h.finalPrice " +
+                "FROM participation p " +
+                "JOIN auction_session s ON p.auctionSessionId = s.id " +
+                "LEFT JOIN history h ON p.auctionSessionId = h.auctionSessionId " +
+                "WHERE p.accountName = ? " +
+                "ORDER BY h.completedAt DESC";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setString(1, accountName);
-
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    History history = new History(
-                            rs.getInt("auctionSessionId"),
-                            rs.getString("winnerAccountName"),
-                            rs.getDouble("finalPrice"),
-                            rs.getTimestamp("completedAt").toLocalDateTime()
-                    );
-                    list.add(history);
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("auctionSessionId", rs.getInt("auctionSessionId"));
+                    row.put("roleType", rs.getString("roleType")); // Gửi roleType về để Client phân loại
+                    row.put("name", rs.getString("name"));
+                    row.put("winnerAccountName", rs.getString("winnerAccountName"));
+                    row.put("finalPrice", rs.getDouble("finalPrice"));
+                    list.add(row);
                 }
             }
         } catch (SQLException e) {
-            logger.error("Lỗi khi lấy lịch sử theo accountName: ", e);
+            logger.error("Lỗi lấy lịch sử: ", e);
         }
         return list;
     }

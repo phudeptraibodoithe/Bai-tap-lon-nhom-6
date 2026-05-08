@@ -7,6 +7,7 @@ import com.tboat.models.AuctionSession;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import com.tboat.utils.GsonUtils;
+import com.tboat.utilsclient.CurrencyFormatter;
 import com.tboat.utilsclient.CurrencyStringConverter;
 import com.tboat.utilsclient.ImageUtils;
 import javafx.application.Platform;
@@ -192,24 +193,87 @@ public class ControllerEditItem extends BaseController implements Initializable,
     // CÁC HÀM TIỆN ÍCH (Giữ nguyên từ PostItem)
     // ====================================================================
     private void setupPriceSpinners() {
-        SpinnerValueFactory.DoubleSpinnerValueFactory valueFactory1 = new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, 0.0, 10000.0);
-        SpinnerValueFactory.DoubleSpinnerValueFactory valueFactory2 = new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 0.0, 0.0, 10000.0);
+        SpinnerValueFactory.DoubleSpinnerValueFactory priceFactory =
+                new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, 0.0, 10000.0);
+
+        SpinnerValueFactory.DoubleSpinnerValueFactory jumpFactory =
+                new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, 0.0, 5000.0);
 
         CurrencyStringConverter currencyConverter = new CurrencyStringConverter();
-        valueFactory1.setConverter(currencyConverter);
-        valueFactory2.setConverter(currencyConverter);
+        priceFactory.setConverter(currencyConverter);
+        jumpFactory.setConverter(currencyConverter);
 
-        priceSpinner.setValueFactory(valueFactory1);
-        jumpSpinner.setValueFactory(valueFactory2);
+        priceSpinner.setValueFactory(priceFactory);
+        jumpSpinner.setValueFactory(jumpFactory);
+
         priceSpinner.setEditable(true);
         jumpSpinner.setEditable(true);
+
+        // THÊM ĐOẠN NÀY: Xử lý định dạng khi đang gõ cho Price Spinner
+        addRealTimeFormatter(priceSpinner);
+        // THÊM ĐOẠN NÀY: Xử lý định dạng khi đang gõ cho Jump Spinner
+        addRealTimeFormatter(jumpSpinner);
+
+        commitEditorText(priceSpinner);
+        commitEditorText(jumpSpinner);
 
         priceSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 double maxJump = newVal * 0.5;
-                valueFactory2.setMax(maxJump);
-                if (jumpSpinner.getValue() > maxJump) {
-                    valueFactory2.setValue(maxJump);
+                jumpFactory.setMax(maxJump > 0 ? maxJump : 1e18);
+                if (jumpSpinner.getValue() > maxJump && newVal > 0) {
+                    jumpFactory.setValue(maxJump);
+                }
+            }
+        });
+    }
+
+    private void addRealTimeFormatter(Spinner<Double> spinner) {
+        TextField editor = spinner.getEditor();
+        editor.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == null || newValue.isEmpty()) return;
+
+            // 1. Chỉ lấy các chữ số từ chuỗi đang gõ
+            String digits = newValue.replaceAll("[^\\d]", "");
+            if (digits.isEmpty()) {
+                editor.setText("");
+                return;
+            }
+
+            try {
+                // 2. Chuyển thành số và định dạng lại với dấu phẩy
+                double value = Double.parseDouble(digits);
+                String formatted = CurrencyFormatter.formatDisplay(value);
+
+                // 3. Cập nhật lại Editor (Dùng Platform.runLater để tránh xung đột Listener)
+                Platform.runLater(() -> {
+                    int currentCaret = editor.getCaretPosition();
+                    int oldLength = editor.getText().length();
+
+                    editor.setText(formatted);
+
+                    // 4. Tính toán lại vị trí con trỏ để không bị nhảy về đầu dòng
+                    int newLength = formatted.length();
+                    int selection = currentCaret + (newLength - oldLength);
+                    editor.positionCaret(Math.max(0, Math.min(selection, newLength - 4))); // -4 để tránh nhảy ra sau chữ " VNĐ"
+                });
+            } catch (NumberFormatException e) {
+                editor.setText(oldValue);
+            }
+        });
+    }
+
+    /**
+     * Hàm hỗ trợ để Spinner cập nhật giá trị ngay khi người dùng gõ xong (mất focus)
+     */
+    private <T> void commitEditorText(Spinner<T> spinner) {
+        spinner.getEditor().focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal) { // Khi mất focus
+                String text = spinner.getEditor().getText();
+                StringConverter<T> converter = spinner.getValueFactory().getConverter();
+                if (converter != null) {
+                    T value = converter.fromString(text);
+                    spinner.getValueFactory().setValue(value);
                 }
             }
         });

@@ -6,6 +6,7 @@ import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import com.tboat.utils.GsonUtils;
+import com.tboat.utilsclient.CurrencyFormatter;
 import com.tboat.utilsclient.CurrencyStringConverter;
 import com.tboat.utilsclient.ImageUtils;
 import javafx.application.Platform;
@@ -70,16 +71,49 @@ public class ControllerPostItem extends BaseController implements Initializable,
         priceSpinner.setEditable(true);
         jumpSpinner.setEditable(true);
 
+        addRealTimeFormatter(priceSpinner);
+        addRealTimeFormatter(jumpSpinner);
         commitEditorText(priceSpinner);
         commitEditorText(jumpSpinner);
 
         priceSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 double maxJump = newVal * 0.5;
-                jumpFactory.setMax(maxJump > 0 ? maxJump : 1e18); // Nếu giá 0 thì cho max lớn
+                jumpFactory.setMax(maxJump > 0 ? maxJump : 1e18);
                 if (jumpSpinner.getValue() > maxJump && newVal > 0) {
                     jumpFactory.setValue(maxJump);
                 }
+            }
+        });
+    }
+
+    private void addRealTimeFormatter(Spinner<Double> spinner) {
+        TextField editor = spinner.getEditor();
+        editor.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == null || newValue.isEmpty()) return;
+
+            String digits = newValue.replaceAll("[^\\d]", "");
+            if (digits.isEmpty()) {
+                editor.setText("");
+                return;
+            }
+
+            try {
+                double value = Double.parseDouble(digits);
+                String formatted = CurrencyFormatter.formatDisplay(value);
+
+                Platform.runLater(() -> {
+                    int currentCaret = editor.getCaretPosition();
+                    int oldLength = editor.getText().length();
+
+                    editor.setText(formatted);
+
+                    int newLength = formatted.length();
+                    int selection = currentCaret + (newLength - oldLength);
+                    editor.positionCaret(Math.max(0, Math.min(selection, newLength - 4))); // -4 để tránh nhảy ra sau chữ " VNĐ"
+                });
+            } catch (NumberFormatException e) {
+                editor.setText(oldValue);
             }
         });
     }
@@ -186,13 +220,13 @@ public class ControllerPostItem extends BaseController implements Initializable,
             return;
         }
 
-        if (startDT.isBefore(now.plusMinutes(10))) {
-            showError("Thời gian bắt đầu phải sau hiện tại ít nhất 10 phút!");
+        if (startDT.isBefore(now.plusMinutes(5))) {
+            showError("Thời gian bắt đầu phải sau hiện tại ít nhất 5 phút!");
             return;
         }
 
-        if (endDT.isBefore(startDT.plusMinutes(10))) {
-            showError("Thời gian kết thúc phải cách thời gian bắt đầu ít nhất 10 phút!");
+        if (endDT.isBefore(startDT.plusMinutes(5))) {
+            showError("Thời gian kết thúc phải cách thời gian bắt đầu ít nhất 5 phút!");
             return;
         }
 

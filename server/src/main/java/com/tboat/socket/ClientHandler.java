@@ -280,7 +280,7 @@ public class ClientHandler implements Runnable {
                 sendResponse(new Response<>("ERROR", "Phòng đấu giá không tồn tại hoặc đã đóng.", null));
             }
         } catch (Exception e) {
-            // ✅ SỬA: e.printStackTrace() → log.error
+            
             log.error("Lỗi xử lý JOIN từ client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi xử lý hệ thống khi vào phòng", null));
         }
@@ -295,10 +295,10 @@ public class ClientHandler implements Runnable {
             }
 
             sendResponse(new Response<>("SUCCESS", "Danh sách chờ duyệt", pendingItems));
-            // ✅ SỬA: System.out.println → log.debug
+            
             log.debug("[Server] Đã gửi danh sách chờ duyệt cho Admin.");
         } catch (Exception e) {
-            // ✅ SỬA: e.printStackTrace() → log.error
+            
             log.error("Lỗi lấy danh sách PENDING: {}", e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi lấy danh sách: " + e.getMessage(), null));
         }
@@ -336,7 +336,7 @@ public class ClientHandler implements Runnable {
             sendResponse(new Response<>("SUCCESS", "Lấy danh sách sản phẩm thành công", myList));
 
         } catch (Exception e) {
-            // ✅ SỬA: e.printStackTrace() → log.error
+            
             log.error("Lỗi xử lý GET_MY_AUCTIONS cho client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi xử lý lấy danh sách sản phẩm: " + e.getMessage(), null));
         }
@@ -352,7 +352,7 @@ public class ClientHandler implements Runnable {
             }
             sendResponse(new Response<>("SUCCESS", "Lấy danh sách Bid thành công", bidList));
         } catch (Exception e) {
-            // ✅ SỬA: e.printStackTrace() → log.error
+            
             log.error("Lỗi xử lý GET_SESSION_BIDS từ client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi xử lý lấy danh sách Bid: " + e.getMessage(), null));
         }
@@ -373,7 +373,7 @@ public class ClientHandler implements Runnable {
                 sendResponse(new Response<>("ERROR", "Không thể hủy (đã có người đặt giá)", null));
             }
         } catch (Exception e) {
-            // ✅ SỬA: e.printStackTrace() → log.error
+            
             log.error("Lỗi xử lý CANCEL_AUCTION từ client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Dữ liệu yêu cầu hủy không hợp lệ", null));
         }
@@ -388,13 +388,13 @@ public class ClientHandler implements Runnable {
             if (session != null) {
                 AuctionTimerService.getInstance().scheduleAuction(session);
                 sendResponse(new Response<>("SUCCESS", "Đã duyệt! Hệ thống sẽ tự động canh giờ.", sessionId));
-                // ✅ SỬA: System.out.println → log.info
+                
                 log.info("[Server] Admin đã duyệt phiên ID: {}", sessionId);
             } else {
                 sendResponse(new Response<>("ERROR", "Không tìm thấy sản phẩm cần duyệt (Lỗi Database)", null));
             }
         } catch (Exception e) {
-            // ✅ SỬA: e.printStackTrace() → log.error
+            
             log.error("Lỗi xử lý APPROVE_ITEM từ client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi xử lý duyệt sản phẩm: " + e.getMessage(), null));
         }
@@ -409,13 +409,13 @@ public class ClientHandler implements Runnable {
 
             if (success) {
                 sendResponse(new Response<>("SUCCESS", "Đã từ chối sản phẩm", sessionId));
-                // ✅ SỬA: System.out.println → log.info
+                
                 log.info("[Server] Admin đã từ chối phiên ID: {}", sessionId);
             } else {
                 sendResponse(new Response<>("ERROR", "Không thể thực hiện từ chối (Lỗi Database)", null));
             }
         } catch (Exception e) {
-            // ✅ SỬA: e.printStackTrace() → log.error
+            
             log.error("Lỗi xử lý REJECT_ITEM từ client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi xử lý từ chối sản phẩm: " + e.getMessage(), null));
         }
@@ -457,7 +457,7 @@ public class ClientHandler implements Runnable {
                 sendResponse(new Response<>("FAILED", "Giao dịch bị từ chối (Số dư không đủ).", null));
             }
         } catch (SQLException e) {
-            // ✅ SỬA: e.printStackTrace() → log.error
+            
             log.error("Lỗi kết nối DB khi xử lý TRANSACTION cho client {}: {}", clientId, e.getMessage(), e);
             sendResponse(new Response<>("ERROR", "Lỗi kết nối cơ sở dữ liệu", null));
         }
@@ -484,14 +484,12 @@ public class ClientHandler implements Runnable {
         try {
             if (clientId != null && !clientId.equals("Guest")) {
                 userManager.logout(clientId);
-                // ✅ SỬA: System.out.println → log.info
                 log.info("[Server] Đã giải phóng tài nguyên cho user: {}", clientId);
             }
             if (currentRoom != null) currentRoom.removeSubscriber(this);
             if (out != null) out.close();
             if (socket != null) socket.close();
         } catch (IOException e) {
-            // ✅ SỬA: e.printStackTrace() → log.error
             log.error("Lỗi đóng kết nối socket cho client {}: {}", clientId, e.getMessage(), e);
         }
     }

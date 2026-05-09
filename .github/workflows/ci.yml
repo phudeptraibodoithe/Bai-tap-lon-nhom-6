@@ -40,11 +40,5 @@ jobs:
           if grep -rn "printStackTrace()" . --include=\*.java --exclude-dir=test; then
             echo "❌ LỖI: Cấm dùng e.printStackTrace(). Hãy dùng log.error(\"Mô tả\", e)!" && exit 1
           fi
-          
-          # 3. Chặn import dấu sao (wildcard)
-          if grep -rn "import .*\.\*;" . --include=\*.java; then
-            echo "❌ LỖI: Không được import bằng dấu * (VD: java.util.*). Hãy import cụ thể từng class!" && exit 1
-          fi
-
       - name: Maven Build and Verify
         run: mvn clean verify

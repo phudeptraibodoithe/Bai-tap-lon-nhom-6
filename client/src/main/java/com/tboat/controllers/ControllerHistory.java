@@ -79,7 +79,7 @@ public class ControllerHistory extends BaseController implements Initializable, 
                             colorStatus = "#f39c12"; // Cam
                         } else {
                             statusText = "Đã bán";
-                            moneyDisplay = String.format("+%,.0f VNĐ", finalPrice);
+                            moneyDisplay = String.format("+%,.0f VNĐ", finalPrice*0.9);
                             colorStatus = "#27ae60"; // Xanh
                         }
                     } else {
@@ -91,7 +91,7 @@ public class ControllerHistory extends BaseController implements Initializable, 
                             colorStatus = "#f39c12"; // Cam
                         } else if (me.equalsIgnoreCase(winner)) {
                             statusText = "Thành công";
-                            moneyDisplay = String.format("-%,.0f VNĐ", finalPrice*0.9);
+                            moneyDisplay = String.format("-%,.0f VNĐ", finalPrice);
                             colorStatus = "#27ae60"; // Xanh
                         } else {
                             statusText = "Thất bại";

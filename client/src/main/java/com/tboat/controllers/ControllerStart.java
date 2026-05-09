@@ -9,12 +9,14 @@ import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.VBox;
+
 import java.io.IOException;
 
 public class ControllerStart extends BaseController {
 
 
-    @FXML private AnchorPane serverPane;
+    @FXML private VBox serverPane;
     @FXML private TextField ipText;
     @FXML private Label serverErr;
 

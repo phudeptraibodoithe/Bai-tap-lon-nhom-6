@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.Cursor?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Hyperlink?>
 <?import javafx.scene.control.Label?>
@@ -7,46 +9,67 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
+<?import javafx.scene.text.Text?>
 
-<StackPane style="-fx-background-color: #A2B5BB;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.ControllerLogin">
-   <children>
-      <AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="800.0" style="-fx-background-color: #A2B5BB;">
-          <children>
-            <AnchorPane layoutX="216.0" layoutY="7.0" prefHeight="586.0" prefWidth="376.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-border-radius: 15; -fx-border-width: 2; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-border-color: #DFB76C; -fx-background-insets: 2;">
-               <children>
-                    <Button layoutX="29.0" layoutY="425.0" mnemonicParsing="false" onAction="#submit" prefHeight="35.0" prefWidth="314.0" style="-fx-background-color: #DFB76C; -fx-background-radius: 15; -fx-border-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-cursor: hand;" text="ĐĂNG NHẬP">
-                        <font>
-                            <Font size="21.0" />
-                        </font>
-                    </Button>
-                    <Hyperlink layoutX="273.0" layoutY="488.0" onAction="#switchToRegister" prefHeight="23.0" prefWidth="74.0" text="ĐĂNG KÝ" />
-                  <Label fx:id="err" alignment="CENTER" layoutX="25.0" layoutY="391.0" prefHeight="21.0" prefWidth="314.0" textFill="RED">
-                     <font>
-                        <Font size="15.0" />
-                     </font>
-                  </Label>
-                    <TextField fx:id="signText" layoutX="25.0" layoutY="284.0" prefHeight="25.0" prefWidth="314.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-highlight-fill: #E95C20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);" />
-                    <Label layoutX="27.0" layoutY="255.0" prefHeight="25.0" prefWidth="142.0" text="Tên Đăng Nhập">
-                        <font>
-                            <Font size="16.0" />
-                        </font>
-                    </Label>
-                    <Label layoutX="25.0" layoutY="323.0" prefHeight="17.0" prefWidth="104.0" text="Mật Khẩu">
-                        <font>
-                            <Font size="16.0" />
-                        </font>
-                    </Label>
-                    <PasswordField fx:id="passText" layoutX="25.0" layoutY="348.0" prefHeight="25.0" prefWidth="314.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5); -fx-highlight-fill: #E95C20;" />
-               </children></AnchorPane>
-              <ImageView fitHeight="240.0" fitWidth="437.0" layoutX="189.0" onMouseClicked="#switchToStart" pickOnBounds="true" preserveRatio="true" style="-fx-cursor: hand;">
-                  <image>
-                      <Image url="@../images/logo.png" />
-                  </image>
-              </ImageView>
-          </children>
-      </AnchorPane>
-   </children>
+<StackPane prefHeight="650.0" prefWidth="900.0" style="-fx-background-color: linear-gradient(to bottom right, #0F2027, #203A43, #2C5364);" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.ControllerLogin">
+    <children>
+        <VBox alignment="CENTER" maxHeight="580.0" maxWidth="480.0" spacing="20.0" style="-fx-background-color: white; -fx-background-radius: 30; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 20, 0, 0, 10);">
+            <padding>
+                <Insets bottom="40.0" left="45.0" right="45.0" top="35.0" />
+            </padding>
+            <children>
+                <VBox alignment="CENTER" spacing="15.0">
+                    <children>
+                        <ImageView fitHeight="160.0" fitWidth="320.0" onMouseClicked="#switchToStart" pickOnBounds="true" preserveRatio="true">
+                            <image>
+                                <Image url="@../images/logo.png" />
+                            </image>
+                            <cursor><Cursor fx:constant="HAND" /></cursor>
+                        </ImageView>
+                        <Text fill="#2c3e50" style="-fx-font-weight: bold;" text="CHÀO MỪNG TRỞ LẠI">
+                            <font><Font size="26.0" /></font>
+                        </Text>
+                    </children>
+                </VBox>
+
+                <VBox spacing="15.0">
+                    <children>
+                        <VBox spacing="8.0">
+                            <children>
+                                <Label style="-fx-font-weight: bold;" text="Tên đăng nhập" textFill="#34495e" />
+                                <TextField fx:id="signText" prefHeight="45.0" promptText="Nhập tên tài khoản" style="-fx-background-radius: 12; -fx-background-color: #f5f6fa; -fx-border-color: #dcdde1; -fx-border-radius: 12;" />
+                            </children>
+                        </VBox>
+                        <VBox spacing="8.0">
+                            <children>
+                                <Label style="-fx-font-weight: bold;" text="Mật khẩu" textFill="#34495e" />
+                                <PasswordField fx:id="passText" prefHeight="45.0" promptText="********" style="-fx-background-radius: 12; -fx-background-color: #f5f6fa; -fx-border-color: #dcdde1; -fx-border-radius: 12;" />
+                            </children>
+                        </VBox>
+                    </children>
+                </VBox>
+
+                <VBox alignment="CENTER" spacing="10.0">
+                    <children>
+                        <Label fx:id="err" alignment="CENTER" maxWidth="1.7976931348623157E308" textFill="RED">
+                            <font><Font name="System Italic" size="14.0" /></font>
+                        </Label>
+                        <Button mnemonicParsing="false" onAction="#submit" prefHeight="50.0" prefWidth="1.7976931348623157E308" style="-fx-background-color: #D4AF37; -fx-background-radius: 25; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 5);" text="ĐĂNG NHẬP">
+                            <cursor><Cursor fx:constant="HAND" /></cursor>
+                        </Button>
+                        <HBox alignment="CENTER" spacing="5.0">
+                            <children>
+                                <Label text="Chưa có tài khoản?" textFill="#7f8c8d" />
+                                <Hyperlink onAction="#switchToRegister" style="-fx-text-fill: #2980b9; -fx-font-weight: bold;" text="Đăng ký ngay" />
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+            </children>
+        </VBox>
+    </children>
 </StackPane>

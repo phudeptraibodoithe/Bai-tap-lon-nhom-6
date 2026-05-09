@@ -40,6 +40,5 @@ jobs:
           if grep -rn "printStackTrace()" . --include=\*.java --exclude-dir=test; then
             echo "❌ LỖI: Cấm dùng e.printStackTrace(). Hãy dùng log.error(\"Mô tả\", e)!" && exit 1
           fi
-
       - name: Maven Build and Verify
         run: mvn clean verify

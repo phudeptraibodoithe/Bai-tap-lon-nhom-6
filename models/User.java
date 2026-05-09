@@ -4,6 +4,7 @@ public class User extends Person {
     // Attributes
     private String description;
     private String avatarURL;
+    public TransactionRole role;
 
     // Constructor
     public User(String accountName, String password, String nickname,String description,String avatarURL) {
@@ -13,20 +14,12 @@ public class User extends Person {
     }
 
     // Setters
-    public void setDescription(String description) {
-        this.description = description;
-    }
-    public void setAvatar(String avatarURL) {
-        this.avatarURL = avatarURL;
-    }
+    public void setDescription(String description) { this.description = description; }
+    public void setAvatar(String avatarURL) { this.avatarURL = avatarURL; }
     
     // Getters
-    public String getDescription() {
-        return description;
-    }
-    public String getAvatarURL() {
-        return avatarURL;
-    }
+    public String getDescription() { return description; }
+    public String getAvatarURL() { return avatarURL; }
 
     // Methods
     public void deposit(double amount) {

@@ -1,36 +1,27 @@
 package services;
 
 import models.User;
-import java.util.HashMap;
-import java.util.Map;
+import server.src.resoures.
 
 public class UserManager {
-    private Map<String, User> userMap = new HashMap<>();
 
-    // Kiểm tra accountName/nickname đã tồn tại chưa
-    public boolean isUserExists(String account) {
-        return userMap.containsKey(account);
-    }
+    UserDAO userDAO = new UserDAO();
 
     // Phần đăng ký
     public void register(User newUser) {
         // Nếu ĐÃ tồn tại -> Không cho đăng ký
-        if (isUserExists(newUser.getAccountName())) {
+        if (userDAO.getUser(newUser.getAccountName()) != null) {
             System.out.println("Error: Account already exists!");
             return;
         }
-        userMap.put(newUser.getAccountName(), newUser);
+        userDAO.addUser(newUser.getAccountName(), newUser.getPassword(), newUser.getNickname());
         System.out.println("Registration successful!");
     }
 
     // Phần đăng nhập
     public User login(String account, String password) {
-        if (!isUserExists(account)) {
-            System.out.println("Account does not exist on the system!");
-            return null;
-        }
 
-        User user = userMap.get(account);
+        User user = userDAO.getUser(account);
         if (user.getPassword().equals(password)) {
             System.out.println("Login successful!");
             return user;

@@ -16,19 +16,8 @@ public class History {
     }
 
     // Getters
-    public int getAuctionSessionId() {
-        return auctionSessionId;
-    }
-
-    public int getWinnerAccountName() {
-        return winnerAccountName;
-    }
-
-    public double getFinalPrice() {
-        return finalPrice;
-    }
-
-    public LocalDateTime getCompletedAt() {
-        return completedAt;
-    }
+    public int getAuctionSessionId() { return auctionSessionId; }
+    public int getWinnerAccountName() { return winnerAccountName; }
+    public double getFinalPrice() { return finalPrice; }
+    public LocalDateTime getCompletedAt() { return completedAt; }
 }

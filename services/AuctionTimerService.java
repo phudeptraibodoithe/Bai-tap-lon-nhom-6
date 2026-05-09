@@ -15,7 +15,7 @@ public class AuctionTimerService {
 
     public void scheduleAuctionClose(AuctionSession session) {
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime endTime = session.getEndTime(); // Giả sử bạn có trường endTime
+        LocalDateTime endTime = session.getEndTime();
 
         // Tính toán khoảng thời gian (giây) từ hiện tại cho đến lúc kết thúc
         long delaySeconds = Duration.between(now, endTime).getSeconds();

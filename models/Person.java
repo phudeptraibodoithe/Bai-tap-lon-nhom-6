@@ -16,23 +16,13 @@ public abstract class Person {
     }
 
     // Setters
-    public void setNickname(String nickname) {
-        this.nickname = nickname;
-    }
+    public void setNickname(String nickname) { this.nickname = nickname; }
 
     // Getters
-    public String getAccountName() {
-        return accountName;
-    }
-    public String getNickname() {
-        return nickname;
-    }
-    public double getBalance() {
-        return balance;
-    }
-    public String getPassword() {
-        return password;
-    }
+    public String getAccountName() { return accountName; }
+    public String getNickname() { return nickname; }
+    public double getBalance() { return balance; }
+    public String getPassword() { return password; }
 
     // Methods
     public void withdraw(double amount) {

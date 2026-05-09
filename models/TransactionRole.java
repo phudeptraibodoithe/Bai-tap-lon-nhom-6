@@ -1,5 +1,5 @@
 package models;
 
 public interface TransactionRole {
-    RoleType getRoleType();
+    boolean execute(User user, AuctionSession session, double amount);
 }

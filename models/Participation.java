@@ -23,8 +23,7 @@ public class Participation {
         // Delegate (ủy quyền) hành vi thực thi xuống cho interface
         // Nếu roleBehavior là BidderRole, nó có thể ép kiểu để gọi hàm placeBid()
         if (roleBehavior instanceof BidderRole) {
-            System.out.println("Set price: ");
-            // Ép kiểu để gọi hàm riêng của BidderRole
+            ((BidderRole) roleBehavior).placeBid(); // Gọi hàm placeBid với giá trị cụ thể
         } else if (roleBehavior instanceof SellerRole) {
             System.out.println("Observation only!");
         }

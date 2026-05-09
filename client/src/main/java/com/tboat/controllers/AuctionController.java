@@ -422,7 +422,6 @@ public class AuctionController extends BaseController implements SocketListener 
                         break;
                 }
             } catch (Exception e) {
-                System.out.println("❌ KHÔNG THỂ ĐỌC DỮ LIỆU TỪ SERVER: " + response);
                 log.error("Không thể đọc dữ liệu từ server: {} | Exception: {}", response, e.getMessage(), e);
             }
         });

@@ -43,20 +43,11 @@ classDiagram
         -String nickname
         -String password
         -double balance
-        +getAccountName() String
-        +getNickname() String
-        +getBalance() double
-        +setNickname(String nickname) void
-        +deposit(double amount) void
-        +withdraw(double amount) void
     }
 
     class User {
         -String description
         -String avatarURL
-        +setDescription(String description) void
-        +setAvatar(String avatarURL) void
-        +joinSession(AuctionSession session, String roleType) Participation
     }
 
     class Admin {
@@ -67,7 +58,6 @@ classDiagram
     Person <|-- User
     Person <|-- Admin
 
-    %% --- PHẦN ENTITY CỐT LÕI Đ ĐÃ SỬA ---
     class AuctionSession {
         <<abstract>>
         -int id
@@ -257,19 +247,17 @@ sequenceDiagram
 
  Thành viên | Nội dung nhiệm vụ |  tiến độ |
 | :--- | :--- | :--- |
-|  | Ghép nối code của cả nhóm |60% |
-| **Phúc** | Thiết kế giao diện trang chủ, trang nạp rút | 100%|
-| **Phúc** | Thiết kế giao diện của admin, trang đấu giá | 80% |
-| **Phúc** | Xử lý cập nhật UI realtime và đọc dữ liệu để hiện thị  | 50%|
-| **Tâm** | Thiết kế các unit test  |80% |
-| **Tâm** | Xử lý Logic Broadcast (Gửi dữ liệu thời gian thực tới tất cả Client trong phòng) |80% |
-| **Tâm** | Xây dựng Giao thức truyền tin | 80% |
+|  | Ghép nối code của cả nhóm |80% |
+| **Phúc** | Thiết kế giao diện trang chủ, trang nạp rút, admin, trang đấu giá | 100%|
+| **Phúc** | Xử lý cập nhật UI realtime và đọc dữ liệu để hiện thị  | 100%|
+| **Tâm** | Thiết kế các unit test  |60% |
+| **Tâm** | Xử lý Logic Broadcast (Gửi dữ liệu thời gian thực tới tất cả Client trong phòng) |100% |
+| **Tâm** | Xây dựng Giao thức truyền tin | 100% |
 | **Tâm** | Xử lý Đa luồng | 70% |
 | **Thái** | Thiết kế các lớp Java thuần (User, Item,...) | 100% |
 | **Thái** | Xử lý Validation dữ liệu & Bắt lỗi Ngoại lệ (Exception) | 70%|
 | **Phú** | Thiết kế giao diện login, register, trang Profile, History, UploadItem | 100%|
-| **Phú** | Lập trình tầng DAO (Data Access Object) |100% |
-| **Phú** | Thiết kế CSDL (ERD) & Viết file SQL & Xây dựng lớp Database Connection |100% |
+| **Phú** | Lập trình tầng DAO (Data Access Object) & Thiết kế CSDL |100% |
 | **Phú và Tâm** | Thiết kế kiến trúc Socket (Server/Client) & Vẽ sơ đồ UML |100% |
-| **Tâm và Thái**| Code logic Bộ đếm thời gian (Timer) & Tự động chốt phiên đấu giá |80%|
+| **Tâm, Thái, Phú**| Code logic Bộ đếm thời gian (Timer) & Tự động chốt phiên đấu giá |100%|
 | **Thái, Phú, Tâm** | Code logic Trả giá & Xử lý đồng bộ (Synchronized chống trùng lặp) |80%|

@@ -14,8 +14,6 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<!-- THÊM minWidth VÀ minHeight VÀO BORDERPANE ĐỂ KHÓA GIỚI HẠN THU NHỎ -->
-
 <BorderPane minHeight="500.0" minWidth="800.0" prefHeight="700.0" prefWidth="1000.0" style="-fx-background-color: #f4f7f6;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.AdminController">
 
     <!-- PHẦN HEADER (THANH ĐIỀU HƯỚNG TRÊN CÙNG) -->
@@ -36,19 +34,18 @@
                     </graphic>
                 </Button>
 
-                <!-- 2. Nhóm Menu Điều Hướng (Đặt cạnh nhau) -->
-                <!-- Thêm minWidth để chữ không bị co rúm -->
+                <!-- 2. Nhóm Menu Điều Hướng (Đã xóa Profile, Thêm Số Dư) -->
                 <HBox alignment="CENTER_LEFT" minWidth="-Infinity" spacing="10.0">
                     <children>
-                        <!-- Nút Admin -->
-                        <Button fx:id="btnAdminHome" mnemonicParsing="false" onAction="#switchToAdmin" style="-fx-background-color: #2c3e50; -fx-background-radius: 8; -fx-padding: 8 18; -fx-cursor: hand;" text="HỆ THỐNG QUẢN TRỊ" textFill="WHITE">
+                        <!-- Tab Quản Trị (Active - màu xanh dương) -->
+                        <Button mnemonicParsing="false" onAction="#switchToAdmin" style="-fx-background-color: transparent; -fx-background-radius: 8; -fx-padding: 8 18; -fx-cursor: hand;" text="HỆ THỐNG QUẢN TRỊ" textFill="WHITE">
                             <font>
                                 <Font name="System Bold" size="14.0" />
                             </font>
                         </Button>
 
-                        <!-- Nút Profile -->
-                        <Button mnemonicParsing="false" onAction="#switchToAdminProfile" style="-fx-background-color: #2c3e50; -fx-background-radius: 8; -fx-padding: 8 18; -fx-cursor: hand;" text="PROFILE" textFill="WHITE">
+                        <!-- Tab Số Dư (Chuyển sang trang Nạp Rút) -->
+                        <Button mnemonicParsing="false" onAction="#switchToWalletAdmin" style="-fx-background-color: transparent; -fx-background-radius: 8; -fx-padding: 8 18; -fx-cursor: hand;" text="QUẢN LÝ SỐ DƯ" textFill="WHITE">
                             <font>
                                 <Font name="System Bold" size="14.0" />
                             </font>
@@ -62,13 +59,17 @@
                 <!-- 3. Khoảng trống đẩy Lời chào sang góc phải -->
                 <Region HBox.hgrow="ALWAYS" />
 
-                <!-- 4. Lời chào góc phải -->
-                <!-- Thêm minWidth để chữ không bị cắt mất -->
-                <Label minWidth="-Infinity" text="Xin chào, Admin!" textFill="WHITE">
-                    <font>
-                        <Font name="System Bold" size="14.0" />
-                    </font>
-                </Label>
+                <!-- 4. Lời chào góc phải & NÚT ĐĂNG XUẤT -->
+                <HBox alignment="CENTER_RIGHT" minWidth="-Infinity" spacing="15.0">
+                    <children>
+                        <Label text="Xin chào, Admin!" textFill="WHITE">
+                            <font><Font name="System Bold" size="14.0" /></font>
+                        </Label>
+                        <Button mnemonicParsing="false" onAction="#logout" style="-fx-background-color: #e74c3c; -fx-background-radius: 5; -fx-cursor: hand; -fx-padding: 6 15;" text="Đăng xuất" textFill="WHITE">
+                            <font><Font name="System Bold" size="12.0" /></font>
+                        </Button>
+                    </children>
+                </HBox>
             </children>
         </HBox>
     </top>
@@ -94,11 +95,11 @@
                         <!-- Thêm minWidth cho TextField để nó không bị bóp nghẹt -->
                         <TextField fx:id="txtSearch" minWidth="200.0" prefHeight="40.0" prefWidth="300.0" promptText="Tìm kiếm tên sản phẩm hoặc ID..." style="-fx-background-radius: 5;" />
                         <Button minWidth="-Infinity" mnemonicParsing="false" prefHeight="40.0" style="-fx-background-color: #3498db; -fx-cursor: hand;" text="Tìm kiếm" textFill="WHITE" />
-                  <Label fx:id="err" prefHeight="17.0" prefWidth="379.0">
-                     <font>
-                        <Font size="14.0" />
-                     </font>
-                  </Label>
+                        <Label fx:id="err" prefHeight="17.0" prefWidth="379.0">
+                            <font>
+                                <Font size="14.0" />
+                            </font>
+                        </Label>
                         <Region HBox.hgrow="ALWAYS" />
                     </children>
                 </HBox>

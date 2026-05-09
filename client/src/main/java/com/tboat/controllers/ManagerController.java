@@ -19,6 +19,7 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
@@ -83,22 +84,39 @@ public class ManagerController extends BaseController implements Initializable, 
             @Override
             public TableCell<AuctionSession, Void> call(final TableColumn<AuctionSession, Void> param) {
                 return new TableCell<AuctionSession, Void>() {
-                    private final Button btn = new Button("Chi tiết");
+                    private final Button btn = new Button("Chỉnh sửa");
                     {
-                        btn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-cursor: hand;");
                         btn.setOnAction((ActionEvent event) -> {
                             AuctionSession data = getTableView().getItems().get(getIndex());
-                            logger.info("Bạn vừa bấm vào sản phẩm: " + data.getName());
-                            // Bạn có thể viết code chuyển sang trang Item/Auction ở đây
+                            logger.info("Bạn vừa bấm vào sản phẩm để sửa: " + data.getName());
+
+                            ControllerEditItem editController = changeSceneAndGetController((Node) event.getSource(), "editItem.fxml");
+
+                            if (editController != null) {
+                                editController.setEditData(data);
+                            }
                         });
                     }
 
                     @Override
                     protected void updateItem(Void item, boolean empty) {
                         super.updateItem(item, empty);
-                        if (empty) {
+                        if (empty || getTableRow() == null || getTableRow().getItem() == null) {
                             setGraphic(null);
                         } else {
+                            AuctionSession session = getTableRow().getItem();
+                            StatusOfAuction status = session.getStatusOfAuction();
+
+                            // Ẩn/Hiện nút dựa theo trạng thái
+                            if (status == StatusOfAuction.ENDED || status == StatusOfAuction.CANCELED) {
+                                btn.setDisable(true); // Khóa nút không cho bấm
+                                btn.setText("Đã đóng");
+                                btn.setStyle("-fx-background-color: #bdc3c7; -fx-text-fill: white;"); // Đổi màu xám nhìn cho nó "hết hạn"
+                            } else {
+                                btn.setDisable(false); // Mở khóa nút
+                                btn.setText("Chỉnh sửa");
+                                btn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-cursor: hand;"); // Màu xanh blue bình thường
+                            }
                             setGraphic(btn);
                         }
                     }
@@ -170,7 +188,6 @@ public class ManagerController extends BaseController implements Initializable, 
             } catch (Exception e) {
                 if (response.contains("{")) {
                     logger.severe("❌ LỖI ĐỌC JSON TRANG MANAGER: " + response);
-                    e.printStackTrace();
                 }
             }
         });

@@ -124,12 +124,12 @@ public class TrangChuController extends BaseController implements Initializable,
                             if (dataObj.has("endTime") && !dataObj.get("endTime").isJsonNull()) {
                                 String endStr = dataObj.get("endTime").getAsString();
                                 if (endStr.contains(" ")) endStr = endStr.replace(" ", "T");
-                                session.setEndTime(java.time.LocalDateTime.parse(endStr));
+                                session.setEndTime(LocalDateTime.parse(endStr));
                             }
                             if (dataObj.has("startTime") && !dataObj.get("startTime").isJsonNull()) {
                                 String startStr = dataObj.get("startTime").getAsString();
                                 if (startStr.contains(" ")) startStr = startStr.replace(" ", "T");
-                                session.setStartTime(java.time.LocalDateTime.parse(startStr));
+                                session.setStartTime(LocalDateTime.parse(startStr));
                             }
                         } catch (Exception e) {
                             logger.warning("⚠️ Lỗi đọc ngày tháng của sản phẩm ID " + id + ": " + e.getMessage());
@@ -141,7 +141,6 @@ public class TrangChuController extends BaseController implements Initializable,
             } catch (Exception e) {
                 if (response.contains("{")) {
                     logger.severe("❌ LỖI ĐỌC JSON TRANG CHỦ: " + response);
-                    e.printStackTrace();
                 }
             }
         });
@@ -223,7 +222,7 @@ public class TrangChuController extends BaseController implements Initializable,
                     controller.setItemData(session); // Truyền dữ liệu sang trang mới
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.severe("Lỗi truyền dữ liệu vào Auction");
             }
         });
 

@@ -6,7 +6,7 @@ public class CurrencyStringConverter extends StringConverter<Double> {
 
     @Override
     public String toString(Double value) {
-        return CurrencyFormatter.format(value);
+        return CurrencyFormatter.formatDisplay(value);
     }
 
     @Override

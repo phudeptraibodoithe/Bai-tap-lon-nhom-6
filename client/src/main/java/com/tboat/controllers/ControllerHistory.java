@@ -50,52 +50,91 @@ public class ControllerHistory extends BaseController implements Initializable, 
         Platform.runLater(() -> {
             try {
                 JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                String status = jsonResponse.get("status").getAsString();
+                if (!"SUCCESS".equals(jsonResponse.get("status").getAsString())) return;
 
-                if ("SUCCESS".equals(status) && jsonResponse.has("payload") && jsonResponse.get("payload").isJsonArray()) {
-                    JsonArray historyArray = jsonResponse.getAsJsonArray("payload");
+                JsonArray historyArray = jsonResponse.getAsJsonArray("payload");
+                lichsu.getChildren().clear();
+                String me = UserSession.getInstance().getUsername();
 
-                    lichsu.getChildren().clear();
+                for (JsonElement element : historyArray) {
+                    JsonObject dataObj = element.getAsJsonObject();
 
-                    for (JsonElement element : historyArray) {
-                        JsonObject dataObj = element.getAsJsonObject();
+                    String name = getStringSafe(dataObj, "name", "N/A");
+                    String id = getStringSafe(dataObj, "auctionSessionId", "0");
+                    String role = getStringSafe(dataObj, "roleType", "BIDDER");
+                    String winner = (dataObj.has("winnerAccountName") && !dataObj.get("winnerAccountName").isJsonNull())
+                            ? dataObj.get("winnerAccountName").getAsString() : null;
+                    double finalPrice = dataObj.has("finalPrice") ? dataObj.get("finalPrice").getAsDouble() : 0.0;
 
-                        String id = dataObj.has("auctionSessionId") ? dataObj.get("auctionSessionId").getAsString() : "N/A";
-                        double priceValue = dataObj.has("finalPrice") ? dataObj.get("finalPrice").getAsDouble() : 0.0;
+                    String statusText;
+                    String moneyDisplay;
+                    String colorStatus;
 
-                        String time = "";
-                        if (dataObj.has("completedAt") && !dataObj.get("completedAt").isJsonNull()) {
-                            time = dataObj.get("completedAt").getAsString().replace("T", " ");
+                    if ("SELLER".equalsIgnoreCase(role)) {
+                        // --- GÓC NHÌN NGƯỜI BÁN ---
+                        name = "[BÁN] " + name;
+                        if (winner == null) {
+                            statusText = "Đang rao bán";
+                            moneyDisplay = "0 VNĐ";
+                            colorStatus = "#f39c12"; // Cam
+                        } else {
+                            statusText = "Đã bán";
+                            moneyDisplay = String.format("+%,.0f VNĐ", finalPrice);
+                            colorStatus = "#27ae60"; // Xanh
                         }
-
-                        String sessionName = "Phiên đấu giá #" + id;
-                        String price = String.format("%,.0f VNĐ", priceValue);
-                        HBox row = createHistoryRow(sessionName, "ID: " + id, "Thành công", price, true);
-                        lichsu.getChildren().add(row);
+                    } else {
+                        // --- GÓC NHÌN NGƯỜI MUA ---
+                        name = "[MUA] " + name;
+                        if (winner == null) {
+                            statusText = "Đang diễn ra";
+                            moneyDisplay = "0 VNĐ";
+                            colorStatus = "#f39c12"; // Cam
+                        } else if (me.equalsIgnoreCase(winner)) {
+                            statusText = "Thành công";
+                            moneyDisplay = String.format("-%,.0f VNĐ", finalPrice*0.9);
+                            colorStatus = "#27ae60"; // Xanh
+                        } else {
+                            statusText = "Thất bại";
+                            moneyDisplay = String.format("%,.0f VNĐ", finalPrice); // Hiện giá kết thúc của phiên
+                            colorStatus = "#e74c3c"; // Đỏ
+                        }
                     }
+
+                    lichsu.getChildren().add(createHistoryRow(name, "ID: " + id, statusText, moneyDisplay, colorStatus));
                 }
             } catch (Exception e) {
-                log.severe("KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
-                e.printStackTrace();
+                log.severe("Lỗi render: " + e.getMessage());
             }
         });
     }
 
-    private HBox createHistoryRow(String name, String id, String result, String bienDong, boolean success) {
+    private String getStringSafe(JsonObject obj, String memberName, String defaultValue) {
+        if (obj.has(memberName) && !obj.get(memberName).isJsonNull()) {
+            return obj.get(memberName).getAsString();
+        }
+        return defaultValue;
+    }
+
+    private HBox createHistoryRow(String name, String id, String result, String bienDong, String colorCode) {
         HBox row = new HBox();
         row.setAlignment(Pos.CENTER_LEFT);
         row.setPrefHeight(80.0);
         row.setPadding(new Insets(15, 25, 15, 25));
-        row.setStyle("-fx-background-color: white; -fx-background-radius: 10; -fx-border-radius: 10; " +
-                "-fx-border-width: 1; -fx-border-color: #dddddd; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);");
+
+        row.setStyle("-fx-background-color: white; " +
+                "-fx-background-radius: 10; " +
+                "-fx-border-radius: 10; " +
+                "-fx-border-width: 1; " +
+                "-fx-border-color: #dddddd; " +
+                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);");
 
         Label ten = new Label(name);
-        ten.setPrefWidth(250.0);
+        ten.setPrefWidth(280.0);
         ten.setStyle("-fx-text-fill: #333333; -fx-font-weight: bold; -fx-font-size: 17px;");
 
         Label lblId = new Label(id);
         lblId.setAlignment(Pos.CENTER);
-        lblId.setPrefWidth(120.0);
+        lblId.setPrefWidth(100.0);
         lblId.setStyle("-fx-text-fill: #7f8c8d; -fx-font-size: 15px;");
 
         Region spacer = new Region();
@@ -104,8 +143,7 @@ public class ControllerHistory extends BaseController implements Initializable, 
         Label kq = new Label(result);
         kq.setAlignment(Pos.CENTER);
         kq.setPrefWidth(160.0);
-        String colorStatus = success ? "#27ae60" : "#e74c3c";
-        kq.setStyle("-fx-text-fill: " + colorStatus + "; -fx-font-weight: bold; -fx-font-size: 16px;");
+        kq.setStyle("-fx-text-fill: " + colorCode + "; -fx-font-weight: bold; -fx-font-size: 16px;");
 
         Label lblBienDong = new Label(bienDong);
         lblBienDong.setAlignment(Pos.CENTER_RIGHT);

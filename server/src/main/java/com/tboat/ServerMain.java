@@ -31,7 +31,7 @@ public class ServerMain {
                 logger.info("[Network]: Chấp nhận kết nối từ: {}", clientSocket.getInetAddress());
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("[Network]: Lỗi khởi động ServerSocket!", e);
         }
     }
 

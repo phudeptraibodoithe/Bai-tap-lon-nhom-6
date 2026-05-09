@@ -81,7 +81,7 @@ public class SocketManager {
             }
             listeners.clear();
         } catch (IOException e) {
-            e.printStackTrace();
+            log.severe("[SocketManager] Lỗi khi đóng kết nối: " + e.getMessage());
         }
     }
     public boolean isConnected() {

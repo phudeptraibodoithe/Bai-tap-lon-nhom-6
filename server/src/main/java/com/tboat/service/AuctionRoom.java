@@ -9,7 +9,8 @@ import com.tboat.models.AuctionSession;
 import com.tboat.models.History;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.ClientHandler;
-import com.tboat.utils.ResponseCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.time.LocalDateTime;
@@ -20,6 +21,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class AuctionRoom {
+    private static final Logger logger = LoggerFactory.getLogger(AuctionRoom.class);
+
     private final int sessionId;
     private double currentPrice;
     private String lastBidder;
@@ -96,13 +99,12 @@ public class AuctionRoom {
                         payload.put("winner", lastBidder);
                         payload.put("finalPrice", currentPrice);
                         broadcast("AUCTION_FINISHED", "Phiên đấu giá kết thúc thành công!", payload);
-                        System.out.println("[Server]: ✅ Đã chốt phiên " + sessionId + " thành công!");
+                        logger.info("[Server]: ✅ Đã chốt phiên {} thành công!", sessionId);
                     } else {
-                        System.err.println("[CRITICAL]: Lỗi chốt phiên " + sessionId + " (DB thất bại)");
+                        logger.error("[CRITICAL]: Lỗi chốt phiên {} (DB thất bại)", sessionId);
                     }
                 } catch (Exception e) {
-                    System.err.println("[CRITICAL]: Ngoại lệ khi chốt phiên " + sessionId);
-                    e.printStackTrace();
+                    logger.error("[CRITICAL]: Ngoại lệ khi chốt phiên {}", sessionId, e);
                 }
 
             } else {
@@ -130,16 +132,15 @@ public class AuctionRoom {
 
             if (adminOk && sellerOk) {
                 conn.commit();
-                System.out.println("[Payment]: Đã chia tiền -> Admin: " + adminFee + ", Seller: " + sellerRevenue);
+                logger.info("[Payment]: Đã chia tiền -> Admin: {}, Seller: {}", adminFee, sellerRevenue);
                 return true;
             } else {
                 conn.rollback(); // Lỗi 1 trong 2 thì hoàn tiền
-                System.err.println("[Payment]: Lỗi khi cập nhật số dư, đã Rollback!");
+                logger.error("[Payment]: Lỗi khi cập nhật số dư, đã Rollback!");
                 return false;
             }
         } catch (Exception e) {
-            System.err.println("[Payment]: Lỗi ngoại lệ khi chia tiền");
-            e.printStackTrace();
+            logger.error("[Payment]: Lỗi ngoại lệ khi chia tiền", e);
             return false;
         }
     }
@@ -148,10 +149,14 @@ public class AuctionRoom {
      * Gửi thông báo JSON tới tất cả người dùng trong phòng
      */
     public void broadcast(String action, String message, Object payload) {
+        if (subscribers.isEmpty()) return; // Tối ưu: Nếu phòng trống thì khỏi tốn công chạy đa luồng
         for (ClientHandler client : subscribers) {
-            // Dùng Executor riêng để không làm nghẽn hệ thống
             CompletableFuture.runAsync(() -> {
-                client.sendSystemMessage(action, message, payload);
+                try {
+                    client.sendSystemMessage(action, message, payload);
+                } catch (Exception e) {
+                    logger.error("Lỗi gửi thông tin cho client!");
+                }
             }, ServerMain.broadcastExecutor);
         }
     }

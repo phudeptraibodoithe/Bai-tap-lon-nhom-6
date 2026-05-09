@@ -14,14 +14,17 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import java.util.logging.Logger;
 
 public class ControllerLogin extends BaseController implements SocketListener {
+
 
     @FXML private TextField signText;
     @FXML private PasswordField passText;
     @FXML private Label err;
 
-    private Gson gson = GsonUtils.getInstance();
+    private final Gson gson = GsonUtils.getInstance();
+    private static final Logger log = Logger.getLogger(ControllerLogin.class.getName());
 
     @FXML
     public void submit(ActionEvent event) {
@@ -42,7 +45,6 @@ public class ControllerLogin extends BaseController implements SocketListener {
                 JsonObject request = new JsonObject();
                 request.addProperty("action", "LOGIN");
 
-                // Dùng accountName để khớp với Model User trong ClientHandler
                 JsonObject payload = new JsonObject();
                 payload.addProperty("accountName", username);
                 payload.addProperty("password", password);
@@ -72,10 +74,9 @@ public class ControllerLogin extends BaseController implements SocketListener {
                         if ("Đăng nhập thành công".equals(message)) {
                             JsonObject payload = jsonResponse.getAsJsonObject("payload");
 
-                            // Kiểm tra role hoặc tên tài khoản để vào Admin (Fallback)
                             String role = payload.has("role") ? payload.get("role").getAsString() : "";
                             if ("admin".equalsIgnoreCase(signText.getText().trim()) || "ADMIN".equalsIgnoreCase(role)) {
-                                changeScene(err, "Admin.fxml");
+                                changeScene(err, "admin.fxml");
                                 break;
                             }
 
@@ -86,7 +87,6 @@ public class ControllerLogin extends BaseController implements SocketListener {
 
                             User loggedUser = new User(signText.getText(), null, nickname, balance, description, avatarURL);
                             UserSession.getInstance().createUserSession(loggedUser);
-
                             changeScene(err, "TrangChu.fxml");
                         }
                         break;
@@ -94,8 +94,6 @@ public class ControllerLogin extends BaseController implements SocketListener {
                     case "FAILED":
                     case "ERROR":
                         err.setStyle("-fx-text-fill: red;");
-
-                        // Ánh xạ message (là ResponseCode.name() từ Server)
                         switch (message) {
                             case "USER_NOT_FOUND":
                                 err.setText("Tài khoản không tồn tại!");
@@ -119,7 +117,7 @@ public class ControllerLogin extends BaseController implements SocketListener {
                     err.setStyle("-fx-text-fill: red;");
                     err.setText("Lỗi đọc dữ liệu từ Server!");
                 });
-                System.out.println("❌ KHÔNG THỂ ĐỌC JSON ĐĂNG NHẬP: " + response);
+                log.severe("KHÔNG THỂ ĐỌC JSON ĐĂNG NHẬP: " + response);
             }
         });
     }

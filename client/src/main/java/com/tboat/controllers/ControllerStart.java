@@ -9,14 +9,14 @@ import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.VBox;
+
 import java.io.IOException;
 
 public class ControllerStart extends BaseController {
 
-    private Scene scene;
-    private Parent root;
 
-    @FXML private AnchorPane serverPane;
+    @FXML private VBox serverPane;
     @FXML private TextField ipText;
     @FXML private Label serverErr;
 
@@ -25,7 +25,7 @@ public class ControllerStart extends BaseController {
 
     @FXML
     public void initialize() {
-        ipText.setText("192.168.1.9");
+        ipText.setText("192.168.0.103");
     }
 
     @FXML
@@ -39,17 +39,10 @@ public class ControllerStart extends BaseController {
         }
     }
 
-    // Chặn hàm gốc của BaseController, ép nó phải đi qua bộ lọc kiểm tra mạng
-    @Override
-    @FXML
-    public void switchToRegister(ActionEvent event) {
+    @Override @FXML public void switchToRegister(ActionEvent event) {
         handleAction(event, "register.fxml");
     }
-
-    // Chặn hàm gốc của BaseController, ép nó phải đi qua bộ lọc kiểm tra mạng
-    @Override
-    @FXML
-    public void switchToLogin(ActionEvent event) {
+    @Override @FXML public void switchToLogin(ActionEvent event) {
         handleAction(event, "login.fxml");
     }
 
@@ -61,19 +54,16 @@ public class ControllerStart extends BaseController {
             serverErr.setText("Vui lòng nhập địa chỉ IP!");
             return;
         }
-
-        // Disable UI để tránh spam click
         ipText.setDisable(true);
         serverErr.setStyle("-fx-text-fill: blue;");
         serverErr.setText("Đang kết nối...");
 
         new Thread(() -> {
             try {
-                // Đang gọi mạng (Blocking call)
                 SocketManager.getInstance().connect(ipv4, 8888);
 
                 Platform.runLater(() -> {
-                    ipText.setDisable(false); // Mở lại UI
+                    ipText.setDisable(false);
                     if (SocketManager.getInstance().isConnected()) {
                         serverPane.setVisible(false);
                         serverErr.setText("");

@@ -9,12 +9,6 @@ public class History {
     private double finalPrice;
     private LocalDateTime completedAt;
 
-    public History(int auctionSessionId, String winnerAccountName, double finalPrice) {
-        this.auctionSessionId = auctionSessionId;
-        this.winnerAccountName = winnerAccountName;
-        this.finalPrice = finalPrice;
-        this.completedAt = LocalDateTime.now();
-    }
     public History(){}
 
     public History(int auctionSessionId, String winnerAccountName, double finalPrice,LocalDateTime completedAt) {

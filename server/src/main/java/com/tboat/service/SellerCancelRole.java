@@ -5,21 +5,24 @@ import com.tboat.dao.HistoryBidDAO;
 import com.tboat.dao.UserDAO;
 import com.tboat.models.AuctionSession;
 import com.tboat.models.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SellerCancelRole implements TransactionRole {
+    private static final Logger logger = LoggerFactory.getLogger(SellerCancelRole.class);
 
     @Override
     public boolean execute(User user, AuctionSession session, double amount,
                            UserDAO userDAO, AuctionSessionDAO sessionDAO, HistoryBidDAO bidDAO) {
 
         if (!session.getSellerAccountName().equals(user.getAccountName())) {
-            System.err.println("❌ Từ chối: Tài khoản " + user.getAccountName() + " không phải chủ của phiên này!");
+            logger.warn("Từ chối: Tài khoản {} không phải chủ của phiên này!", user.getAccountName());
             return false;
         }
 
         String currentHighestBidder = session.getHighestBidderAccount();
         if (currentHighestBidder != null && !currentHighestBidder.trim().isEmpty()) {
-            System.err.println("❌ Từ chối: Phiên đấu giá đã có người trả giá, Seller không thể hủy!");
+            logger.warn("Từ chối: Phiên đấu giá đã có người trả giá, Seller không thể hủy!");
             return false;
         }
 
@@ -27,10 +30,10 @@ public class SellerCancelRole implements TransactionRole {
         boolean isCanceled = sessionDAO.cancelAuction(session.getId());
 
         if (isCanceled) {
-            System.out.println("✅ Thành công: Seller " + user.getAccountName() + " đã hủy phiên " + session.getId());
+            logger.info("Thành công: Seller {} đã hủy phiên {}", user.getAccountName(), session.getId());
             return true;
         } else {
-            System.err.println("❌ Lỗi Database: Không thể hủy phiên.");
+            logger.error("Lỗi Database: Không thể hủy phiên.");
             return false;
         }
     }

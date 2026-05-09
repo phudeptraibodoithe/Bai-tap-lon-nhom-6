@@ -10,6 +10,4 @@ public class Response<T> {
         this.message = message;
         this.payload = payload;
     }
-
-    // Thêm các Getter/Setter nếu cần
 }

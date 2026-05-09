@@ -20,11 +20,10 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
+import java.util.logging.Logger;
 
 public class ControllerProfile extends BaseController implements Initializable, SocketListener {
 
@@ -39,18 +38,14 @@ public class ControllerProfile extends BaseController implements Initializable, 
     @FXML private Label nickname, balance, err;
     @FXML private TextArea desc;
 
-    private Gson gson = GsonUtils.getInstance();
+    private final Gson gson = GsonUtils.getInstance();
+    private static final Logger log = Logger.getLogger(ControllerProfile.class.getName());
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        // 1. Lắng nghe tin nhắn từ Server
-        SocketManager.getInstance().subscribe(this);
-
-        // 2. Gửi yêu cầu lấy thông tin Profile
         JsonObject request = new JsonObject();
         request.addProperty("action", "PROFILE");
         SocketManager.getInstance().send(gson.toJson(request));
-
         user = UserSession.getInstance().getUser();
         if (user != null) {
             updateUI(user.getNickname(), user.getBalance(), user.getAvatarURL(), user.getDescription());
@@ -112,7 +107,7 @@ public class ControllerProfile extends BaseController implements Initializable, 
             }
 
         } catch (Exception e) {
-            System.err.println("[Avatar Error]: " + e.getMessage());
+            log.warning("[Avatar Error]: " + e.getMessage());
             loadDefaultAvatar();
         }
     }
@@ -227,7 +222,7 @@ public class ControllerProfile extends BaseController implements Initializable, 
                     }
                     // 3. Log out
                     else if (message.contains("Đã đăng xuất")) {
-                        System.out.println("Đăng xuất hoàn tất.");
+                        log.info("Đăng xuất hoàn tất.");
                     }
                 }
                 else if ("ERROR".equals(status) || "FAILED".equals(status)) {
@@ -236,7 +231,7 @@ public class ControllerProfile extends BaseController implements Initializable, 
                 }
 
             } catch (Exception e) {
-                System.out.println("❌ KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
+                log.severe("KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
             }
         });
     }

@@ -3,6 +3,8 @@ package com.tboat.service;
 import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.models.AuctionSession;
 import com.tboat.models.StatusOfAuction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,6 +15,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class AuctionManager {
+    private static final Logger logger = LoggerFactory.getLogger(AuctionManager.class);
     private static volatile AuctionManager instance;
 
     // Dùng int cho ID phòng
@@ -40,7 +43,7 @@ public class AuctionManager {
         LocalDateTime now = LocalDateTime.now();
         for (AuctionSession s : pendings) {
             if (s.getStartTime().isBefore(now)) {
-                System.out.println("[AuctionManager]: Kích hoạt phiên " + s.getId());
+                logger.info("[AuctionManager]: Kích hoạt phiên {}", s.getId());
                 sessionDAO.updateSessionStatus(s.getId(), StatusOfAuction.ONGOING);
 
                 // Truyền trực tiếp ID kiểu int
@@ -60,6 +63,6 @@ public class AuctionManager {
 
     public void removeRoom(int sessionId) {
         activeRooms.remove(sessionId);
-        System.out.println("[AuctionManager]: Đã giải phóng phòng " + sessionId + " khỏi bộ nhớ.");
+        logger.info("[AuctionManager]: Đã giải phóng phòng {} khỏi bộ nhớ.", sessionId);
     }
 }

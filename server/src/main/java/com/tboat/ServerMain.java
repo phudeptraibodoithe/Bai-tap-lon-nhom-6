@@ -1,11 +1,12 @@
 package com.tboat;
 
-import com.tboat.models.StatusOfAuction;
 import com.tboat.service.AuctionTimerService;
 import com.tboat.socket.ClientHandler;
 import com.tboat.service.AuctionManager;
 import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.models.AuctionSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -15,34 +16,25 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ServerMain {
-    // Tạo một hồ chứa luồng (Pool) tối đa 100 người chơi cùng lúc
     private static final ExecutorService threadPool = Executors.newFixedThreadPool(100);
     public static final ExecutorService broadcastExecutor = Executors.newFixedThreadPool(10);
+    private static final Logger logger = LoggerFactory.getLogger(ServerMain.class);
 
     public static void main(String[] args) {
         int port = 8888;
-
-        // --- BƯỚC CẢI TIẾN: Khởi tạo dữ liệu hệ thống ---
-        System.out.println("[System]: Đang khởi tạo danh sách phòng đấu giá...");
+        logger.info("[System]: Đang khởi tạo danh sách phòng đấu giá...");
         initAuctionRooms();
-        // ----------------------------------------------
-
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                // Thay vì tạo thread mới thủ công, hãy ném vào Pool
                 threadPool.execute(new ClientHandler(clientSocket));
-                System.out.println("[Network]: Chấp nhận kết nối từ: " + clientSocket.getInetAddress());
+                logger.info("[Network]: Chấp nhận kết nối từ: {}", clientSocket.getInetAddress());
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("[Network]: Lỗi khởi động ServerSocket!", e);
         }
     }
 
-    /**
-     * CẢI TIẾN: Lấy các phiên đấu giá đang active từ DB và tạo phòng.
-     * Lý do sửa: Thêm xử lý ngoại lệ và log chi tiết để kiểm soát luồng dữ liệu.
-     */
     private static void initAuctionRooms() {
         try {
             AuctionSessionDAO sessionDAO = new AuctionSessionDAO();
@@ -52,30 +44,22 @@ public class ServerMain {
             List<AuctionSession> availableSessions = sessionDAO.getAvailableAuctions();
 
             if (availableSessions == null || availableSessions.isEmpty()) {
-                System.err.println("[WARNING]: Không tìm thấy phiên đấu giá nào khả dụng trong Database!");
+                logger.warn("[WARNING]: Không tìm thấy phiên đấu giá nào khả dụng trong Database!");
                 return;
             }
 
-            // Trong vòng lặp for của initAuctionRooms:
             for (AuctionSession session : availableSessions) {
                 int roomId = session.getId();
                 double startPrice = session.getCurrentPrice();
-
                 auctionManager.createRoom(roomId, startPrice);
-
-                if (session.getStatusOfAuction() == StatusOfAuction.valueOf("ONGOING")) {
-                    AuctionTimerService.getInstance().scheduleAuctionClose(session.getId(), session.getEndTime());
-                }
-
-                System.out.println("[Init]: Đã kích hoạt Phòng ID: " + roomId);
+                AuctionTimerService.getInstance().scheduleAuction(session);
+                logger.info("[Init]: Đã kích hoạt Phòng ID: {}", roomId);
             }
 
-            System.out.println("[System]: Khởi tạo thành công " + availableSessions.size() + " phòng đấu giá.");
+            logger.info("[System]: Khởi tạo thành công {} phòng đấu giá.", availableSessions.size());
 
         } catch (Exception e) {
-            // LỢI ÍCH: Nếu lỗi DB (sai pass, mất mạng), Server vẫn báo lỗi rõ ràng thay vì im lặng
-            System.err.println("[ERROR]: Lỗi nghiêm trọng khi khởi tạo phòng đấu giá: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("[ERROR]: Lỗi nghiêm trọng khi khởi tạo phòng đấu giá: {}", e.getMessage(), e);
         }
     }
 }

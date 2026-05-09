@@ -3,11 +3,13 @@ package com.tboat.dao;
 import com.tboat.database.DatabaseConnection;
 import com.tboat.models.User;
 import com.tboat.utils.ResponseCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 
 public class UserDAO {
-
+    private static final Logger logger = LoggerFactory.getLogger(UserDAO.class);
 
     public ResponseCode addUser(String accountName, String password, String nickname) {
         String insertSql = "INSERT INTO user(accountName, password, nickname, balance, description, avatarURL) VALUES(?,?,?,?,?,?)";
@@ -27,7 +29,7 @@ public class UserDAO {
             // lỗi này có thể là trùng primacykey, vi phạm foreignkey, trống cái not null hoặc bị casi unique
             return ResponseCode.EXISTED;
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Lỗi SQLException khi thêm user: ", e);
             return ResponseCode.ERROR;
         }
         return ResponseCode.ERROR;
@@ -47,7 +49,7 @@ public class UserDAO {
                 ck = true;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi cập nhật profile: ", e);
         }
         return ck;
     }
@@ -84,7 +86,7 @@ public class UserDAO {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Lỗi khi kiểm tra đăng nhập: ", e);
             return ResponseCode.ERROR;
         }
     }
@@ -107,7 +109,7 @@ public class UserDAO {
                 }
             }
         } catch (SQLException e) { // Dùng SQLException thay vì Exception chung
-            e.printStackTrace();
+            logger.error("Lỗi khi lấy thông tin user: ", e);
         }
         return null;
     }
@@ -120,7 +122,9 @@ public class UserDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return rs.getDouble("balance");
             }
-        } catch (Exception e) { e.printStackTrace(); }
+        } catch (Exception e) {
+            logger.error("Lỗi khi lấy số dư: ", e);
+        }
         return 0;
     }
 }

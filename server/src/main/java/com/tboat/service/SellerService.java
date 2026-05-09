@@ -20,4 +20,13 @@ public class SellerService {
         ParticipationContext context = new ParticipationContext(new SellerCancelRole());
         return context.executeAction(user, session, 0, userDAO, sessionDAO, bidDAO);
     }
+
+    public boolean editAuction(String accountName, AuctionSession updatedSession) {
+        User user = userDAO.getUser(accountName);
+        if (user == null || updatedSession == null) return false;
+
+        ParticipationContext context = new ParticipationContext(new SellerEditRole());
+
+        return context.executeAction(user, updatedSession, 0, userDAO, sessionDAO, bidDAO);
+    }
 }

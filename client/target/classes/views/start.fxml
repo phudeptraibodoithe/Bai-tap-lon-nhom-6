@@ -16,103 +16,158 @@
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
-<StackPane xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.ControllerStart">
+<?import javafx.scene.layout.HBox?>
+<StackPane prefHeight="600.0" prefWidth="900.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.ControllerStart">
     <children>
-        <GridPane prefHeight="600.0" prefWidth="800.0">
+        <GridPane>
             <columnConstraints>
-                <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" percentWidth="50.0" />
-                <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" percentWidth="50.0" />
+                <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" percentWidth="45.0" />
+                <ColumnConstraints hgrow="ALWAYS" minWidth="10.0" percentWidth="55.0" />
             </columnConstraints>
             <rowConstraints>
                 <RowConstraints minHeight="10.0" vgrow="ALWAYS" />
             </rowConstraints>
             <children>
 
-                <VBox alignment="CENTER" spacing="30.0" style="-fx-background-color: #A2B5BB;" GridPane.columnIndex="0">
+                <VBox alignment="CENTER" spacing="35.0" style="-fx-background-color: linear-gradient(to bottom right, #0F2027, #203A43, #2C5364);" GridPane.columnIndex="0">
                     <padding>
-                        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                        <Insets bottom="40.0" left="40.0" right="40.0" top="40.0" />
                     </padding>
                     <children>
-                        <ImageView fitHeight="255.0" fitWidth="350.0" pickOnBounds="true" preserveRatio="true">
+                        <ImageView fitHeight="220.0" fitWidth="300.0" pickOnBounds="true" preserveRatio="true">
                             <image>
                                 <Image url="@../images/logo.png" />
                             </image>
+                            <style>-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 20, 0, 0, 10);</style>
                         </ImageView>
 
-                        <Text fill="#151ebf" strokeType="OUTSIDE" strokeWidth="0.0" style="-fx-font-weight: BOLD;" text="CHÀO MỪNG ĐẾN VỚI TBOAT" textAlignment="CENTER" wrappingWidth="350.0">
-                            <font>
-                                <Font size="35.0" />
-                            </font>
-                        </Text>
-
-                        <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Nền Tảng Đấu Giá Đỉnh Cao Bậc Nhất Châu Lục" textAlignment="CENTER" wrappingWidth="300.0">
-                            <font>
-                                <Font size="23.0" />
-                            </font>
-                        </Text>
+                        <VBox alignment="CENTER" spacing="10.0">
+                            <children>
+                                <Text fill="WHITE" strokeType="OUTSIDE" strokeWidth="0.0" style="-fx-font-weight: 900; -fx-letter-spacing: 2;" text="CHÀO MỪNG ĐẾN VỚI TBOAT" textAlignment="CENTER" wrappingWidth="300.0">
+                                    <font>
+                                        <Font name="System Bold" size="32.0" />
+                                    </font>
+                                </Text>
+                                <Text fill="#bdc3c7" strokeType="OUTSIDE" strokeWidth="0.0" text="Nền tảng đấu giá trực tuyến đỉnh cao" textAlignment="CENTER" wrappingWidth="280.0">
+                                    <font>
+                                        <Font name="System Italic" size="18.0" />
+                                    </font>
+                                </Text>
+                            </children>
+                        </VBox>
                     </children>
                 </VBox>
 
-                <VBox alignment="CENTER" spacing="25.0" style="-fx-background-color: white;" GridPane.columnIndex="1">
+                <VBox alignment="CENTER" spacing="30.0" style="-fx-background-color: #FFFFFF;" GridPane.columnIndex="1">
+                    <padding>
+                        <Insets bottom="50.0" left="50.0" right="50.0" top="50.0" />
+                    </padding>
                     <children>
-                        <Text strokeType="OUTSIDE" strokeWidth="0.0" style="-fx-font-weight: BOLD;" text="BẮT ĐẦU NGAY!!!" textAlignment="CENTER">
-                            <font>
-                                <Font size="30.0" />
-                            </font>
-                        </Text>
+                        <VBox alignment="CENTER" spacing="5.0">
+                            <children>
+                                <Text fill="#2c3e50" strokeType="OUTSIDE" strokeWidth="0.0" style="-fx-font-weight: BOLD;" text="BẮT ĐẦU NGAY">
+                                    <font>
+                                        <Font size="40.0" />
+                                    </font>
+                                </Text>
+                                <Text fill="#7f8c8d" strokeType="OUTSIDE" strokeWidth="0.0" text="Chọn thao tác để trải nghiệm dịch vụ">
+                                    <font>
+                                        <Font size="18.0" />
+                                    </font>
+                                </Text>
+                            </children>
+                        </VBox>
 
-                        <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Vui Lòng Chọn Thao Tác Để Tiếp Tục" textAlignment="CENTER">
-                            <font>
-                                <Font size="20.0" />
-                            </font>
-                            <VBox.margin>
-                                <Insets bottom="20.0" />
-                            </VBox.margin>
-                        </Text>
+                        <VBox alignment="CENTER" spacing="15.0">
+                            <children>
+                                <Button mnemonicParsing="false" onAction="#switchToRegister" prefHeight="55.0" prefWidth="280.0"
+                                        style="-fx-background-color: #D4AF37; -fx-background-radius: 30; -fx-text-fill: white; -fx-font-weight: bold; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 5);"
+                                        text="ĐĂNG KÝ TÀI KHOẢN">
+                                    <font>
+                                        <Font size="18.0" />
+                                    </font>
+                                    <cursor>
+                                        <Cursor fx:constant="HAND" />
+                                    </cursor>
+                                </Button>
 
-                        <Button mnemonicParsing="false" onAction="#switchToRegister" prefHeight="50.0" prefWidth="200.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-background-color: #F4A460; -fx-border-color: BLACK; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);" text="ĐĂNG KÝ">
-                            <font>
-                                <Font name="System Bold" size="20.0" />
-                            </font>
-                            <cursor>
-                                <Cursor fx:constant="HAND" />
-                            </cursor>
-                        </Button>
-
-                        <Button mnemonicParsing="false" onAction="#switchToLogin" prefHeight="50.0" prefWidth="200.0" style="-fx-background-radius: 15; -fx-border-radius: 15; -fx-background-color: #FFCC99; -fx-border-color: BLACK; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 5);" text="ĐĂNG NHẬP">
-                            <font>
-                                <Font name="System Bold" size="20.0" />
-                            </font>
-                            <cursor>
-                                <Cursor fx:constant="HAND" />
-                            </cursor>
-                        </Button>
+                                <Button mnemonicParsing="false" onAction="#switchToLogin" prefHeight="55.0" prefWidth="280.0"
+                                        style="-fx-background-color: transparent; -fx-border-color: #2c3e50; -fx-border-width: 2; -fx-border-radius: 30; -fx-text-fill: #2c3e50; -fx-font-weight: bold;"
+                                        text="ĐĂNG NHẬP">
+                                    <font>
+                                        <Font size="18.0" />
+                                    </font>
+                                    <cursor>
+                                        <Cursor fx:constant="HAND" />
+                                    </cursor>
+                                </Button>
+                            </children>
+                        </VBox>
                     </children>
                 </VBox>
-
             </children>
         </GridPane>
 
-        <AnchorPane fx:id="serverPane" visible="false" style="-fx-background-color: rgba(0, 0, 0, 0.6);">
+        <VBox fx:id="serverPane" alignment="CENTER" visible="false" style="-fx-background-color: rgba(15, 32, 39, 0.85);">
             <children>
-                <AnchorPane layoutX="225.0" layoutY="200.0" prefHeight="200.0" prefWidth="350.0" style="-fx-background-color: white; -fx-background-radius: 20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 15, 0, 0, 5);">
+                <VBox alignment="CENTER" maxHeight="320.0" maxWidth="420.0" spacing="25.0"
+                      style="-fx-background-color: white; -fx-background-radius: 30; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.6), 40, 0, 0, 15);">
+                    <padding>
+                        <Insets bottom="40.0" left="40.0" right="40.0" top="40.0" />
+                    </padding>
                     <children>
-                        <Label layoutX="35.0" layoutY="25.0" text="Chưa kết nối máy chủ">
-                            <font>
-                                <Font name="System Bold" size="20.0" />
-                            </font>
-                        </Label>
-                        <Label layoutX="35.0" layoutY="60.0" text="Vui lòng nhập địa chỉ IPv4 của Server:" textFill="#555555" />
-                        <TextField fx:id="ipText" layoutX="35.0" layoutY="85.0" prefHeight="35.0" prefWidth="280.0" promptText="VD: 192.168.1.10" style="-fx-background-radius: 8;" />
-                        <Label fx:id="serverErr" layoutX="35.0" layoutY="125.0" prefWidth="280.0" textFill="RED" />
+                        <VBox alignment="CENTER" spacing="5.0">
+                            <children>
+                                <Text fill="#2c3e50" strokeType="OUTSIDE" strokeWidth="0.0" text="🌐">
+                                    <font>
+                                        <Font size="40.0" />
+                                    </font>
+                                </Text>
+                                <Label text="KẾT NỐI SERVER" textFill="#2c3e50">
+                                    <font>
+                                        <Font name="System Bold" size="22.0" />
+                                    </font>
+                                </Label>
+                                <Label text="Nhập địa chỉ để bắt đầu" textFill="#95a5a6">
+                                    <font>
+                                        <Font size="13.0" />
+                                    </font>
+                                </Label>
+                            </children>
+                        </VBox>
 
-                        <Button layoutX="185.0" layoutY="145.0" mnemonicParsing="false" onAction="#connectServer" prefHeight="35.0" prefWidth="130.0" style="-fx-background-color: #DFB76C; -fx-background-radius: 8; -fx-cursor: hand;" text="Kết nối ngay">
-                            <font><Font name="System Bold" size="13.0" /></font>
-                        </Button>
-                        <Button layoutX="35.0" layoutY="145.0" mnemonicParsing="false" onAction="#cancelConnect" prefHeight="35.0" prefWidth="130.0" style="-fx-background-color: #E0E0E0; -fx-background-radius: 8; -fx-cursor: hand;" text="Hủy" />
+                        <VBox spacing="10.0">
+                            <children>
+                                <TextField fx:id="ipText" prefHeight="50.0" promptText="Địa chỉ IP (VD: 192.168.1.1)"
+                                           style="-fx-background-radius: 15; -fx-border-color: #dcdde1; -fx-border-radius: 15; -fx-background-color: #f9f9f9; -fx-padding: 0 15 0 15;">
+                                    <font>
+                                        <Font size="15.0" />
+                                    </font>
+                                </TextField>
+                                <Label fx:id="serverErr" textFill="#e74c3c" wrapText="true">
+                                    <font>
+                                        <Font size="12.0" />
+                                    </font>
+                                    <VBox.margin>
+                                        <Insets left="5.0" />
+                                    </VBox.margin>
+                                </Label>
+                            </children>
+                        </VBox>
+
+                        <HBox spacing="15.0" alignment="CENTER">
+                            <children>
+                                <Button mnemonicParsing="false" onAction="#cancelConnect" prefHeight="45.0" prefWidth="120.0"
+                                        style="-fx-background-color: #f1f2f6; -fx-background-radius: 12; -fx-text-fill: #7f8c8d; -fx-font-weight: bold; -fx-cursor: hand;"
+                                        text="HỦY BỎ" />
+                                <Button mnemonicParsing="false" onAction="#connectServer" prefHeight="45.0" prefWidth="180.0"
+                                        style="-fx-background-color: linear-gradient(to right, #D4AF37, #C5A028); -fx-background-radius: 12; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-effect: dropshadow(three-pass-box, rgba(212,175,55,0.3), 10, 0, 0, 3);"
+                                        text="KẾT NỐI NGAY" />
+                            </children>
+                        </HBox>
                     </children>
-                </AnchorPane>
+                </VBox>
             </children>
-        </AnchorPane>
+        </VBox>
     </children>
 </StackPane>

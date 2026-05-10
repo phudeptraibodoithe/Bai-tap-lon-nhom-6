@@ -13,7 +13,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox prefHeight="750.0" prefWidth="1100.0" style="-fx-background-color: #F8F9FA;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.TrangChuController">
+<VBox prefHeight="750.0" prefWidth="1100.0" style="-fx-background-color: #F8F9FA;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.TrangChuController">
     <children>
         <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="20.0" style="-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;">
             <padding>
@@ -31,27 +31,24 @@
                 <Button fx:id="btnHistory" mnemonicParsing="false" onAction="#switchToHistory" style="-fx-background-color: transparent; -fx-cursor: hand;" text="Lịch sử" textFill="#0A1128">
                     <font><Font size="14.0" /></font>
                 </Button>
-                <Button mnemonicParsing="false" onAction="#switchToManager" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Quản lý sản phẩm">
-                    <font><Font size="14.0" /></font>
-                </Button>
+            <Button mnemonicParsing="false" onAction="#switchToManager" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Quản lý sản phẩm">
+               <font>
+                  <Font size="14.0" />
+               </font>
+            </Button>
                 <Button fx:id="btnPostItem" mnemonicParsing="false" onAction="#switchToPostItem" style="-fx-background-color: transparent; -fx-cursor: hand;" text="Đăng sản phẩm" textFill="#0A1128">
                     <font><Font size="14.0" /></font>
                 </Button>
+            <Button fx:id="btnHistory1" mnemonicParsing="false" onAction="#switchToProfile" style="-fx-background-color: transparent; -fx-cursor: hand;" text="Profile" textFill="#0A1128">
+               <font>
+                  <Font size="14.0" />
+               </font>
+            </Button>
                 <Region HBox.hgrow="ALWAYS" />
-
-                <HBox alignment="CENTER_RIGHT" minWidth="-Infinity" spacing="15.0">
-                    <children>
-                        <Label fx:id="lblGreeting" minWidth="-Infinity" text="Hello username" textFill="#0A1128">
-                            <font><Font name="System Bold" size="14.0" /></font>
-                        </Label>
-
-                        <Button mnemonicParsing="false" onAction="#switchToProfile" style="-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;">
-                            <graphic>
-                                <ImageView fx:id="userAvatar" fitHeight="45.0" fitWidth="45.0" pickOnBounds="true" preserveRatio="false" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);" />
-                            </graphic>
-                        </Button>
-                    </children>
-                </HBox>
+                <Label text="Hello User" textFill="#0A1128">
+                    <font><Font name="System Bold" size="14.0" /></font>
+                </Label>
+                <ImageView fitHeight="40.0" fitWidth="40.0" pickOnBounds="true" preserveRatio="true" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);" />
             </children>
         </HBox>
 
@@ -96,6 +93,77 @@
                                 <Insets bottom="20.0" left="10.0" right="10.0" top="10.0" />
                             </padding>
                             <children>
+
+                                <VBox prefWidth="300.0" style="-fx-background-color: white; -fx-background-radius: 20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 20, 0, 0, 5);">
+                                    <children>
+
+                                        <StackPane prefHeight="240.0" style="-fx-background-color: #E8E8E8; -fx-background-radius: 20 20 0 0;">
+                                            <children>
+                                                <ImageView fitHeight="240.0" fitWidth="300.0" pickOnBounds="true" preserveRatio="true" />
+
+                                                <Button mnemonicParsing="false" style="-fx-background-color: rgba(255,255,255,0.3); -fx-background-radius: 50; -fx-min-width: 35; -fx-min-height: 35; -fx-cursor: hand;" text="🤍" textFill="WHITE" StackPane.alignment="TOP_RIGHT">
+                                                    <StackPane.margin>
+                                                        <Insets right="15.0" top="15.0" />
+                                                    </StackPane.margin>
+                                                    <font><Font size="14.0" /></font>
+                                                </Button>
+
+                                                <HBox spacing="8.0" StackPane.alignment="TOP_LEFT">
+                                                    <StackPane.margin>
+                                                        <Insets left="15.0" top="15.0" />
+                                                    </StackPane.margin>
+                                                </HBox>
+                                            </children>
+                                        </StackPane>
+
+                                        <VBox spacing="15.0">
+                                            <padding>
+                                                <Insets bottom="25.0" left="25.0" right="25.0" top="20.0" />
+                                            </padding>
+                                            <children>
+
+                                                <Label prefHeight="55.0" text="Neo-Expressionist Study, 1982" textFill="#0A1128" wrapText="true">
+                                                    <font>
+                                                        <Font name="System Bold" size="20.0" />
+                                                    </font>
+                                                </Label>
+
+                                                <HBox spacing="10.0">
+                                                    <children>
+                                                        <VBox alignment="CENTER_LEFT" prefHeight="65.0" spacing="3.0" style="-fx-background-color: #F4F5F7; -fx-background-radius: 12; -fx-padding: 10 15;" HBox.hgrow="ALWAYS">
+                                                            <children>
+                                                                <Label text="CURRENT BID" textFill="#9DA3B4">
+                                                                    <font><Font name="System Bold" size="10.0" /></font>
+                                                                </Label>
+                                                                <Label text="\$850,000" textFill="#0A1128">
+                                                                    <font><Font name="System Bold" size="18.0" /></font>
+                                                                </Label>
+                                                            </children>
+                                                        </VBox>
+
+                                                        <VBox alignment="CENTER_LEFT" prefHeight="65.0" spacing="3.0" style="-fx-background-color: #F4F5F7; -fx-background-radius: 12; -fx-padding: 10 15;" HBox.hgrow="ALWAYS">
+                                                            <children>
+                                                                <Label text="TIME LEFT" textFill="#9DA3B4">
+                                                                    <font><Font name="System Bold" size="10.0" /></font>
+                                                                </Label>
+                                                                <Label text="12:04:11" textFill="#FF6B00">
+                                                                    <font><Font name="System Bold" size="18.0" /></font>
+                                                                </Label>
+                                                            </children>
+                                                        </VBox>
+                                                    </children>
+                                                </HBox>
+
+                                                <Button maxWidth="Infinity" mnemonicParsing="false" prefHeight="45.0" style="-fx-background-color: #08103F; -fx-background-radius: 10; -fx-cursor: hand;" text="PLACE BID" textFill="WHITE">
+                                                    <font>
+                                                        <Font name="System Bold" size="14.0" />
+                                                    </font>
+                                                </Button>
+                                            </children>
+                                        </VBox>
+
+                                    </children>
+                                </VBox>
                             </children>
                         </FlowPane>
                     </content>

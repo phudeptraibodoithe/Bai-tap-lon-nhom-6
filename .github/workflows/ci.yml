@@ -1,0 +1,119 @@
+name: TBoat CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - '**/src/main/**'
+      - 'pom.xml'
+      - 'common/**'
+      - 'server/**'
+      - 'client/**'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - '**/src/main/**'
+      - 'pom.xml'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    # 1. Dựng MySQL ảo đúng với tài khoản và mật khẩu của bạn
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: 123456789
+          MYSQL_DATABASE: auction_db
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping -p123456789" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      # 2. Tạo sẵn các bảng và data mẫu vào Database ảo trước khi chạy Test
+      - name: Initialize Database Schema
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -u root -p123456789 auction_db << 'EOF'
+          CREATE TABLE `user` (
+            `accountName` varchar(50) NOT NULL,
+            `nickname` varchar(50) NOT NULL, 
+            `password` varchar(50) NOT NULL,
+            `balance` double DEFAULT '0',
+            `description` varchar(500) DEFAULT NULL,
+            `avatarURL` MEDIUMTEXT DEFAULT NULL,
+            PRIMARY KEY (`accountName`)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+          
+          INSERT INTO user (accountName, password, nickname, balance, description, avatarURL)
+          VALUES ('admin', 'admin', 'Quản trị viên', 0, 'Tài khoản điều hành hệ thống', 'null');
+          
+          CREATE TABLE `auction_session` (
+            `id` int NOT NULL AUTO_INCREMENT,
+            `startTime` datetime NOT NULL,
+            `endTime` datetime NOT NULL,
+            `currentPrice` double NOT NULL,
+            `bidIncrease` double NOT NULL,
+            `status` varchar(50) NOT NULL,
+            `sellerAccount` varchar(50) NOT NULL,
+            `type` varchar(50) NOT NULL,
+            `name` varchar(100) NOT NULL,
+            `highestBidderAccount` varchar(100) DEFAULT NULL,
+            `description` text DEFAULT NULL,
+            `imageURL` MEDIUMTEXT DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            CONSTRAINT `fk_session_seller` FOREIGN KEY (`sellerAccount`) REFERENCES `user` (`accountName`)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+          
+          CREATE TABLE `bid` (
+            `id` int NOT NULL AUTO_INCREMENT,
+            `auctionSessionId` int NOT NULL,
+            `bidderAccount` varchar(50) NOT NULL,
+            `bidAmount` double NOT NULL,
+            `bidTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            CONSTRAINT `fk_bid_session` FOREIGN KEY (`auctionSessionId`) REFERENCES `auction_session` (`id`),
+            CONSTRAINT `fk_bid_user` FOREIGN KEY (`bidderAccount`) REFERENCES `user` (`accountName`)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+          
+          CREATE TABLE `history` (
+            `auctionSessionId` int NOT NULL,
+            `winnerAccount` varchar(50) NOT NULL, 
+            `finalPrice` double NOT NULL,
+            `completedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`auctionSessionId`),
+            CONSTRAINT `fk_history_session` FOREIGN KEY (`auctionSessionId`) REFERENCES `auction_session` (`id`),
+            CONSTRAINT `fk_history_user` FOREIGN KEY (`winnerAccount`) REFERENCES `user` (`accountName`)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+          
+          CREATE TABLE `participation` (
+            `accountName` varchar(50) NOT NULL,
+            `auctionSessionId` int NOT NULL,
+            `roleType` varchar(20) NOT NULL,
+            PRIMARY KEY (`accountName`, `auctionSessionId`),
+            CONSTRAINT `fk_participation_user` FOREIGN KEY (`accountName`) REFERENCES `user` (`accountName`),
+            CONSTRAINT `fk_participation_session` FOREIGN KEY (`auctionSessionId`) REFERENCES `auction_session` (`id`)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+          EOF
+
+      - name: Enforcement - No System.out.println
+        run: |
+          if grep -rn "System\.out\.print" . --include=\*.java --exclude-dir=test; then
+            echo "❌ LỖI: Cấm dùng System.out.print. Hãy dùng Logger!" && exit 1
+          fi
+          
+          if grep -rn "printStackTrace()" . --include=\*.java --exclude-dir=test; then
+            echo "❌ LỖI: Cấm dùng e.printStackTrace(). Hãy dùng log.error(\"Mô tả\", e)!" && exit 1
+          fi
+
+      - name: Maven Build and Verify
+        run: mvn clean verify

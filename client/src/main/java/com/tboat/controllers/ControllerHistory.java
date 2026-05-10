@@ -8,7 +8,6 @@ import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import com.tboat.utils.GsonUtils;
-import com.tboat.utilsclient.HeaderUtils;
 import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -16,12 +15,10 @@ import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-
 import java.net.URL;
 import java.util.ResourceBundle;
 import java.util.logging.Logger;
@@ -29,21 +26,12 @@ import java.util.logging.Logger;
 public class ControllerHistory extends BaseController implements Initializable, SocketListener {
 
     @FXML VBox lichsu;
-
-    // ĐÃ THÊM: Khai báo Label lời chào và ImageView avatar
-    @FXML private Label lblGreeting;
-    @FXML private ImageView userAvatar;
-
     private final Gson gson = GsonUtils.getInstance();
     private static final Logger log = Logger.getLogger(ControllerHistory.class.getName());
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        SocketManager.getInstance().subscribe(this);
         loadlichsu();
-
-        // ĐÃ THÊM: Gọi hàm thiết lập avatar và tên
-        HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
     }
 
     public void loadlichsu() {

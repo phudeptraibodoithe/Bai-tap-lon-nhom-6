@@ -12,7 +12,6 @@ import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import com.tboat.utils.GsonUtils;
-import com.tboat.utilsclient.HeaderUtils; // Import class dùng chung
 import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -22,20 +21,18 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.image.ImageView;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.util.Callback;
-
 import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.ResourceBundle;
 import java.util.logging.Logger;
 
 public class ManagerController extends BaseController implements Initializable, SocketListener {
+
 
     @FXML private TableView<AuctionSession> tableMyItems;
     @FXML private TableColumn<AuctionSession, Integer> colId;
@@ -45,25 +42,27 @@ public class ManagerController extends BaseController implements Initializable, 
     @FXML private TableColumn<AuctionSession, StatusOfAuction> colStatus;
     @FXML private TableColumn<AuctionSession, Void> colAction;
 
-    // ĐÃ THÊM: Khai báo 2 biến UI cho Header
-    @FXML private Label lblGreeting;
-    @FXML private ImageView userAvatar;
-
     private final Gson gson = GsonUtils.getInstance();
     private static final Logger logger = Logger.getLogger(ManagerController.class.getName());
     private ObservableList<AuctionSession> listMyItems = FXCollections.observableArrayList();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        // Khởi tạo các cột cho bảng
         setupTableColumns();
-        SocketManager.getInstance().subscribe(this);
-        loadMyAuctions();
 
-        // ĐÃ THÊM: Gọi class dùng chung để hiển thị Avatar và tên User
-        HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
+        // Đăng ký nhận tin nhắn từ Server
+        SocketManager.getInstance().subscribe(this);
+
+        // Lấy dữ liệu từ Server
+        loadMyAuctions();
     }
 
+    // ====================================================================
+    // CẤU HÌNH CÁC CỘT CHO TABLEVIEW
+    // ====================================================================
     private void setupTableColumns() {
+        // Gắn tên thuộc tính của class AuctionSession vào các cột
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("statusOfAuction"));
@@ -108,14 +107,15 @@ public class ManagerController extends BaseController implements Initializable, 
                             AuctionSession session = getTableRow().getItem();
                             StatusOfAuction status = session.getStatusOfAuction();
 
+                            // Ẩn/Hiện nút dựa theo trạng thái
                             if (status == StatusOfAuction.ENDED || status == StatusOfAuction.CANCELED) {
-                                btn.setDisable(true);
+                                btn.setDisable(true); // Khóa nút không cho bấm
                                 btn.setText("Đã đóng");
-                                btn.setStyle("-fx-background-color: #bdc3c7; -fx-text-fill: white;");
+                                btn.setStyle("-fx-background-color: #bdc3c7; -fx-text-fill: white;"); // Đổi màu xám nhìn cho nó "hết hạn"
                             } else {
-                                btn.setDisable(false);
+                                btn.setDisable(false); // Mở khóa nút
                                 btn.setText("Chỉnh sửa");
-                                btn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-cursor: hand;");
+                                btn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-cursor: hand;"); // Màu xanh blue bình thường
                             }
                             setGraphic(btn);
                         }
@@ -126,6 +126,9 @@ public class ManagerController extends BaseController implements Initializable, 
         tableMyItems.setItems(listMyItems);
     }
 
+    // ====================================================================
+    // GỬI YÊU CẦU LÊN SERVER
+    // ====================================================================
     public void loadMyAuctions() {
         String myUsername = UserSession.getInstance().getUsername();
         JsonObject request = new JsonObject();
@@ -135,6 +138,9 @@ public class ManagerController extends BaseController implements Initializable, 
         SocketManager.getInstance().send(gson.toJson(request));
     }
 
+    // ====================================================================
+    // XỬ LÝ DỮ LIỆU JSON TỪ SERVER
+    // ====================================================================
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {

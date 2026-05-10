@@ -116,4 +116,4 @@ jobs:
           fi
 
       - name: Maven Build and Verify
-        run: mvn clean verify
+        run: mvn -f $GITHUB_WORKSPACE/pom.xml clean verify

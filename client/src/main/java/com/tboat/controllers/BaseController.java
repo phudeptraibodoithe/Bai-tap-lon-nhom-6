@@ -72,9 +72,9 @@ public abstract class BaseController {
     }
 
     // 1. Hàm định nghĩa hành động khi Reload.
-    // Các class con (như TrangChu, Manager) sẽ GHI ĐÈ hàm này để tự quyết định tải lại cái gì.
     public void onReload() {
-        System.out.println("Trang này chưa có dữ liệu động cần làm mới.");
+        // Đã đổi sout thành log.info
+        log.info("Trang này chưa có dữ liệu động cần làm mới.");
     }
 
     // 2. Hàm gắn trực tiếp vào sự kiện onAction của Nút bấm trên giao diện

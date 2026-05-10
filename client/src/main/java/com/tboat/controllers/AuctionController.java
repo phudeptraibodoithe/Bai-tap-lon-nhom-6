@@ -109,11 +109,9 @@ public class AuctionController extends BaseController implements SocketListener 
         }
 
         setupBidHistoryTable();
-        // Cần import cái Controller để truyền vào hàm bắt sự kiện F5
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
     }
 
-    // Ghi đè hàm Reload để ấn F5 thì tải lại lịch sử đấu giá
     @Override
     public void onReload() {
         if (currentSession != null) {
@@ -121,7 +119,8 @@ public class AuctionController extends BaseController implements SocketListener 
             reqHistory.addProperty("action", "GET_SESSION_BIDS");
             reqHistory.addProperty("payload", currentSession.getId());
             SocketManager.getInstance().send(gson.toJson(reqHistory));
-            System.out.println("Đã tải lại lịch sử giá!");
+            // Đã đổi sout thành log.info
+            log.info("Đã tải lại lịch sử giá!");
         }
     }
 
@@ -200,7 +199,6 @@ public class AuctionController extends BaseController implements SocketListener 
                 BidAmount.setPromptText("Chưa tới giờ đấu giá...");
             }
 
-            // ĐÃ SỬA: Lấy thời gian bắt đầu từ currentSession và Format lại
             String startTimeStr = "Sắp diễn ra...";
             if (currentSession.getStartTime() != null) {
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm - dd/MM");
@@ -208,7 +206,6 @@ public class AuctionController extends BaseController implements SocketListener 
             }
 
             TimeRemaining.setText("Bắt đầu: " + startTimeStr);
-            // Mình giảm size chữ xuống một chút để ngày tháng dài có thể hiển thị vừa khung
             TimeRemaining.setStyle("-fx-text-fill: #e67e22; -fx-font-weight: bold; -fx-font-size: 20px;");
 
         } else if (status == StatusOfAuction.ENDED || status == StatusOfAuction.CANCELED) {
@@ -377,9 +374,6 @@ public class AuctionController extends BaseController implements SocketListener 
                         listBids.add(new BidEntry(nowTime, newLeader, newPrice));
                         listBids.sort((b1, b2) -> b2.getTime().compareTo(b1.getTime()));
 
-                        // =================================================================
-                        // ĐÃ SỬA: Xóa thông báo cũ đi nếu có người khác bid đè lên
-                        // =================================================================
                         if (thongbao != null) {
                             thongbao.setText("");
                         }
@@ -446,21 +440,18 @@ public class AuctionController extends BaseController implements SocketListener 
                             String myAccount = com.tboat.utilsclient.UserSession.getInstance().getUsername();
 
                             if (currentUser != null) {
-                                // Trường hợp 1: Nếu mình là người thắng cuộc -> Trừ tiền trong Session
                                 if (myAccount.equalsIgnoreCase(winnerAccount)) {
                                     double newBalance = currentUser.getBalance() - finalPrice;
                                     currentUser.setBalance(newBalance);
-                                    log.info("Bạn đã thắng! Đã cập nhật số dư Session (Trừ tiền): " + newBalance);
+                                    log.info("Bạn đã thắng! Đã cập nhật số dư Session (Trừ tiền): {}", newBalance);
                                 }
-                                // Trường hợp 2: Nếu mình là người bán sản phẩm này -> Cộng tiền vào Session
                                 else if (myAccount.equalsIgnoreCase(currentSession.getSellerAccountName())) {
                                     double moneyReceived = finalPrice * 0.9;
                                     double newBalance = currentUser.getBalance() + moneyReceived;
                                     currentUser.setBalance(newBalance);
-                                    log.info("Sản phẩm của bạn đã bán! Đã cập nhật số dư Session (Cộng tiền): " + newBalance);
+                                    log.info("Sản phẩm của bạn đã bán! Đã cập nhật số dư Session (Cộng tiền): {}", newBalance);
                                 }
                             }
-                            // =========================================================
                         }
 
                         setupAuctionState();
@@ -488,8 +479,8 @@ public class AuctionController extends BaseController implements SocketListener 
                         break;
                 }
             } catch (Exception e) {
-                System.out.println("❌ KHÔNG THỂ ĐỌC DỮ LIỆU TỪ SERVER: " + response);
-                log.error("Không thể đọc dữ liệu từ server: {} | Exception: {}", response, e.getMessage(), e);
+                // Đã đổi sout thành log.error
+                log.error("❌ KHÔNG THỂ ĐỌC DỮ LIỆU TỪ SERVER: {} | Exception: {}", response, e.getMessage());
             }
         });
     }

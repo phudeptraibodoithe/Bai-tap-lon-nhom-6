@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 
 public class HeaderUtils {
 
-    // Khởi tạo logger để thay thế System.out
+    // Khởi tạo logger để thay thế
     private static final Logger logger = LoggerFactory.getLogger(HeaderUtils.class);
 
     public static void setupHeader(Label lblGreeting, ImageView userAvatar, BaseController controller) {

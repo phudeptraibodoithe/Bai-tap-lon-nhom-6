@@ -49,6 +49,11 @@
                         <Label text="Xin chào, Admin!" textFill="WHITE">
                             <font><Font name="System Bold" size="14.0" /></font>
                         </Label>
+                        <Button mnemonicParsing="false" onAction="#logout" prefHeight="27.0" prefWidth="89.0" style="-fx-background-color: #e74c3c; -fx-background-radius: 5; -fx-cursor: hand; -fx-padding: 6 15;" text="Đăng xuất" textFill="WHITE">
+                            <font>
+                                <Font name="System Bold" size="12.0" />
+                            </font>
+                        </Button>
                     </children>
                 </HBox>
             </children>
@@ -147,16 +152,6 @@
                     </children>
                 </HBox>
                 <Region prefHeight="36.0" prefWidth="950.0" />
-                <HBox prefHeight="43.0" prefWidth="950.0">
-                    <children>
-                        <Region prefHeight="43.0" prefWidth="101.0" />
-                        <Button mnemonicParsing="false" onAction="#logout" prefHeight="27.0" prefWidth="89.0" style="-fx-background-color: #e74c3c; -fx-background-radius: 5; -fx-cursor: hand; -fx-padding: 6 15;" text="Đăng xuất" textFill="WHITE">
-                            <font>
-                                <Font name="System Bold" size="12.0" />
-                            </font>
-                        </Button>
-                    </children>
-                </HBox>
             </children>
         </VBox>
     </children>

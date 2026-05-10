@@ -17,14 +17,14 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox minHeight="650.0" minWidth="1000.0" prefHeight="700.0" prefWidth="1000.0" spacing="0.0" style="-fx-background-color: #f4f7f6;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.AuctionController">
+<VBox minHeight="650.0" minWidth="1000.0" prefHeight="700.0" prefWidth="1000.0" spacing="0.0" style="-fx-background-color: #f4f7f6;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.AuctionController">
     <children>
         <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="20.0" style="-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;">
             <padding>
                 <Insets left="30.0" right="30.0" />
             </padding>
             <children>
-                <ImageView fitHeight="50.0" fitWidth="120.0" onMouseClicked="#switchToMenu" pickOnBounds="true" preserveRatio="true">
+                <ImageView fitHeight="50.0" fitWidth="120.0" onMouseClicked="#switchToMenu" pickOnBounds="true" preserveRatio="true" style="-fx-cursor: hand;">
                     <image>
                         <Image url="@../images/logo.png" />
                     </image>
@@ -52,12 +52,17 @@
 
                 <Region HBox.hgrow="ALWAYS" />
 
-                <HBox alignment="CENTER_RIGHT" minWidth="-Infinity" spacing="10.0">
+                <HBox alignment="CENTER_RIGHT" minWidth="-Infinity" spacing="15.0">
                     <children>
-                        <Label minWidth="-Infinity" text="Xin chào, TranNgocPhuc" textFill="#0a1a3a">
-                            <font><Font size="14.0" /></font>
+                        <Label fx:id="lblGreeting" minWidth="-Infinity" text="Hello username" textFill="#0a1a3a">
+                            <font><Font name="System Bold" size="14.0" /></font>
                         </Label>
-                        <ImageView fitHeight="40.0" fitWidth="40.0" pickOnBounds="true" preserveRatio="true" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);" />
+
+                        <Button mnemonicParsing="false" onAction="#switchToProfile" style="-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;">
+                            <graphic>
+                                <ImageView fx:id="userAvatar" fitHeight="45.0" fitWidth="45.0" pickOnBounds="true" preserveRatio="false" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);" />
+                            </graphic>
+                        </Button>
                     </children>
                 </HBox>
             </children>
@@ -103,7 +108,7 @@
 
                                 <HBox alignment="CENTER" prefHeight="50.0" spacing="10.0" style="-fx-background-color: white;">
                                     <children>
-                                        <Label text="" textFill="#cc7a00">
+                                        <Label text="⏳" textFill="#cc7a00">
                                             <font><Font size="20.0" /></font>
                                         </Label>
                                         <Label fx:id="TimeRemaining" textFill="#cc7a00">
@@ -162,7 +167,7 @@
 
                                 <VBox spacing="5.0">
                                     <children>
-                                        <Label fx:id="thongbao" text="" wrapText="true">
+                                        <Label fx:id="thongbao" text="" textFill="RED" wrapText="true">
                                             <font><Font name="System Bold" size="14.0" /></font>
                                         </Label>
                                         <HBox spacing="15.0">

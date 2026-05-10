@@ -56,7 +56,6 @@ public class HeaderUtils {
             if (lblGreeting != null && lblGreeting.getScene() != null && controller != null) {
                 lblGreeting.getScene().addEventFilter(KeyEvent.KEY_PRESSED, event -> {
                     if (event.getCode() == KeyCode.F5) {
-                        // Đã thay System.out.println bằng logger.info
                         logger.info("Đã bắt được phím F5! Đang tải lại dữ liệu...");
                         controller.onReload();
                         event.consume();

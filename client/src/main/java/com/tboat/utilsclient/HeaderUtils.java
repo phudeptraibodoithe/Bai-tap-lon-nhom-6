@@ -1,6 +1,6 @@
 package com.tboat.utilsclient;
 
-import com.tboat.controllers.BaseController; // Cần import cái này
+import com.tboat.controllers.BaseController;
 import com.tboat.models.User;
 import javafx.application.Platform;
 import javafx.scene.control.Label;
@@ -9,10 +9,14 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.shape.Circle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HeaderUtils {
 
-    // CHÚ Ý: Mình đã thêm tham số thứ 3 là `BaseController controller`
+    // Khởi tạo logger để thay thế System.out
+    private static final Logger logger = LoggerFactory.getLogger(HeaderUtils.class);
+
     public static void setupHeader(Label lblGreeting, ImageView userAvatar, BaseController controller) {
         User currentUser = UserSession.getInstance().getUser();
 
@@ -48,17 +52,14 @@ public class HeaderUtils {
             }
         }
 
-        // =========================================================
-        // ĐÃ THÊM: GÀI BỘ LẮNG NGHE PHÍM F5 CHO TOÀN BỘ TRANG
-        // =========================================================
         Platform.runLater(() -> {
             if (lblGreeting != null && lblGreeting.getScene() != null && controller != null) {
-                // Dùng addEventFilter để đảm bảo dù có đang gõ chữ trong ô TextField thì ấn F5 vẫn nhận
                 lblGreeting.getScene().addEventFilter(KeyEvent.KEY_PRESSED, event -> {
                     if (event.getCode() == KeyCode.F5) {
-                        System.out.println("Đã bắt được phím F5! Đang tải lại dữ liệu...");
+                        // Đã thay System.out.println bằng logger.info
+                        logger.info("Đã bắt được phím F5! Đang tải lại dữ liệu...");
                         controller.onReload();
-                        event.consume(); // Ngăn phím F5 kích hoạt các lỗi không mong muốn khác
+                        event.consume();
                     }
                 });
             }

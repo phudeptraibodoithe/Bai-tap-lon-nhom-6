@@ -48,20 +48,10 @@
                     <font><Font size="14.0" /></font>
                 </Button>
                 <Region HBox.hgrow="ALWAYS" />
-
-                <HBox alignment="CENTER_RIGHT" minWidth="-Infinity" spacing="15.0">
-                    <children>
-                        <Label fx:id="lblGreeting" minWidth="-Infinity" text="Hello username" textFill="#0A1128">
-                            <font><Font name="System Bold" size="14.0" /></font>
-                        </Label>
-
-                        <Button mnemonicParsing="false" onAction="#switchToProfile" style="-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;">
-                            <graphic>
-                                <ImageView fx:id="userAvatar" fitHeight="45.0" fitWidth="45.0" pickOnBounds="true" preserveRatio="false" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);" />
-                            </graphic>
-                        </Button>
-                    </children>
-                </HBox>
+                <Label style="-fx-text-fill: #0A1128;" text="Hello User">
+                    <font><Font name="System Bold" size="14.0" /></font>
+                </Label>
+                <ImageView fitHeight="40.0" fitWidth="40.0" pickOnBounds="true" preserveRatio="true" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);" />
             </children>
         </HBox>
 

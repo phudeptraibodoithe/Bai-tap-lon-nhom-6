@@ -12,48 +12,34 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox prefHeight="650.0" prefWidth="950.0" style="-fx-background-color: #f4f7f6;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.NapRutController">
+<VBox prefHeight="650.0" prefWidth="950.0" style="-fx-background-color: #f4f7f6;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.NapRutController">
     <children>
         <HBox alignment="CENTER_LEFT" prefHeight="60.0" spacing="20.0" style="-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;">
             <padding>
                 <Insets left="20.0" right="20.0" />
             </padding>
             <children>
-                <ImageView fitHeight="53.0" fitWidth="103.0" pickOnBounds="true" preserveRatio="true">
-                    <image>
-                        <Image url="@../images/logo.png" />
-                    </image>
-                </ImageView>
+            <ImageView fitHeight="53.0" fitWidth="103.0" pickOnBounds="true" preserveRatio="true">
+               <image>
+                  <Image url="@../images/logo.png" />
+               </image>
+            </ImageView>
                 <Button mnemonicParsing="false" onAction="#switchToMenu" style="-fx-background-color: transparent;" text="Trang chủ" />
                 <Button mnemonicParsing="false" onAction="#switchToHistory" style="-fx-background-color: transparent;" text="Lịch sử" />
-                <Button mnemonicParsing="false" onAction="#switchToManager" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Quản lý sản phẩm">
-                    <font>
-                        <Font size="14.0" />
-                    </font>
-                </Button>
-                <Button mnemonicParsing="false" onAction="#switchToPostItem" style="-fx-background-color: transparent;" text="Đăng sản phẩm" />
-                <Button mnemonicParsing="false" onAction="#switchToProfile" style="-fx-background-color: transparent;" text="Profile" />
-                <Button fx:id="btnHome" mnemonicParsing="false" style="-fx-background-color: #F0F4FF; -fx-padding: 8 18; -fx-background-radius: 8; -fx-cursor: hand;" text="Nạp/Rút" textFill="#0A1128">
-                    <font>
-                        <Font name="System Bold" size="14.0" />
-                    </font>
-                </Button>
-
+            <Button mnemonicParsing="false" onAction="#switchToManager" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Quản lý sản phẩm">
+               <font>
+                  <Font size="14.0" />
+               </font>
+            </Button>
+            <Button mnemonicParsing="false" onAction="#switchToPostItem" style="-fx-background-color: transparent;" text="Đăng sản phẩm" />
+            <Button mnemonicParsing="false" onAction="#switchToProfile" style="-fx-background-color: transparent;" text="Profile" />
+            <Button fx:id="btnHome" mnemonicParsing="false" style="-fx-background-color: #F0F4FF; -fx-padding: 8 18; -fx-background-radius: 8; -fx-cursor: hand;" text="Nạp/Rút" textFill="#0A1128">
+               <font>
+                  <Font name="System Bold" size="14.0" />
+               </font>
+            </Button>
                 <Region HBox.hgrow="ALWAYS" />
-
-                <HBox alignment="CENTER_RIGHT" minWidth="-Infinity" spacing="15.0">
-                    <children>
-                        <Label fx:id="lblGreeting" minWidth="-Infinity" text="Hello username" textFill="#0A1128">
-                            <font><Font name="System Bold" size="14.0" /></font>
-                        </Label>
-
-                        <Button mnemonicParsing="false" onAction="#switchToProfile" style="-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;">
-                            <graphic>
-                                <ImageView fx:id="userAvatar" fitHeight="45.0" fitWidth="45.0" pickOnBounds="true" preserveRatio="false" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);" />
-                            </graphic>
-                        </Button>
-                    </children>
-                </HBox>
+                <Label text="Xin chào, User" />
             </children>
         </HBox>
 

@@ -3,11 +3,7 @@ package com.tboat.dao;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-
-import com.tboat.database.DatabaseConnection;
-import com.tboat.models.AuctionSession;
-import com.tboat.models.StatusOfAuction;
-import com.tboat.models.User;
+import com.tboat.models.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,25 +43,27 @@ public class AuctionSessionDAO {
     }
 
     private AuctionSession mapResultSetToAuctionSession(ResultSet rs) throws SQLException {
-        return new AuctionSession(
-                rs.getInt("id"),
+        String type = rs.getString("type");
+        AuctionFactory factory = AuctionFactoryProducer.getFactory(type);
+        AuctionSession session = factory.createAuctionSession(
                 rs.getTimestamp("startTime").toLocalDateTime(),
                 rs.getTimestamp("endTime").toLocalDateTime(),
                 rs.getDouble("currentPrice"),
                 rs.getDouble("bidIncrease"),
-                StatusOfAuction.valueOf(rs.getString("status")),
                 rs.getString("sellerAccount"),
-                rs.getString("type"),
                 rs.getString("name"),
                 rs.getString("description"),
-                rs.getString("imageURL"),
-                rs.getString("highestBidderAccount")
+                rs.getString("imageURL")
         );
+        session.setId(rs.getInt("id"));
+        session.setStatusOfAuction(StatusOfAuction.valueOf(rs.getString("status")));
+        session.setHighestBidderAccount(rs.getString("highestBidderAccount"));
+        return session;
     }
 
     public List<AuctionSession> getAuctionsBySeller(String accountName) {
         List<AuctionSession> list = new ArrayList<>();
-        String sql = "SELECT * FROM auction_session WHERE sellerAccount = ?";
+        String sql = "SELECT * FROM auction_session WHERE sellerAccount = ? ORDER BY id DESC";
 
         try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
@@ -100,15 +98,13 @@ public class AuctionSessionDAO {
 
     public List<AuctionSession> getAvailableAuctions() {
         List<AuctionSession> list = new ArrayList<>();
-        // Thêm dấu cách trước chữ WHERE và trước chữ ORDER để không bị dính chuỗi
         String sql = "SELECT * FROM auction_session " +
                 "WHERE status NOT IN (?, ?) " +
-                "ORDER BY status DESC, startTime ASC";
+                "ORDER BY status DESC, endTime ASC";
 
         try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
-            // Dùng enum.name() hoặc enum.toString() đều được
             ps.setString(1, StatusOfAuction.PENDING.name());
             ps.setString(2, StatusOfAuction.CANCELED.name());
 
@@ -118,7 +114,6 @@ public class AuctionSessionDAO {
                 }
             }
         } catch (SQLException e) {
-            // In ra lỗi để debug nếu câu SQL có vấn đề
             logger.error("Lỗi truy vấn getAvailableAuctions: ", e);
         }
         return list;
@@ -131,7 +126,7 @@ public class AuctionSessionDAO {
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
-                list.add(mapResultSetToAuctionSession(rs)); // Dùng luôn hàm helper này
+                list.add(mapResultSetToAuctionSession(rs));
             }
         } catch (Exception e) {
             logger.error("Lỗi khi lấy Pending Auctions: ", e);
@@ -169,7 +164,6 @@ public class AuctionSessionDAO {
         return null;
     }
 
-    // Hàm dùng trong Transaction
     public boolean updateSessionPriceAndHighest(Connection conn, int sessionId, String bidderAccount, double newPrice) throws SQLException {
         String sql = "UPDATE auction_session SET currentPrice = ?, highestBidderAccount = ? WHERE id = ? AND currentPrice < ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -191,6 +185,29 @@ public class AuctionSessionDAO {
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             logger.error("Lỗi khi cập nhật End Time: ", e);
+            return false;
+        }
+    }
+
+    public boolean updateAuction(AuctionSession session) {
+        String sql = "UPDATE auction_session SET name = ?, description = ?, imageURL = ?, " +
+                "currentPrice = ?, bidIncrease = ?, startTime = ?, endTime = ? WHERE id = ?";
+
+        try (Connection c = getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setString(1, session.getName());
+            ps.setString(2, session.getDescription());
+            ps.setString(3, session.getImageURL());
+            ps.setDouble(4, session.getCurrentPrice());
+            ps.setDouble(5, session.getBidIncrease());
+            ps.setTimestamp(6, java.sql.Timestamp.valueOf(session.getStartTime()));
+            ps.setTimestamp(7, java.sql.Timestamp.valueOf(session.getEndTime()));
+            ps.setInt(8, session.getId());
+
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            logger.error("Lỗi khi cập nhật thông tin Auction: ", e);
             return false;
         }
     }

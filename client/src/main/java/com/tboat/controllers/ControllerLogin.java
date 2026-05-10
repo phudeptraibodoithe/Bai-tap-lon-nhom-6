@@ -14,18 +14,17 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
-
 import java.util.logging.Logger;
 
 public class ControllerLogin extends BaseController implements SocketListener {
 
-    private static final Logger log = Logger.getLogger(ControllerLogin.class.getName());
 
     @FXML private TextField signText;
     @FXML private PasswordField passText;
     @FXML private Label err;
 
-    private Gson gson = GsonUtils.getInstance();
+    private final Gson gson = GsonUtils.getInstance();
+    private static final Logger log = Logger.getLogger(ControllerLogin.class.getName());
 
     @FXML
     public void submit(ActionEvent event) {
@@ -77,7 +76,7 @@ public class ControllerLogin extends BaseController implements SocketListener {
 
                             String role = payload.has("role") ? payload.get("role").getAsString() : "";
                             if ("admin".equalsIgnoreCase(signText.getText().trim()) || "ADMIN".equalsIgnoreCase(role)) {
-                                changeScene(err, "Admin.fxml");
+                                changeScene(err, "admin.fxml");
                                 break;
                             }
 
@@ -88,7 +87,6 @@ public class ControllerLogin extends BaseController implements SocketListener {
 
                             User loggedUser = new User(signText.getText(), null, nickname, balance, description, avatarURL);
                             UserSession.getInstance().createUserSession(loggedUser);
-
                             changeScene(err, "TrangChu.fxml");
                         }
                         break;

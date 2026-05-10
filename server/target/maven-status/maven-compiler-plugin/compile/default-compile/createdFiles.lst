@@ -6,6 +6,7 @@ com\tboat\dao\UserDAO.class
 com\tboat\dao\ParticipationDAO.class
 com\tboat\database\DatabaseConnection.class
 com\tboat\service\AuctionRoom.class
+com\tboat\service\SellerEditRole.class
 com\tboat\dao\AuctionSessionDAO.class
 com\tboat\service\ParticipationContext.class
 com\tboat\socket\ClientHandler$1.class

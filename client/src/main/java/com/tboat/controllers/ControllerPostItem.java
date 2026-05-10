@@ -6,7 +6,10 @@ import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import com.tboat.utils.GsonUtils;
-import com.tboat.utilsclient.ImageUtils; // THÊM IMPORT NÀY
+import com.tboat.utilsclient.CurrencyFormatter;
+import com.tboat.utilsclient.CurrencyStringConverter;
+import com.tboat.utilsclient.HeaderUtils;
+import com.tboat.utilsclient.ImageUtils;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -20,16 +23,12 @@ import javafx.scene.shape.Rectangle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
-
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
-import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ResourceBundle;
-
 import java.util.logging.Logger;
 
 public class ControllerPostItem extends BaseController implements Initializable, SocketListener {
@@ -42,9 +41,13 @@ public class ControllerPostItem extends BaseController implements Initializable,
     @FXML private Spinner<Integer> hourStart, minuteStart, hourEnd, minuteEnd;
     @FXML private ComboBox<String> typeComboBox;
 
+    // ĐÃ THÊM: Khai báo 2 biến UI cho Header
+    @FXML private Label lblGreeting;
+    @FXML private ImageView userAvatar;
+
     private Stage stage;
     private File selectedFile;
-    private Gson gson = GsonUtils.getInstance();
+    private final Gson gson = GsonUtils.getInstance();
     private static final Logger log = Logger.getLogger(ControllerPostItem.class.getName());
 
     @Override
@@ -53,35 +56,84 @@ public class ControllerPostItem extends BaseController implements Initializable,
 
         setupPriceSpinners();
         setupDateTimeLogic();
-        typeComboBox.getItems().addAll("Điện tử", "Thời trang", "Đồ gia dụng", "Trang sức", "Sách", "Khác");
+        typeComboBox.getItems().addAll("Điện tử", "Thời trang", "Trang sức", "Khác");
+
+        // ĐÃ THÊM: Gọi class dùng chung để hiển thị Avatar và tên User
+        HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
     }
 
     private void setupPriceSpinners() {
-        SpinnerValueFactory.DoubleSpinnerValueFactory valueFactory1 = new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, 0.0, 10000.0);
-        SpinnerValueFactory.DoubleSpinnerValueFactory valueFactory2 = new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 0.0, 0.0, 10000.0);
-        DecimalFormat formatter = new DecimalFormat("#,###");
+        SpinnerValueFactory.DoubleSpinnerValueFactory priceFactory =
+                new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, 0.0, 10000.0);
 
-        StringConverter<Double> converter = new StringConverter<>() {
-            @Override public String toString(Double v) { return v == null ? "0" : formatter.format(v) + " VNĐ"; }
-            @Override public Double fromString(String s) {
-                try { return s == null || s.isEmpty() ? 0.0 : Double.parseDouble(s.replaceAll("[^\\d.]", "")); }
-                catch (Exception e) { return 0.0; }
-            }
-        };
+        SpinnerValueFactory.DoubleSpinnerValueFactory jumpFactory =
+                new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, 0.0, 5000.0);
 
-        valueFactory1.setConverter(converter);
-        valueFactory2.setConverter(converter);
-        priceSpinner.setValueFactory(valueFactory1);
-        jumpSpinner.setValueFactory(valueFactory2);
+        CurrencyStringConverter currencyConverter = new CurrencyStringConverter();
+        priceFactory.setConverter(currencyConverter);
+        jumpFactory.setConverter(currencyConverter);
+
+        priceSpinner.setValueFactory(priceFactory);
+        jumpSpinner.setValueFactory(jumpFactory);
+
         priceSpinner.setEditable(true);
         jumpSpinner.setEditable(true);
+
+        addRealTimeFormatter(priceSpinner);
+        addRealTimeFormatter(jumpSpinner);
+        commitEditorText(priceSpinner);
+        commitEditorText(jumpSpinner);
 
         priceSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 double maxJump = newVal * 0.5;
-                valueFactory2.setMax(maxJump);
-                if (jumpSpinner.getValue() > maxJump) {
-                    valueFactory2.setValue(maxJump);
+                jumpFactory.setMax(maxJump > 0 ? maxJump : 1e18);
+                if (jumpSpinner.getValue() > maxJump && newVal > 0) {
+                    jumpFactory.setValue(maxJump);
+                }
+            }
+        });
+    }
+
+    private void addRealTimeFormatter(Spinner<Double> spinner) {
+        TextField editor = spinner.getEditor();
+        editor.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == null || newValue.isEmpty()) return;
+
+            String digits = newValue.replaceAll("[^\\d]", "");
+            if (digits.isEmpty()) {
+                editor.setText("");
+                return;
+            }
+
+            try {
+                double value = Double.parseDouble(digits);
+                String formatted = CurrencyFormatter.formatDisplay(value);
+
+                Platform.runLater(() -> {
+                    int currentCaret = editor.getCaretPosition();
+                    int oldLength = editor.getText().length();
+
+                    editor.setText(formatted);
+
+                    int newLength = formatted.length();
+                    int selection = currentCaret + (newLength - oldLength);
+                    editor.positionCaret(Math.max(0, Math.min(selection, newLength - 4)));
+                });
+            } catch (NumberFormatException e) {
+                editor.setText(oldValue);
+            }
+        });
+    }
+
+    private <T> void commitEditorText(Spinner<T> spinner) {
+        spinner.getEditor().focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal) {
+                String text = spinner.getEditor().getText();
+                StringConverter<T> converter = spinner.getValueFactory().getConverter();
+                if (converter != null) {
+                    T value = converter.fromString(text);
+                    spinner.getValueFactory().setValue(value);
                 }
             }
         });
@@ -173,13 +225,13 @@ public class ControllerPostItem extends BaseController implements Initializable,
             return;
         }
 
-        if (startDT.isBefore(now.plusMinutes(10))) {
-            showError("Thời gian bắt đầu phải sau hiện tại ít nhất 10 phút!");
+        if (startDT.isBefore(now.plusMinutes(5))) {
+            showError("Thời gian bắt đầu phải sau hiện tại ít nhất 5 phút!");
             return;
         }
 
-        if (endDT.isBefore(startDT.plusMinutes(10))) {
-            showError("Thời gian kết thúc phải cách thời gian bắt đầu ít nhất 10 phút!");
+        if (endDT.isBefore(startDT.plusMinutes(5))) {
+            showError("Thời gian kết thúc phải cách thời gian bắt đầu ít nhất 5 phút!");
             return;
         }
 
@@ -249,7 +301,6 @@ public class ControllerPostItem extends BaseController implements Initializable,
         alert.getButtonTypes().setAll(btnYes, btnNo);
 
         if (alert.showAndWait().orElse(btnNo) == btnYes) {
-            // 3. Tận dụng hàm changeScene của BaseController cho gọn
             changeScene((Node) e.getSource(), "postItem.fxml");
         }
     }
@@ -268,8 +319,7 @@ public class ControllerPostItem extends BaseController implements Initializable,
                         String id = jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull() ? jsonResponse.get("payload").getAsString() : "N/A";
                         thongbao.setText("Đăng bán thành công! ID Phiên: " + id);
 
-                        // Chuyển về trang chủ sau khi đăng xong
-                        changeScene(thongbao, "trangchu.fxml"); // Lưu ý: Tên file FXML thường viết thường (trangchu.fxml)
+                        changeScene(thongbao, "trangchu.fxml");
                     }
                 } else if ("ERROR".equals(status) || "FAILED".equals(status)) {
                     showError(message);

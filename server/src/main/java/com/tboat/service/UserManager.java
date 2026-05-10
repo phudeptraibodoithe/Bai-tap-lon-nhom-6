@@ -11,12 +11,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UserManager {
-    private static final Logger logger = LoggerFactory.getLogger(UserManager.class);
-
     private final UserDAO userDAO = new UserDAO();
     private static final Map<String, ClientHandler> onlineUsers = new ConcurrentHashMap<>();
-
-    // Thêm cơ chế Singleton
+    private static final Logger logger = LoggerFactory.getLogger(UserManager.class);
     private static volatile UserManager instance;
     private UserManager() {} // Khóa hàm khởi tạo
 
@@ -34,24 +31,16 @@ public class UserManager {
     }
 
     public ResponseCode login(String account, String password, ClientHandler handler) {
-        // KIỂM TRA: Nếu user đã có trong Map onlineUsers, không cho login nữa
         if (onlineUsers.containsKey(account)) {
             logger.warn("[UserManager]: Từ chối login - User {} đang online.", account);
             return ResponseCode.ALREADY_LOGGED_IN;
         }
-
-        User user = userDAO.getUser(account);
-        if (user == null) {
-            return ResponseCode.NOT_FOUND;
-        }
-
-        if (user.getPassword().equals(password)) {
+        ResponseCode loginStatus = userDAO.checkLogin(account, password);
+        if (loginStatus == ResponseCode.SUCCESS) {
             onlineUsers.put(account, handler);
             logger.info("[UserManager]: User {} is now ONLINE.", account);
-            return ResponseCode.SUCCESS;
-        } else {
-            return ResponseCode.WRONG_PASSWORD;
         }
+        return loginStatus;
     }
 
     public void logout(String account) {

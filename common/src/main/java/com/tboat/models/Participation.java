@@ -18,8 +18,6 @@ public class Participation {
     public void setAccountName(String accountName) { this.accountName = accountName; }
 
     public int getAuctionSessionId() { return auctionSessionId; }
-    public void setAuctionSessionId(int auctionSessionId) { this.auctionSessionId = auctionSessionId; }
 
     public String getRoleType() { return roleType; }
-    public void setRoleType(String roleType) { this.roleType = roleType; }
 }

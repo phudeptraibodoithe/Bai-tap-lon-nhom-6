@@ -16,13 +16,12 @@ import java.util.logging.Logger;
 
 public class ControllerRegister extends BaseController implements SocketListener {
 
-    private static final Logger logger = Logger.getLogger(ControllerRegister.class.getName());
-
     @FXML private TextField nicknameText, accountNameText, emailText, phoneText;
     @FXML private PasswordField passText, repassText;
     @FXML private Label err;
 
-    private Gson gson = GsonUtils.getInstance();
+    private final Gson gson = GsonUtils.getInstance();
+    private static final Logger logger = Logger.getLogger(ControllerRegister.class.getName());
 
     @FXML
     public void submit(ActionEvent event) {

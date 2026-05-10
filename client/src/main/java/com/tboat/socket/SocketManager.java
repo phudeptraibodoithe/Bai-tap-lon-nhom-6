@@ -9,13 +9,10 @@ import java.util.logging.Logger;
 
 public class SocketManager {
     private static final Logger log = Logger.getLogger(SocketManager.class.getName());
-
     private static SocketManager instance;
     private Socket socket;
     private PrintWriter out;
     private BufferedReader in;
-
-    // Danh sách an toàn cho đa luồng để chứa các người nhận tin
     private final List<SocketListener> listeners = new CopyOnWriteArrayList<>();
 
     private SocketManager() {}
@@ -54,9 +51,6 @@ public class SocketManager {
                 String response;
                 while (socket != null && !socket.isClosed() && (response = in.readLine()) != null) {
                     final String msg = response;
-
-                    // Duyệt danh sách và gửi tin nhắn cho mọi Subscriber
-                    // Platform.runLater đảm bảo cập nhật UI JavaFX an toàn từ thread khác
                     Platform.runLater(() -> {
                         for (SocketListener listener : listeners) {
                             listener.handleServerResponse(msg);
@@ -87,10 +81,9 @@ public class SocketManager {
             }
             listeners.clear();
         } catch (IOException e) {
-            e.printStackTrace();
+            log.severe("[SocketManager] Lỗi khi đóng kết nối: " + e.getMessage());
         }
     }
-
     public boolean isConnected() {
         return socket != null && socket.isConnected() && !socket.isClosed();
     }

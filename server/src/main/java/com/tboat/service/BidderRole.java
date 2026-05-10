@@ -80,10 +80,10 @@ public class BidderRole implements TransactionRole {
                 try {
                     conn.rollback(); // Hủy bỏ mọi thay đổi nếu có lỗi (Exception)
                 } catch (SQLException ex) {
-                    ex.printStackTrace();
+                    logger.error("Lỗi khi rollback transaction!", ex);
                 }
             }
-            e.printStackTrace();
+            logger.error("Lỗi nghiêm trọng trong quá trình đấu giá!", e);
             return false;
         } finally {
             if (conn != null) {
@@ -91,7 +91,7 @@ public class BidderRole implements TransactionRole {
                     conn.setAutoCommit(true); // Trả lại trạng thái mặc định
                     conn.close();             // Đóng kết nối để trả về Connection Pool
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    logger.error("Lỗi khi đóng kết nối database!", e);
                 }
             }
         }

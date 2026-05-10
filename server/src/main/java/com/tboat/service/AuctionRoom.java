@@ -9,7 +9,6 @@ import com.tboat.models.AuctionSession;
 import com.tboat.models.History;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.ClientHandler;
-import com.tboat.utils.ResponseCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -150,10 +149,14 @@ public class AuctionRoom {
      * Gửi thông báo JSON tới tất cả người dùng trong phòng
      */
     public void broadcast(String action, String message, Object payload) {
+        if (subscribers.isEmpty()) return; // Tối ưu: Nếu phòng trống thì khỏi tốn công chạy đa luồng
         for (ClientHandler client : subscribers) {
-            // Dùng Executor riêng để không làm nghẽn hệ thống
             CompletableFuture.runAsync(() -> {
-                client.sendSystemMessage(action, message, payload);
+                try {
+                    client.sendSystemMessage(action, message, payload);
+                } catch (Exception e) {
+                    logger.error("Lỗi gửi thông tin cho client!");
+                }
             }, ServerMain.broadcastExecutor);
         }
     }

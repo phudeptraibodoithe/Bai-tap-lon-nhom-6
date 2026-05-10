@@ -9,14 +9,12 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.input.MouseEvent;
-
 import java.io.IOException;
 import java.util.logging.Logger;
 
 public abstract class BaseController {
 
     private static final Logger log = Logger.getLogger(BaseController.class.getName());
-
     private Scene scene;
     private Parent root;
 
@@ -39,7 +37,7 @@ public abstract class BaseController {
             scene.getStylesheets().add(getClass().getResource("/styles/Button.css").toExternalForm());
             scene.setRoot(root);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.severe("[System] Lỗi khi chuyển scene sang " + fxmlFileName + ": " + e.getMessage());
         }
     }
 
@@ -68,9 +66,21 @@ public abstract class BaseController {
             return nextController;
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.severe("[System] Lỗi khi chuyển scene sang " + fxmlFileName + ": " + e.getMessage());
             return null;
         }
+    }
+
+    // 1. Hàm định nghĩa hành động khi Reload.
+    // Các class con (như TrangChu, Manager) sẽ GHI ĐÈ hàm này để tự quyết định tải lại cái gì.
+    public void onReload() {
+        System.out.println("Trang này chưa có dữ liệu động cần làm mới.");
+    }
+
+    // 2. Hàm gắn trực tiếp vào sự kiện onAction của Nút bấm trên giao diện
+    @FXML
+    public void handleReloadClick(javafx.event.ActionEvent event) {
+        onReload();
     }
 
     @FXML public void switchToMenu(Event event) { changeScene((Node) event.getSource(), "TrangChu.fxml"); }
@@ -79,10 +89,9 @@ public abstract class BaseController {
     @FXML public void switchToWallet(ActionEvent event) { changeScene((Node) event.getSource(), "NapRut.fxml"); }
     @FXML public void switchToProfile(ActionEvent event) { changeScene((Node) event.getSource(), "profile.fxml"); }
     @FXML public void switchToManager(ActionEvent event) { changeScene((Node) event.getSource(), "manager.fxml"); }
-    @FXML public void switchToAdminProfile(ActionEvent event) { changeScene((Node) event.getSource(), "adminProfile.fxml"); }
-    @FXML public void switchToWalletAdmin(ActionEvent event) { changeScene((Node) event.getSource(), "adminNapRut.fxml"); }
+    @FXML public void switchToWalletAdmin(ActionEvent event) { changeScene((Node) event.getSource(), "adminWallet.fxml"); }
     @FXML public void switchToLogin(ActionEvent event) throws IOException { changeScene((Node) event.getSource(), "login.fxml"); }
     @FXML public void switchToRegister(ActionEvent event) throws IOException { changeScene((Node) event.getSource(), "register.fxml"); }
     @FXML public void switchToStart(MouseEvent event) throws IOException { changeScene((Node) event.getSource(), "start.fxml"); }
-    @FXML public void switchToAdmin(ActionEvent event) throws IOException { changeScene((Node) event.getSource(), "Admin.fxml"); }
+    @FXML public void switchToAdmin(ActionEvent event) throws IOException { changeScene((Node) event.getSource(), "admin.fxml"); }
 }

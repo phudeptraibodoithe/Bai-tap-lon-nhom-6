@@ -12,8 +12,6 @@ public class ImageUtils {
 
     private static final Logger log = Logger.getLogger(ImageUtils.class.getName());
 
-    // 1. Dùng cho Trang ĐĂNG SẢN PHẨM: Biến File ảnh thành chuỗi văn bản để gửi đi
-    // Lưu ý chữ "static" để gọi được ở mọi nơi mà không cần "new"
     public static String fileToBase64(File file) {
         try {
             byte[] fileContent = Files.readAllBytes(file.toPath());
@@ -23,11 +21,9 @@ public class ImageUtils {
             return null;
         }
     }
-
-    // 2. Dùng cho TRANG CHỦ & TRANG AUCTION: Nhận chuỗi văn bản từ Server, dịch ngược lại thành Ảnh
     public static Image base64ToImage(String base64String) {
         if (base64String == null || base64String.isEmpty()) {
-            return null; // Trả về null nếu không có ảnh
+            return null;
         }
         try {
             byte[] imageBytes = Base64.getDecoder().decode(base64String);

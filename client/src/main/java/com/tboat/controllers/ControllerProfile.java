@@ -20,9 +20,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
 import java.util.logging.Logger;
@@ -36,24 +34,18 @@ public class ControllerProfile extends BaseController implements Initializable, 
 
     private static final double CIRCLE_RADIUS = 110.0;
 
-    private static final Logger log = Logger.getLogger(ControllerProfile.class.getName());
-
     @FXML private ImageView myImageView;
     @FXML private Label nickname, balance, err;
     @FXML private TextArea desc;
 
-    private Gson gson = GsonUtils.getInstance();
+    private final Gson gson = GsonUtils.getInstance();
+    private static final Logger log = Logger.getLogger(ControllerProfile.class.getName());
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        // 1. Lắng nghe tin nhắn từ Server
-        SocketManager.getInstance().subscribe(this);
-
-        // 2. Gửi yêu cầu lấy thông tin Profile
         JsonObject request = new JsonObject();
         request.addProperty("action", "PROFILE");
         SocketManager.getInstance().send(gson.toJson(request));
-
         user = UserSession.getInstance().getUser();
         if (user != null) {
             updateUI(user.getNickname(), user.getBalance(), user.getAvatarURL(), user.getDescription());

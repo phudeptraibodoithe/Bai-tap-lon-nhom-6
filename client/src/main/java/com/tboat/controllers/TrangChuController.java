@@ -12,6 +12,7 @@ import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import com.tboat.utils.GsonUtils;
+import com.tboat.utilsclient.HeaderUtils; // Đã thêm import
 import com.tboat.utilsclient.ImageUtils;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -41,20 +42,22 @@ public class TrangChuController extends BaseController implements Initializable,
     @FXML private Button btnPostItem;
     @FXML private Button btnHistory1;
 
+    // ĐÃ THÊM: Khai báo 2 biến UI cho Header
+    @FXML private Label lblGreeting;
+    @FXML private ImageView userAvatar;
+
     private final Gson gson = GsonUtils.getInstance();
     private static final Logger logger = Logger.getLogger(TrangChuController.class.getName());
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        // Đăng ký class này để lắng nghe tin nhắn từ Server
         SocketManager.getInstance().subscribe(this);
-        // Load danh sách ngay khi mở trang
         loadAuctions();
+
+        // ĐÃ THÊM: Gọi class dùng chung để hiển thị Avatar và tên User
+        HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
     }
 
-    // =========================================================
-    // 1. GỬI YÊU CẦU LẤY DANH SÁCH SẢN PHẨM LÊN SERVER
-    // =========================================================
     public void loadAuctions() {
         if (itemContainer != null) {
             itemContainer.getChildren().clear();
@@ -67,9 +70,6 @@ public class TrangChuController extends BaseController implements Initializable,
         SocketManager.getInstance().send(gson.toJson(request));
     }
 
-    // =========================================================
-    // 2. XỬ LÝ DỮ LIỆU JSON TỪ SERVER TRẢ VỀ
-    // =========================================================
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
@@ -146,9 +146,6 @@ public class TrangChuController extends BaseController implements Initializable,
         });
     }
 
-    // =========================================================
-    // 3. HÀM TẠO GIAO DIỆN THẺ SẢN PHẨM
-    // =========================================================
     private VBox createProductCard(AuctionSession session) {
         VBox card = new VBox();
         card.setPrefWidth(300.0);
@@ -159,7 +156,6 @@ public class TrangChuController extends BaseController implements Initializable,
         imagePane.setPrefHeight(240.0);
         imagePane.setStyle("-fx-background-color: #E8E8E8; -fx-background-radius: 20 20 0 0;");
 
-        // --- XỬ LÝ HIỂN THỊ ẢNH ---
         String base64Data = session.getImageURL();
         if (base64Data != null && !base64Data.isEmpty()) {
             Image img = ImageUtils.base64ToImage(base64Data);
@@ -168,7 +164,6 @@ public class TrangChuController extends BaseController implements Initializable,
                 imageView.setFitWidth(300.0);
                 imageView.setFitHeight(240.0);
 
-                // Cắt ảnh bo góc cho đẹp (khớp với StackPane)
                 javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle(300, 240);
                 clip.setArcWidth(40);
                 clip.setArcHeight(40);
@@ -177,7 +172,6 @@ public class TrangChuController extends BaseController implements Initializable,
                 imagePane.getChildren().add(imageView);
             }
         }
-        // --------------------------
 
         Button btnHeart = new Button("🤍");
         btnHeart.setStyle("-fx-background-color: rgba(255,255,255,0.3); -fx-background-radius: 50; -fx-min-width: 35; -fx-min-height: 35; -fx-cursor: hand;");
@@ -185,14 +179,13 @@ public class TrangChuController extends BaseController implements Initializable,
         btnHeart.setFont(Font.font(14));
         StackPane.setAlignment(btnHeart, Pos.TOP_RIGHT);
         StackPane.setMargin(btnHeart, new Insets(15, 15, 0, 0));
-        imagePane.getChildren().add(btnHeart); // Nút tim được add vào sau nên sẽ nổi lên trên ảnh
+        imagePane.getChildren().add(btnHeart);
 
         VBox infoBox = new VBox(15.0);
         infoBox.setPadding(new Insets(20, 25, 25, 25));
 
         Label lblName = new Label(session.getName());
         lblName.setFont(Font.font("System", FontWeight.BOLD, 20));
-        // ĐÃ FIX: Dùng setStyle thay vì setTextFill để ép cứng màu chữ, tránh bị CSS đè
         lblName.setStyle("-fx-text-fill: #0A1128;");
         lblName.setWrapText(true);
         lblName.setPrefHeight(55.0);
@@ -219,7 +212,7 @@ public class TrangChuController extends BaseController implements Initializable,
                 AuctionController controller = changeSceneAndGetController(btnBid, "auction.fxml");
 
                 if (controller != null) {
-                    controller.setItemData(session); // Truyền dữ liệu sang trang mới
+                    controller.setItemData(session);
                 }
             } catch (Exception e) {
                 logger.severe("Lỗi truyền dữ liệu vào Auction");
@@ -240,12 +233,10 @@ public class TrangChuController extends BaseController implements Initializable,
 
         Label lblTitle = new Label(title);
         lblTitle.setFont(Font.font("System", FontWeight.BOLD, 10));
-        // ĐÃ FIX: Ép màu bằng CSS inline
         lblTitle.setStyle("-fx-text-fill: #9DA3B4;");
 
         Label lblValue = new Label(value);
         lblValue.setFont(Font.font("System", FontWeight.BOLD, 16));
-        // ĐÃ FIX: Ép màu bằng CSS inline, nối chuỗi colorHex
         lblValue.setStyle("-fx-text-fill: " + colorHex + ";");
 
         col.getChildren().addAll(lblTitle, lblValue);

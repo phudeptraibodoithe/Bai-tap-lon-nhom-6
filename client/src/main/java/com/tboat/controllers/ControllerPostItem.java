@@ -8,6 +8,7 @@ import com.tboat.socket.SocketManager;
 import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.CurrencyFormatter;
 import com.tboat.utilsclient.CurrencyStringConverter;
+import com.tboat.utilsclient.HeaderUtils;
 import com.tboat.utilsclient.ImageUtils;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -40,6 +41,10 @@ public class ControllerPostItem extends BaseController implements Initializable,
     @FXML private Spinner<Integer> hourStart, minuteStart, hourEnd, minuteEnd;
     @FXML private ComboBox<String> typeComboBox;
 
+    // ĐÃ THÊM: Khai báo 2 biến UI cho Header
+    @FXML private Label lblGreeting;
+    @FXML private ImageView userAvatar;
+
     private Stage stage;
     private File selectedFile;
     private final Gson gson = GsonUtils.getInstance();
@@ -52,6 +57,9 @@ public class ControllerPostItem extends BaseController implements Initializable,
         setupPriceSpinners();
         setupDateTimeLogic();
         typeComboBox.getItems().addAll("Điện tử", "Thời trang", "Trang sức", "Khác");
+
+        // ĐÃ THÊM: Gọi class dùng chung để hiển thị Avatar và tên User
+        HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
     }
 
     private void setupPriceSpinners() {
@@ -110,7 +118,7 @@ public class ControllerPostItem extends BaseController implements Initializable,
 
                     int newLength = formatted.length();
                     int selection = currentCaret + (newLength - oldLength);
-                    editor.positionCaret(Math.max(0, Math.min(selection, newLength - 4))); // -4 để tránh nhảy ra sau chữ " VNĐ"
+                    editor.positionCaret(Math.max(0, Math.min(selection, newLength - 4)));
                 });
             } catch (NumberFormatException e) {
                 editor.setText(oldValue);
@@ -118,12 +126,9 @@ public class ControllerPostItem extends BaseController implements Initializable,
         });
     }
 
-    /**
-     * Hàm hỗ trợ để Spinner cập nhật giá trị ngay khi người dùng gõ xong (mất focus)
-     */
     private <T> void commitEditorText(Spinner<T> spinner) {
         spinner.getEditor().focusedProperty().addListener((obs, oldVal, newVal) -> {
-            if (!newVal) { // Khi mất focus
+            if (!newVal) {
                 String text = spinner.getEditor().getText();
                 StringConverter<T> converter = spinner.getValueFactory().getConverter();
                 if (converter != null) {
@@ -314,8 +319,7 @@ public class ControllerPostItem extends BaseController implements Initializable,
                         String id = jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull() ? jsonResponse.get("payload").getAsString() : "N/A";
                         thongbao.setText("Đăng bán thành công! ID Phiên: " + id);
 
-                        // Chuyển về trang chủ sau khi đăng xong
-                        changeScene(thongbao, "trangchu.fxml"); // Lưu ý: Tên file FXML thường viết thường (trangchu.fxml)
+                        changeScene(thongbao, "trangchu.fxml");
                     }
                 } else if ("ERROR".equals(status) || "FAILED".equals(status)) {
                     showError(message);

@@ -7,6 +7,7 @@ import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.CurrencyFormatter;
+import com.tboat.utilsclient.HeaderUtils;
 import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -15,6 +16,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.image.ImageView;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -29,6 +31,10 @@ public class NapRutController extends BaseController implements Initializable, S
     @FXML private TextField txtPin;
     @FXML private Button btnSubmit;
 
+    // ĐÃ THÊM: Khai báo 2 biến UI cho Header
+    @FXML private Label lblGreeting;
+    @FXML private ImageView userAvatar;
+
     private double currentBalance = UserSession.getInstance().getBalance();
     private final String CORRECT_PIN = "123456";
     private boolean isDepositMode = true;
@@ -37,12 +43,17 @@ public class NapRutController extends BaseController implements Initializable, S
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle){
+        SocketManager.getInstance().subscribe(this);
+
         updateBalanceLabel();
         setupAmountFieldFormat();
         txtPin.setText("123456");
         btnTabDeposit.setOnAction(event -> switchToDepositMode());
         btnTabWithdraw.setOnAction(event -> switchToWithdrawMode());
         btnSubmit.setOnAction(event -> handleTransaction());
+
+        // ĐÃ THÊM: Gọi class dùng chung để hiển thị Avatar và tên User
+        HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
     }
 
     private void setupAmountFieldFormat() {

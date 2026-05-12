@@ -71,6 +71,18 @@ public abstract class BaseController {
         }
     }
 
+    // 1. Hàm định nghĩa hành động khi Reload.
+    public void onReload() {
+        // Đã đổi sout thành log.info
+        log.info("Trang này chưa có dữ liệu động cần làm mới.");
+    }
+
+    // 2. Hàm gắn trực tiếp vào sự kiện onAction của Nút bấm trên giao diện
+    @FXML
+    public void handleReloadClick(javafx.event.ActionEvent event) {
+        onReload();
+    }
+
     @FXML public void switchToMenu(Event event) { changeScene((Node) event.getSource(), "TrangChu.fxml"); }
     @FXML public void switchToHistory(ActionEvent event) { changeScene((Node) event.getSource(), "history.fxml"); }
     @FXML public void switchToPostItem(ActionEvent event) { changeScene((Node) event.getSource(), "postItem.fxml"); }

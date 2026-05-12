@@ -7,12 +7,15 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.models.AuctionSession;
 import com.tboat.models.StatusOfAuction;
+import com.tboat.models.User;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
 import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.ImageUtils;
 import com.tboat.utilsclient.AuctionTimer;
 import com.tboat.utilsclient.CurrencyFormatter;
+import com.tboat.utilsclient.HeaderUtils;
+import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -52,6 +55,9 @@ public class AuctionController extends BaseController implements SocketListener 
     @FXML private TableColumn<BidEntry, String> colBidTime;
     @FXML private TableColumn<BidEntry, String> colBidUser;
     @FXML private TableColumn<BidEntry, Double> colBidPrice;
+
+    @FXML private Label lblGreeting;
+    @FXML private ImageView userAvatar;
 
     private ObservableList<BidEntry> listBids = FXCollections.observableArrayList();
     private static final Logger log = LoggerFactory.getLogger(AuctionController.class);
@@ -98,18 +104,29 @@ public class AuctionController extends BaseController implements SocketListener 
             }
         });
 
-        // Xóa text thông báo mặc định lúc mới bật
         if (thongbao != null) {
             thongbao.setText("");
         }
 
         setupBidHistoryTable();
+        HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
+    }
+
+    @Override
+    public void onReload() {
+        if (currentSession != null) {
+            JsonObject reqHistory = new JsonObject();
+            reqHistory.addProperty("action", "GET_SESSION_BIDS");
+            reqHistory.addProperty("payload", currentSession.getId());
+            SocketManager.getInstance().send(gson.toJson(reqHistory));
+            // Đã đổi sout thành log.info
+            log.info("Đã tải lại lịch sử giá!");
+        }
     }
 
     private void setupBidHistoryTable() {
         if (colBidTime == null || colBidUser == null || colBidPrice == null) return;
 
-        // [FIX LỖI ILLEGAL ACCESS EXCEPTION]: Dùng Lambda thay vì PropertyValueFactory
         colBidTime.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getTime()));
         colBidUser.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getUser()));
         colBidPrice.setCellValueFactory(cellData -> new SimpleObjectProperty<>(cellData.getValue().getPrice()));
@@ -130,15 +147,14 @@ public class AuctionController extends BaseController implements SocketListener 
         tableBidHistory.setItems(listBids);
     }
 
-    // Hàm tiện ích để đổi text của Label thongbao
     private void setThongBao(String msg, boolean isSuccess) {
         Platform.runLater(() -> {
             if (thongbao != null) {
                 thongbao.setText(msg);
                 if (isSuccess) {
-                    thongbao.setStyle("-fx-text-fill: #2ecc71; -fx-font-weight: bold;"); // Màu xanh lá
+                    thongbao.setStyle("-fx-text-fill: #2ecc71; -fx-font-weight: bold;");
                 } else {
-                    thongbao.setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;"); // Màu đỏ
+                    thongbao.setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;");
                 }
             }
         });
@@ -182,15 +198,22 @@ public class AuctionController extends BaseController implements SocketListener 
                 BidAmount.setDisable(true);
                 BidAmount.setPromptText("Chưa tới giờ đấu giá...");
             }
-            TimeRemaining.setText("⏳ Sắp diễn ra...");
-            TimeRemaining.setStyle("-fx-text-fill: #e67e22; -fx-font-weight: bold;");
+
+            String startTimeStr = "Sắp diễn ra...";
+            if (currentSession.getStartTime() != null) {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm - dd/MM");
+                startTimeStr = currentSession.getStartTime().format(formatter);
+            }
+
+            TimeRemaining.setText("Bắt đầu: " + startTimeStr);
+            TimeRemaining.setStyle("-fx-text-fill: #e67e22; -fx-font-weight: bold; -fx-font-size: 20px;");
 
         } else if (status == StatusOfAuction.ENDED || status == StatusOfAuction.CANCELED) {
             btnBid.setDisable(true);
             BidAmount.setDisable(true);
             BidAmount.setPromptText("Phiên đấu giá đã khép lại.");
             TimeRemaining.setText("00 : 00 : 00");
-            TimeRemaining.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+            TimeRemaining.setStyle("-fx-text-fill: red; -fx-font-weight: bold; -fx-font-size: 28px;");
 
         } else if (status == StatusOfAuction.ONGOING) {
             if (isUserSeller) {
@@ -201,7 +224,7 @@ public class AuctionController extends BaseController implements SocketListener 
                 BidAmount.setDisable(false);
                 BidAmount.setPromptText("Nhập giá đặt tại đây...");
             }
-            TimeRemaining.setStyle("-fx-text-fill: #2ecc71; -fx-font-weight: bold;");
+            TimeRemaining.setStyle("-fx-text-fill: #2ecc71; -fx-font-weight: bold; -fx-font-size: 28px;");
 
             if (currentSession.getEndTime() != null) {
                 auctionTimer = new AuctionTimer(
@@ -215,7 +238,7 @@ public class AuctionController extends BaseController implements SocketListener 
                             Platform.runLater(() -> {
                                 if (TimeRemaining != null) {
                                     TimeRemaining.setText("00 : 00 : 00");
-                                    TimeRemaining.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+                                    TimeRemaining.setStyle("-fx-text-fill: red; -fx-font-weight: bold; -fx-font-size: 28px;");
                                 }
                                 if (btnBid != null) btnBid.setDisable(true);
                                 if (BidAmount != null) {
@@ -276,9 +299,8 @@ public class AuctionController extends BaseController implements SocketListener 
                 return;
             }
 
-            // Nếu dữ liệu OK, set trạng thái đang chờ
             setThongBao("Đang gửi lệnh đặt giá...", true);
-            thongbao.setStyle("-fx-text-fill: #f39c12; -fx-font-weight: bold;"); // Màu cam chờ đợi
+            thongbao.setStyle("-fx-text-fill: #f39c12; -fx-font-weight: bold;");
 
             JsonObject request = new JsonObject();
             request.addProperty("action", "BID");
@@ -289,6 +311,30 @@ public class AuctionController extends BaseController implements SocketListener 
 
         } catch (Exception e) {
             setThongBao("Định dạng số không hợp lệ.", false);
+        }
+    }
+
+    private String parseServerTime(JsonElement timeElement) {
+        if (timeElement == null || timeElement.isJsonNull()) {
+            return "";
+        }
+        try {
+            if (timeElement.isJsonPrimitive() && timeElement.getAsJsonPrimitive().isNumber()) {
+                long timestamp = timeElement.getAsLong();
+                LocalDateTime dateTime = LocalDateTime.ofInstant(
+                        java.time.Instant.ofEpochMilli(timestamp),
+                        java.time.ZoneId.systemDefault()
+                );
+                return dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            } else {
+                String time = timeElement.getAsString();
+                if (time.contains("T")) {
+                    time = time.replace("T", " ").substring(0, 19);
+                }
+                return time;
+            }
+        } catch (Exception e) {
+            return "";
         }
     }
 
@@ -317,8 +363,20 @@ public class AuctionController extends BaseController implements SocketListener 
                         currentSession.setHighestBidderAccount(newLeader);
                         updateUI();
 
-                        String nowTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-                        listBids.add(0, new BidEntry(nowTime, newLeader, newPrice));
+                        String nowTime = "";
+                        if (payloadObjs.has("bidTime")) {
+                            nowTime = parseServerTime(payloadObjs.get("bidTime"));
+                        }
+                        if (nowTime.isEmpty()) {
+                            nowTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                        }
+
+                        listBids.add(new BidEntry(nowTime, newLeader, newPrice));
+                        listBids.sort((b1, b2) -> b2.getTime().compareTo(b1.getTime()));
+
+                        if (thongbao != null) {
+                            thongbao.setText("");
+                        }
                         break;
 
                     case "SUCCESS":
@@ -328,36 +386,17 @@ public class AuctionController extends BaseController implements SocketListener 
 
                             for (JsonElement element : bidArray) {
                                 JsonObject bidObj = element.getAsJsonObject();
-                                String time = "";
-                                if (bidObj.has("bidTime") && !bidObj.get("bidTime").isJsonNull()) {
-                                    JsonElement timeElement = bidObj.get("bidTime");
-
-                                    if (timeElement.isJsonPrimitive() && timeElement.getAsJsonPrimitive().isNumber()) {
-                                        long timestamp = timeElement.getAsLong();
-                                        LocalDateTime dateTime = LocalDateTime.ofInstant(
-                                                java.time.Instant.ofEpochMilli(timestamp),
-                                                java.time.ZoneId.systemDefault()
-                                        );
-                                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                                        time = dateTime.format(formatter);
-                                    }
-                                    else {
-                                        time = timeElement.getAsString();
-                                        if (time.contains("T")) {
-                                            time = time.replace("T", " ").substring(0, 19);
-                                        }
-                                    }
-                                }
-
+                                String time = parseServerTime(bidObj.get("bidTime"));
                                 String user = bidObj.has("accountName") ? bidObj.get("accountName").getAsString() : (bidObj.has("bidderAccount") ? bidObj.get("bidderAccount").getAsString() : "Unknown");
                                 double price = bidObj.has("amount") ? bidObj.get("amount").getAsDouble() : (bidObj.has("bidAmount") ? bidObj.get("bidAmount").getAsDouble() : 0.0);
 
                                 listBids.add(new BidEntry(time, user, price));
                             }
-                            FXCollections.reverse(listBids);
+
+                            listBids.sort((b1, b2) -> b2.getTime().compareTo(b1.getTime()));
                         }
                         else if (message.contains("Bạn đang dẫn đầu")) {
-                            setThongBao("🎉 " + message, true); // Đặt giá thành công
+                            setThongBao("🎉 " + message, true);
                         }
                         break;
 
@@ -389,12 +428,30 @@ public class AuctionController extends BaseController implements SocketListener 
 
                         if (jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull()) {
                             JsonObject payloadObj = jsonResponse.get("payload").getAsJsonObject();
-                            String winner = payloadObj.has("winner") ? payloadObj.get("winner").getAsString() : "Không có";
+                            String winnerAccount = payloadObj.has("winner") ? payloadObj.get("winner").getAsString() : "Không có";
+                            String winnerNickname = payloadObj.has("winnerNickname") ? payloadObj.get("winnerNickname").getAsString() : winnerAccount;
                             double finalPrice = payloadObj.has("finalPrice") ? payloadObj.get("finalPrice").getAsDouble() : currentSession.getCurrentPrice();
 
-                            currentSession.setHighestBidderAccount(winner);
+                            currentSession.setHighestBidderAccount(winnerNickname);
                             currentSession.setCurrentPrice(finalPrice);
                             updateUI();
+
+                            com.tboat.models.User currentUser = com.tboat.utilsclient.UserSession.getInstance().getUser();
+                            String myAccount = com.tboat.utilsclient.UserSession.getInstance().getUsername();
+
+                            if (currentUser != null) {
+                                if (myAccount.equalsIgnoreCase(winnerAccount)) {
+                                    double newBalance = currentUser.getBalance() - finalPrice;
+                                    currentUser.setBalance(newBalance);
+                                    log.info("Bạn đã thắng! Đã cập nhật số dư Session (Trừ tiền): {}", newBalance);
+                                }
+                                else if (myAccount.equalsIgnoreCase(currentSession.getSellerAccountName())) {
+                                    double moneyReceived = finalPrice * 0.9;
+                                    double newBalance = currentUser.getBalance() + moneyReceived;
+                                    currentUser.setBalance(newBalance);
+                                    log.info("Sản phẩm của bạn đã bán! Đã cập nhật số dư Session (Cộng tiền): {}", newBalance);
+                                }
+                            }
                         }
 
                         setupAuctionState();
@@ -410,7 +467,7 @@ public class AuctionController extends BaseController implements SocketListener 
                                 updateUI();
                             } catch (Exception ignored) {}
                         }
-                        setThongBao("❌ " + message, false); // Đặt giá thất bại
+                        setThongBao("❌ " + message, false);
                         break;
 
                     case "ERROR":
@@ -422,7 +479,8 @@ public class AuctionController extends BaseController implements SocketListener 
                         break;
                 }
             } catch (Exception e) {
-                log.error("Không thể đọc dữ liệu từ server: {} | Exception: {}", response, e.getMessage(), e);
+                // Đã đổi sout thành log.error
+                log.error("❌ KHÔNG THỂ ĐỌC DỮ LIỆU TỪ SERVER: {} | Exception: {}", response, e.getMessage());
             }
         });
     }

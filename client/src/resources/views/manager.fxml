@@ -13,7 +13,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox prefHeight="750.0" prefWidth="1100.0" style="-fx-background-color: #F8F9FA;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.ManagerController">
+<VBox prefHeight="750.0" prefWidth="1100.0" style="-fx-background-color: #F8F9FA;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.ManagerController">
     <children>
         <HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="20.0" style="-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;">
             <padding>
@@ -35,22 +35,33 @@
                 <Button mnemonicParsing="false" onAction="#switchToHistory" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Lịch sử ">
                     <font><Font size="14.0" /></font>
                 </Button>
-            <Button mnemonicParsing="false" onAction="#switchToManager" style="-fx-background-color: #F0F4FF; -fx-padding: 8 18; -fx-background-radius: 8; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Quản lý sản phẩm">
-               <font>
-                  <Font name="System Bold" size="14.0" />
-               </font>
-            </Button>
+                <Button mnemonicParsing="false" onAction="#switchToManager" style="-fx-background-color: #F0F4FF; -fx-padding: 8 18; -fx-background-radius: 8; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Quản lý sản phẩm">
+                    <font>
+                        <Font name="System Bold" size="14.0" />
+                    </font>
+                </Button>
                 <Button mnemonicParsing="false" onAction="#switchToPostItem" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Đăng sản phẩm ">
                     <font><Font size="14.0" /></font>
                 </Button>
                 <Button mnemonicParsing="false" onAction="#switchToProfile" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Profile ">
                     <font><Font size="14.0" /></font>
                 </Button>
+
                 <Region HBox.hgrow="ALWAYS" />
-                <Label style="-fx-text-fill: #0A1128;" text="User?">
-                    <font><Font name="System Bold" size="14.0" /></font>
-                </Label>
-                <ImageView fitHeight="40.0" fitWidth="40.0" pickOnBounds="true" preserveRatio="true" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);" />
+
+                <HBox alignment="CENTER_RIGHT" minWidth="-Infinity" spacing="15.0">
+                    <children>
+                        <Label fx:id="lblGreeting" minWidth="-Infinity" text="Hello username" textFill="#0A1128">
+                            <font><Font name="System Bold" size="14.0" /></font>
+                        </Label>
+
+                        <Button mnemonicParsing="false" onAction="#switchToProfile" style="-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;">
+                            <graphic>
+                                <ImageView fx:id="userAvatar" fitHeight="45.0" fitWidth="45.0" pickOnBounds="true" preserveRatio="false" style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);" />
+                            </graphic>
+                        </Button>
+                    </children>
+                </HBox>
             </children>
         </HBox>
 
@@ -75,7 +86,6 @@
                                 <TableColumn fx:id="colType" prefWidth="150.0" style="-fx-alignment: CENTER;" text="Loại" />
                                 <TableColumn fx:id="colPrice" prefWidth="180.0" style="-fx-alignment: CENTER_RIGHT;" text="Giá Hiện Tại (VNĐ)" />
                                 <TableColumn fx:id="colStatus" prefWidth="150.0" style="-fx-alignment: CENTER;" text="Trạng Thái" />
-
                                 <TableColumn fx:id="colAction" prefWidth="120.0" style="-fx-alignment: CENTER;" text="Thao Tác" />
                             </columns>
                             <columnResizePolicy>

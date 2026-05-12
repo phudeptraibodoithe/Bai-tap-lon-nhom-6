@@ -9,6 +9,7 @@ import com.tboat.socket.SocketManager;
 import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.CurrencyFormatter;
 import com.tboat.utilsclient.CurrencyStringConverter;
+import com.tboat.utilsclient.HeaderUtils;
 import com.tboat.utilsclient.ImageUtils;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -43,6 +44,10 @@ public class ControllerEditItem extends BaseController implements Initializable,
     @FXML private Button btnDeleteItem;
     @FXML private Button btnCancelEdit;
 
+    // ĐÃ THÊM: Khai báo Label lời chào và ImageView avatar
+    @FXML private Label lblGreeting;
+    @FXML private ImageView userAvatar;
+
     private Stage stage;
     private File selectedFile;
     private int currentSessionId;
@@ -58,11 +63,11 @@ public class ControllerEditItem extends BaseController implements Initializable,
         setupPriceSpinners();
         setupDateTimeLogic();
         typeComboBox.getItems().addAll("Điện tử", "Thời trang", "Trang sức", "Khác");
+
+        // ĐÃ THÊM: Gọi class dùng chung để load tên và avatar
+        HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
     }
 
-    // ====================================================================
-    // HÀM NÀY ĐƯỢC GỌI TỪ MANAGERCONTROLLER ĐỂ ĐỔ DỮ LIỆU VÀO FORM
-    // ====================================================================
     public void setEditData(AuctionSession session) {
         this.currentSessionId = session.getId();
 
@@ -116,9 +121,6 @@ public class ControllerEditItem extends BaseController implements Initializable,
         }
     }
 
-    // ====================================================================
-    // HÀM LƯU THAY ĐỔI SẢN PHẨM (EDIT_ITEM)
-    // ====================================================================
     public void saveItem(ActionEvent e) {
         String name = nameItem.getText();
         String infor = inforItem.getText();
@@ -140,7 +142,7 @@ public class ControllerEditItem extends BaseController implements Initializable,
         }
 
         JsonObject request = new JsonObject();
-        request.addProperty("action", "EDIT_ITEM"); // Gọi case EDIT_ITEM ở ClientHandler
+        request.addProperty("action", "EDIT_ITEM");
 
         JsonObject payload = new JsonObject();
         payload.addProperty("id", currentSessionId);
@@ -159,9 +161,6 @@ public class ControllerEditItem extends BaseController implements Initializable,
         thongbao.setText("Đang xử lý cập nhật...");
     }
 
-    // ====================================================================
-    // HÀM XÓA/HỦY SẢN PHẨM (CANCEL_AUCTION)
-    // ====================================================================
     public void deleteItem(ActionEvent e) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Cảnh báo Xóa");
@@ -182,16 +181,10 @@ public class ControllerEditItem extends BaseController implements Initializable,
         }
     }
 
-    // ====================================================================
-    // HÀM HỦY THAY ĐỔI VÀ QUAY VỀ
-    // ====================================================================
     public void cancelEdit(ActionEvent e) {
         changeScene((Node) e.getSource(), "manager.fxml");
     }
 
-    // ====================================================================
-    // CÁC HÀM TIỆN ÍCH (Giữ nguyên từ PostItem)
-    // ====================================================================
     private void setupPriceSpinners() {
         SpinnerValueFactory.DoubleSpinnerValueFactory priceFactory =
                 new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, 0.0, 10000.0);
@@ -209,9 +202,7 @@ public class ControllerEditItem extends BaseController implements Initializable,
         priceSpinner.setEditable(true);
         jumpSpinner.setEditable(true);
 
-        // THÊM ĐOẠN NÀY: Xử lý định dạng khi đang gõ cho Price Spinner
         addRealTimeFormatter(priceSpinner);
-        // THÊM ĐOẠN NÀY: Xử lý định dạng khi đang gõ cho Jump Spinner
         addRealTimeFormatter(jumpSpinner);
 
         commitEditorText(priceSpinner);
@@ -233,7 +224,6 @@ public class ControllerEditItem extends BaseController implements Initializable,
         editor.textProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue == null || newValue.isEmpty()) return;
 
-            // 1. Chỉ lấy các chữ số từ chuỗi đang gõ
             String digits = newValue.replaceAll("[^\\d]", "");
             if (digits.isEmpty()) {
                 editor.setText("");
@@ -241,21 +231,18 @@ public class ControllerEditItem extends BaseController implements Initializable,
             }
 
             try {
-                // 2. Chuyển thành số và định dạng lại với dấu phẩy
                 double value = Double.parseDouble(digits);
                 String formatted = CurrencyFormatter.formatDisplay(value);
 
-                // 3. Cập nhật lại Editor (Dùng Platform.runLater để tránh xung đột Listener)
                 Platform.runLater(() -> {
                     int currentCaret = editor.getCaretPosition();
                     int oldLength = editor.getText().length();
 
                     editor.setText(formatted);
 
-                    // 4. Tính toán lại vị trí con trỏ để không bị nhảy về đầu dòng
                     int newLength = formatted.length();
                     int selection = currentCaret + (newLength - oldLength);
-                    editor.positionCaret(Math.max(0, Math.min(selection, newLength - 4))); // -4 để tránh nhảy ra sau chữ " VNĐ"
+                    editor.positionCaret(Math.max(0, Math.min(selection, newLength - 4)));
                 });
             } catch (NumberFormatException e) {
                 editor.setText(oldValue);
@@ -263,12 +250,9 @@ public class ControllerEditItem extends BaseController implements Initializable,
         });
     }
 
-    /**
-     * Hàm hỗ trợ để Spinner cập nhật giá trị ngay khi người dùng gõ xong (mất focus)
-     */
     private <T> void commitEditorText(Spinner<T> spinner) {
         spinner.getEditor().focusedProperty().addListener((obs, oldVal, newVal) -> {
-            if (!newVal) { // Khi mất focus
+            if (!newVal) {
                 String text = spinner.getEditor().getText();
                 StringConverter<T> converter = spinner.getValueFactory().getConverter();
                 if (converter != null) {
@@ -388,9 +372,7 @@ public class ControllerEditItem extends BaseController implements Initializable,
             }
         });
     }
-    // ====================================================================
-    // HÀM TIỆN ÍCH TẠO THÔNG BÁO ĐẸP (SỬ DỤNG DIALOGPANE)
-    // ====================================================================
+
     private void showStyledAlert(Alert.AlertType type, String title, String content) {
         Alert alert = new Alert(type);
         alert.setTitle(title);

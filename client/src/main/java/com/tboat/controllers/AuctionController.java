@@ -23,6 +23,10 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.chart.CategoryAxis;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.XYChart;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -55,10 +59,13 @@ public class AuctionController extends BaseController implements SocketListener 
     @FXML private TableColumn<BidEntry, String> colBidTime;
     @FXML private TableColumn<BidEntry, String> colBidUser;
     @FXML private TableColumn<BidEntry, Double> colBidPrice;
-
     @FXML private Label lblGreeting;
     @FXML private ImageView userAvatar;
+    @FXML private LineChart<String, Number> bidLineChart;
+    @FXML private CategoryAxis xAxis;
+    @FXML private NumberAxis yAxis;
 
+    private XYChart.Series<String, Number> priceSeries = new XYChart.Series<>();
     private ObservableList<BidEntry> listBids = FXCollections.observableArrayList();
     private static final Logger log = LoggerFactory.getLogger(AuctionController.class);
     private AuctionSession currentSession;
@@ -109,6 +116,10 @@ public class AuctionController extends BaseController implements SocketListener 
         }
 
         setupBidHistoryTable();
+        priceSeries.setName("Diễn biến giá (VNĐ)");
+        bidLineChart.getData().add(priceSeries);
+        bidLineChart.setAnimated(true); // Tạo hiệu ứng mượt khi có giá mới
+
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
     }
 
@@ -119,9 +130,24 @@ public class AuctionController extends BaseController implements SocketListener 
             reqHistory.addProperty("action", "GET_SESSION_BIDS");
             reqHistory.addProperty("payload", currentSession.getId());
             SocketManager.getInstance().send(gson.toJson(reqHistory));
-            // Đã đổi sout thành log.info
             log.info("Đã tải lại lịch sử giá!");
         }
+    }
+
+    private void updateLineChart() {
+        if (bidLineChart == null || listBids.isEmpty()) return;
+
+        Platform.runLater(() -> {
+            priceSeries.getData().clear();
+
+            ObservableList<BidEntry> chronoSorted = FXCollections.observableArrayList(listBids);
+            chronoSorted.sort((b1, b2) -> b1.getTime().compareTo(b2.getTime()));
+
+            for (BidEntry bid : chronoSorted) {
+                String timeLabel = bid.getTime().length() > 11 ? bid.getTime().substring(11) : bid.getTime();
+                priceSeries.getData().add(new XYChart.Data<>(timeLabel, bid.getPrice()));
+            }
+        });
     }
 
     private void setupBidHistoryTable() {
@@ -338,6 +364,12 @@ public class AuctionController extends BaseController implements SocketListener 
         }
     }
 
+    private void sortBidsDescending() {
+        if (listBids != null && !listBids.isEmpty()) {
+            listBids.sort((b1, b2) -> b2.getTime().compareTo(b1.getTime()));
+        }
+    }
+
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
@@ -363,37 +395,31 @@ public class AuctionController extends BaseController implements SocketListener 
                         currentSession.setHighestBidderAccount(newLeader);
                         updateUI();
 
-                        String nowTime = "";
-                        if (payloadObjs.has("bidTime")) {
-                            nowTime = parseServerTime(payloadObjs.get("bidTime"));
-                        }
+                        String nowTime = payloadObjs.has("bidTime") ? parseServerTime(payloadObjs.get("bidTime")) : "";
                         if (nowTime.isEmpty()) {
                             nowTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
                         }
-
                         listBids.add(new BidEntry(nowTime, newLeader, newPrice));
-                        listBids.sort((b1, b2) -> b2.getTime().compareTo(b1.getTime()));
+                        sortBidsDescending();
+                        updateLineChart();
 
-                        if (thongbao != null) {
-                            thongbao.setText("");
-                        }
+                        if (thongbao != null) thongbao.setText("");
                         break;
 
                     case "SUCCESS":
-                        if (message.contains("Lấy danh sách Bid thành công") && jsonResponse.has("payload") && jsonResponse.get("payload").isJsonArray()) {
+                        if (message.contains("Lấy danh sách Bid thành công") && jsonResponse.has("payload")) {
                             JsonArray bidArray = jsonResponse.getAsJsonArray("payload");
                             listBids.clear();
-
                             for (JsonElement element : bidArray) {
                                 JsonObject bidObj = element.getAsJsonObject();
                                 String time = parseServerTime(bidObj.get("bidTime"));
-                                String user = bidObj.has("accountName") ? bidObj.get("accountName").getAsString() : (bidObj.has("bidderAccount") ? bidObj.get("bidderAccount").getAsString() : "Unknown");
-                                double price = bidObj.has("amount") ? bidObj.get("amount").getAsDouble() : (bidObj.has("bidAmount") ? bidObj.get("bidAmount").getAsDouble() : 0.0);
+                                String user = bidObj.has("accountName") ? bidObj.get("accountName").getAsString() : "Unknown";
+                                double price = bidObj.has("amount") ? bidObj.get("amount").getAsDouble() : 0.0;
 
                                 listBids.add(new BidEntry(time, user, price));
                             }
-
-                            listBids.sort((b1, b2) -> b2.getTime().compareTo(b1.getTime()));
+                            sortBidsDescending();
+                            updateLineChart();
                         }
                         else if (message.contains("Bạn đang dẫn đầu")) {
                             setThongBao("🎉 " + message, true);
@@ -479,7 +505,6 @@ public class AuctionController extends BaseController implements SocketListener 
                         break;
                 }
             } catch (Exception e) {
-                // Đã đổi sout thành log.error
                 log.error("❌ KHÔNG THỂ ĐỌC DỮ LIỆU TỪ SERVER: {} | Exception: {}", response, e.getMessage());
             }
         });

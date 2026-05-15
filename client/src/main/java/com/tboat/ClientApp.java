@@ -7,7 +7,12 @@ import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
+import com.tboat.logging.LogConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ClientApp extends Application {
+    private static final Logger log = LoggerFactory.getLogger(ClientApp.class);
     @Override
     public void start(Stage stage) throws Exception {
 
@@ -25,6 +30,14 @@ public class ClientApp extends Application {
         stage.show();
     }
     public static void main(String[] args) {
+        LogConfig logConfig = new LogConfig("logs/client", 15);
+        logConfig.start();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            log.info("App đang tắt...");
+            logConfig.stop();
+        }));
+
         launch(args);
     }
 }

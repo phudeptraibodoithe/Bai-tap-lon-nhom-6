@@ -1,15 +1,11 @@
 package com.tboat.controllers;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
-import com.tboat.socket.SocketManager;
-import com.tboat.utils.GsonUtils;
-import com.tboat.utilsclient.HeaderUtils;
-import com.tboat.utilsclient.UserSession;
+import com.tboat.utilsclient.*;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -28,38 +24,34 @@ import java.util.logging.Logger;
 
 public class ControllerHistory extends BaseController implements Initializable, SocketListener {
 
-    @FXML VBox lichsu;
-
-    // ĐÃ THÊM: Khai báo Label lời chào và ImageView avatar
+    @FXML private VBox lichsu;
     @FXML private Label lblGreeting;
     @FXML private ImageView userAvatar;
 
-    private final Gson gson = GsonUtils.getInstance();
+    private static final double PAYOUT_RATE=0.9;
     private static final Logger log = Logger.getLogger(ControllerHistory.class.getName());
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        loadlichsu();
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
+        loadlichsu();
     }
 
     public void loadlichsu() {
         lichsu.getChildren().clear();
         String username = UserSession.getInstance().getUsername();
-
-        JsonObject request = new JsonObject();
-        request.addProperty("action", "GET_HISTORY");
-        request.addProperty("payload", username);
-
-        SocketManager.getInstance().send(gson.toJson(request));
+        SocketHelper.sendRequest("GET_HISTORY", username);
     }
 
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
+                String status = SocketHelper.getStatus(response);
+                if (!"SUCCESS".equals(status)) return;
+
                 JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                if (!"SUCCESS".equals(jsonResponse.get("status").getAsString())) return;
+                if (!jsonResponse.has("payload") || jsonResponse.get("payload").isJsonNull()) return;
 
                 JsonArray historyArray = jsonResponse.getAsJsonArray("payload");
                 lichsu.getChildren().clear();
@@ -88,7 +80,7 @@ public class ControllerHistory extends BaseController implements Initializable, 
                             colorStatus = "#f39c12"; // Cam
                         } else {
                             statusText = "Đã bán";
-                            moneyDisplay = String.format("+%,.0f VNĐ", finalPrice*0.9);
+                            moneyDisplay = "+" + CurrencyFormatter.formatDisplay(finalPrice * PAYOUT_RATE);
                             colorStatus = "#27ae60"; // Xanh
                         }
                     } else {
@@ -100,11 +92,11 @@ public class ControllerHistory extends BaseController implements Initializable, 
                             colorStatus = "#f39c12"; // Cam
                         } else if (me.equalsIgnoreCase(winner)) {
                             statusText = "Thành công";
-                            moneyDisplay = String.format("-%,.0f VNĐ", finalPrice);
+                            moneyDisplay = "-" + CurrencyFormatter.formatDisplay(finalPrice);
                             colorStatus = "#27ae60"; // Xanh
                         } else {
                             statusText = "Thất bại";
-                            moneyDisplay = String.format("%,.0f VNĐ", finalPrice); // Hiện giá kết thúc của phiên
+                            moneyDisplay = CurrencyFormatter.formatDisplay(finalPrice); // Hiện giá kết thúc của phiên
                             colorStatus = "#e74c3c"; // Đỏ
                         }
                     }

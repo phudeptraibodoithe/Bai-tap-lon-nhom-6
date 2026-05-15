@@ -56,10 +56,7 @@ public class ManagerController extends BaseController implements Initializable, 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         setupTableColumns();
-        SocketManager.getInstance().subscribe(this);
         loadMyAuctions();
-
-        // ĐÃ THÊM: Gọi class dùng chung để hiển thị Avatar và tên User
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
     }
 

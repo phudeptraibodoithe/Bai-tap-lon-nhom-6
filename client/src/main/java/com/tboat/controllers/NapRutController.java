@@ -30,8 +30,6 @@ public class NapRutController extends BaseController implements Initializable, S
     @FXML private TextField txtAmount;
     @FXML private TextField txtPin;
     @FXML private Button btnSubmit;
-
-    // ĐÃ THÊM: Khai báo 2 biến UI cho Header
     @FXML private Label lblGreeting;
     @FXML private ImageView userAvatar;
 
@@ -43,16 +41,12 @@ public class NapRutController extends BaseController implements Initializable, S
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle){
-        SocketManager.getInstance().subscribe(this);
-
         updateBalanceLabel();
         setupAmountFieldFormat();
         txtPin.setText("123456");
         btnTabDeposit.setOnAction(event -> switchToDepositMode());
         btnTabWithdraw.setOnAction(event -> switchToWithdrawMode());
         btnSubmit.setOnAction(event -> handleTransaction());
-
-        // ĐÃ THÊM: Gọi class dùng chung để hiển thị Avatar và tên User
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
     }
 

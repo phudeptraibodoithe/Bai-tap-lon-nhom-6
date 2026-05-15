@@ -58,13 +58,9 @@ public class ControllerEditItem extends BaseController implements Initializable,
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        SocketManager.getInstance().subscribe(this);
-
         setupPriceSpinners();
         setupDateTimeLogic();
         typeComboBox.getItems().addAll("Điện tử", "Thời trang", "Trang sức", "Khác");
-
-        // ĐÃ THÊM: Gọi class dùng chung để load tên và avatar
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
     }
 

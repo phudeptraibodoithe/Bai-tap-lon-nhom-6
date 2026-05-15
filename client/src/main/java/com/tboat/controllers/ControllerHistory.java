@@ -39,10 +39,7 @@ public class ControllerHistory extends BaseController implements Initializable, 
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        SocketManager.getInstance().subscribe(this);
         loadlichsu();
-
-        // ĐÃ THÊM: Gọi hàm thiết lập avatar và tên
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
     }
 

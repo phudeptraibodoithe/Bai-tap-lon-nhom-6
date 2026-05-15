@@ -95,17 +95,17 @@
                             <children>
                                 <StackPane prefHeight="350.0" style="-fx-background-color: #f5f5f7; -fx-background-radius: 8;">
                                     <children>
-                                        <ImageView fx:id="ItemImage" fitHeight="350.0" fitWidth="350.0" pickOnBounds="true" preserveRatio="false">
+                                        <ImageView fx:id="itemImage" fitHeight="350.0" fitWidth="350.0" pickOnBounds="true" preserveRatio="false">
                                         </ImageView>
                                     </children>
                                 </StackPane>
 
                                 <VBox alignment="CENTER" spacing="5.0">
                                     <children>
-                                        <Label fx:id="IdItem" style="-fx-font-weight: bold;" text="ID : Đang tải..." textFill="#555555">
+                                        <Label fx:id="idItem" style="-fx-font-weight: bold;" text="ID : Đang tải..." textFill="#555555">
                                             <font><Font size="14.0" /></font>
                                         </Label>
-                                        <Label fx:id="SellerName" style="-fx-font-weight: bold;" text="Người bán: Đang tải..." textFill="#0a74da">
+                                        <Label fx:id="sellerName" style="-fx-font-weight: bold;" text="Người bán: Đang tải..." textFill="#0a74da">
                                             <font><Font size="14.0" /></font>
                                         </Label>
                                     </children>
@@ -116,7 +116,7 @@
                                         <Label text="⏳" textFill="#cc7a00">
                                             <font><Font size="20.0" /></font>
                                         </Label>
-                                        <Label fx:id="TimeRemaining" textFill="#cc7a00">
+                                        <Label fx:id="timeRemaining" textFill="#cc7a00">
                                             <font><Font name="System Bold" size="28.0" /></font>
                                         </Label>
                                     </children>
@@ -128,13 +128,13 @@
                             <children>
                                 <VBox spacing="5.0">
                                     <children>
-                                        <Label fx:id="NameItem" text="Đang tải..." textFill="#0a1a3a" wrapText="true">
+                                        <Label fx:id="nameItem" text="Đang tải..." textFill="#0a1a3a" wrapText="true">
                                             <font><Font name="System Bold" size="30.0" /></font>
                                         </Label>
                                     </children>
                                 </VBox>
 
-                                <Label fx:id="Description" prefWidth="495.0" text="Mô tả: Đang tải..." textFill="#666666" wrapText="true">
+                                <Label fx:id="description" prefWidth="495.0" text="Mô tả: Đang tải..." textFill="#666666" wrapText="true">
                                     <font><Font size="15.0" /></font>
                                 </Label>
 
@@ -143,10 +143,10 @@
                                         <Label text="Giá hiện tại cao nhất:" textFill="#666666">
                                             <font><Font size="14.0" /></font>
                                         </Label>
-                                        <Label fx:id="CurrentPrice" text="0" textFill="#0a1a3a">
+                                        <Label fx:id="currentPrice" text="0" textFill="#0a1a3a">
                                             <font><Font name="System Bold" size="40.0" /></font>
                                         </Label>
-                                        <Label fx:id="HighestBidder" text="🏆 Trạng thái: Đang tải..." textFill="#4caf50">
+                                        <Label fx:id="highestBidder" text="🏆 Trạng thái: Đang tải..." textFill="#4caf50">
                                             <font><Font name="System Bold" size="14.0" /></font>
                                         </Label>
                                     </children>
@@ -183,10 +183,10 @@
                                                                     <children>
                                                                         <LineChart fx:id="bidLineChart" animated="true" createSymbols="true" legendSide="BOTTOM" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                                                                             <xAxis>
-                                                                                <CategoryAxis label="Thời gian" side="BOTTOM" fx:id="xAxis" />
+                                                                                <CategoryAxis label="Thời gian" side="BOTTOM"  />
                                                                             </xAxis>
                                                                             <yAxis>
-                                                                                <NumberAxis fx:id="yAxis" label="Giá (VNĐ)" side="LEFT" />
+                                                                                <NumberAxis label="Giá (VNĐ)" side="LEFT" />
                                                                             </yAxis>
                                                                         </LineChart>
                                                                     </children>
@@ -202,20 +202,19 @@
 
                                 <VBox spacing="5.0">
                                     <children>
-                                        <Label fx:id="thongbao" text="" textFill="RED" wrapText="true">
+                                        <Label fx:id="lblNotification" text="" textFill="RED" wrapText="true">
                                             <font><Font name="System Bold" size="14.0" /></font>
                                         </Label>
                                         <HBox spacing="15.0">
                                             <children>
-                                                <TextField fx:id="BidAmount" prefHeight="50.0" promptText="Nhập mức giá bạn muốn trả..." style="-fx-font-size: 16px; -fx-background-radius: 5; -fx-border-color: #cccccc; -fx-border-radius: 5;" HBox.hgrow="ALWAYS" />
-                                                <Button fx:id="btnBid" minWidth="-Infinity" mnemonicParsing="false" onAction="#PlaceBid" prefHeight="50.0" prefWidth="180.0" style="-fx-background-color: #0a1a3a; -fx-background-radius: 5; -fx-cursor: hand;" text="Place Bid" textFill="WHITE">
+                                                <TextField fx:id="bidAmount" prefHeight="50.0" promptText="Nhập mức giá bạn muốn trả..." style="-fx-font-size: 16px; -fx-background-radius: 5; -fx-border-color: #cccccc; -fx-border-radius: 5;" HBox.hgrow="ALWAYS" />
+                                                <Button fx:id="btnBid" minWidth="-Infinity" mnemonicParsing="false" onAction="#placeBid" prefHeight="50.0" prefWidth="180.0" style="-fx-background-color: #0a1a3a; -fx-background-radius: 5; -fx-cursor: hand;" text="Place Bid" textFill="WHITE">
                                                     <font><Font name="System Bold" size="18.0" /></font>
                                                 </Button>
                                             </children>
                                         </HBox>
                                     </children>
                                 </VBox>
-
                             </children>
                         </VBox>
                     </children>

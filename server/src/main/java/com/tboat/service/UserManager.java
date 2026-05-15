@@ -1,6 +1,7 @@
 package com.tboat.service;
 
 import com.tboat.dao.UserDAO;
+import com.tboat.socket.ClientContext;
 import com.tboat.socket.ClientHandler;
 import com.tboat.utils.ResponseCode;
 import org.slf4j.Logger;
@@ -11,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class UserManager {
     private final UserDAO userDAO = new UserDAO();
-    private static final Map<String, ClientHandler> onlineUsers = new ConcurrentHashMap<>();
+    private static final Map<String, ClientContext> onlineUsers = new ConcurrentHashMap<>();
     private static final Logger logger = LoggerFactory.getLogger(UserManager.class);
     private static volatile UserManager instance;
     private UserManager() {} // Khóa hàm khởi tạo
@@ -29,7 +30,7 @@ public class UserManager {
         return userDAO.addUser(account, password, nickname);
     }
 
-    public ResponseCode login(String account, String password, ClientHandler handler) {
+    public ResponseCode login(String account, String password, ClientContext handler) {
         if (onlineUsers.containsKey(account)) {
             logger.warn("[UserManager]: Từ chối login - User {} đang online.", account);
             return ResponseCode.ALREADY_LOGGED_IN;
@@ -49,11 +50,11 @@ public class UserManager {
         }
     }
 
-    public static ClientHandler getHandler(String account) {
+    public static ClientContext getHandler(String account) {
         return onlineUsers.get(account);
     }
 
-    public static Map<String, ClientHandler> getOnlineUsers() {
+    public static Map<String, ClientContext> getOnlineUsers() {
         return onlineUsers;
     }
 }

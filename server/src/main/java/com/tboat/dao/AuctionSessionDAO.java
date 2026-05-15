@@ -175,17 +175,15 @@ public class AuctionSessionDAO {
         }
     }
 
-    public boolean updateEndTime(int sessionId, java.time.LocalDateTime newEndTime) {
+    public void updateEndTime(int sessionId, java.time.LocalDateTime newEndTime) {
         String sql = "UPDATE auction_session SET endTime = ? WHERE id = ?";
         try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
             ps.setTimestamp(1, Timestamp.valueOf(newEndTime));
             ps.setInt(2, sessionId);
-            return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             logger.error("Lỗi khi cập nhật End Time: ", e);
-            return false;
         }
     }
 

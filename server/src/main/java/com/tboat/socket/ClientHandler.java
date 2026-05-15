@@ -2,10 +2,7 @@ package com.tboat.socket;
 
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
-import com.tboat.dao.AuctionSessionDAO;
-import com.tboat.dao.HistoryBidDAO;
-import com.tboat.dao.ParticipationDAO;
-import com.tboat.dao.UserDAO;
+import com.tboat.dao.*;
 import com.tboat.database.DatabaseConnection;
 import com.tboat.models.*;
 import com.tboat.service.*;
@@ -33,7 +30,8 @@ public class ClientHandler implements Runnable {
     private AuctionRoom currentRoom;
     private final UserManager userManager = UserManager.getInstance();
     private final UserDAO userDAO = new UserDAO();
-    private final HistoryBidDAO historyDAO = new HistoryBidDAO();
+    private final HistoryDAO historyDAO = new HistoryDAO();
+    private final BidDAO bidDAO=new BidDAO();
     private final AuctionSessionDAO auctionDAO = new AuctionSessionDAO();
     private final SellerService sellerService = new SellerService();
     private final ParticipationDAO participationDAO = new ParticipationDAO();
@@ -346,7 +344,7 @@ public class ClientHandler implements Runnable {
         try {
             JsonObject json = JsonParser.parseString(input).getAsJsonObject();
             int sessionId = json.get("payload").getAsInt();
-            List<Bid> bidList = historyDAO.getBidsBySession(sessionId);
+            List<Bid> bidList = bidDAO.getBidsBySession(sessionId);
             if (bidList == null) {
                 bidList = new ArrayList<>();
             }

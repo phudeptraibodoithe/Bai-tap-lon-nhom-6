@@ -17,8 +17,6 @@ import java.util.concurrent.TimeUnit;
 public class AuctionManager {
     private static final Logger logger = LoggerFactory.getLogger(AuctionManager.class);
     private static volatile AuctionManager instance;
-
-    // Dùng int cho ID phòng
     private final Map<Integer, AuctionRoom> activeRooms = new ConcurrentHashMap<>();
     private final ScheduledExecutorService autoStartScheduler = Executors.newSingleThreadScheduledExecutor();
     private final AuctionSessionDAO sessionDAO = new AuctionSessionDAO();

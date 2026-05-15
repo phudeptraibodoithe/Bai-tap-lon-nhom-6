@@ -2,7 +2,7 @@ package com.tboat.service;
 
 import com.tboat.ServerMain;
 import com.tboat.dao.AuctionSessionDAO;
-import com.tboat.dao.HistoryBidDAO;
+import com.tboat.dao.HistoryDAO;
 import com.tboat.dao.UserDAO;
 import com.tboat.database.DatabaseConnection;
 import com.tboat.models.AuctionSession;
@@ -31,7 +31,7 @@ public class AuctionRoom {
     private final List<ClientHandler> subscribers = new CopyOnWriteArrayList<>();
     private final AuctionSessionDAO sessionDAO = new AuctionSessionDAO();
     private final UserDAO userDAO = new UserDAO();
-    private final HistoryBidDAO historyDAO = new HistoryBidDAO();
+    private final HistoryDAO historyDAO = new HistoryDAO();
     private final BiddingService biddingService = new BiddingService(); // Khởi tạo một lần dùng mãi mãi
 
     public AuctionRoom(int sessionId, double startingPrice) {

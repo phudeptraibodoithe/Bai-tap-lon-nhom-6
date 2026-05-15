@@ -1,7 +1,6 @@
 package com.tboat.service;
 
 import com.tboat.dao.UserDAO;
-import com.tboat.models.User;
 import com.tboat.socket.ClientHandler;
 import com.tboat.utils.ResponseCode;
 import org.slf4j.Logger;

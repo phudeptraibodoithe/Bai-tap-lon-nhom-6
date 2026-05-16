@@ -11,6 +11,8 @@ import com.tboat.models.AuctionSession;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.ucb.DataCache;
+import com.tboat.ucb.NavigationContext;
 import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.HeaderUtils; // Import class dùng chung
 import com.tboat.utilsclient.UserSession;
@@ -56,11 +58,26 @@ public class ManagerController extends BaseController implements Initializable, 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         setupTableColumns();
-        SocketManager.getInstance().subscribe(this);
-        loadMyAuctions();
-
-        // ĐÃ THÊM: Gọi class dùng chung để hiển thị Avatar và tên User
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
+
+        // ── UCB: Cache-then-Network ──────────────────────────────────────────
+        String screenKey = BaseController.toScreenKey("manager.fxml"); // = "managerFxml"
+        String cached = DataCache.getInstance().get("GET_MY_AUCTIONS");
+
+        if (cached != null) {
+            // CACHE HIT: hiển thị ngay, không chờ server
+            log.info("[Manager] Cache HIT → render ngay");
+            NavigationContext.getInstance().reportCacheHit(screenKey, true);
+            renderMyAuctions(cached);                    // render từ cache
+            loadMyAuctions();                            // vẫn refresh ngầm
+
+        } else {
+            // CACHE MISS: fetch bình thường
+            log.info("[Manager] Cache MISS → fetch server");
+            NavigationContext.getInstance().reportCacheHit(screenKey, false);
+            loadMyAuctions();
+        }
+        // ────────────────────────────────────────────────────────────────────
     }
 
     private void setupTableColumns() {
@@ -135,55 +152,76 @@ public class ManagerController extends BaseController implements Initializable, 
         SocketManager.getInstance().send(gson.toJson(request));
     }
 
+    // Thêm method này vào ManagerController
+    private void renderMyAuctions(String response) {
+        try {
+            JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+            String status = jsonResponse.get("status").getAsString();
+
+            if ("SUCCESS".equals(status)
+                    && jsonResponse.has("payload")
+                    && jsonResponse.get("payload").isJsonArray()) {
+
+                JsonArray myArray = jsonResponse.getAsJsonArray("payload");
+                listMyItems.clear();
+
+                for (JsonElement element : myArray) {
+                    JsonObject dataObj = element.getAsJsonObject();
+
+                    String type        = dataObj.has("type") ? dataObj.get("type").getAsString() : "Khác";
+                    String name        = dataObj.has("name") ? dataObj.get("name").getAsString() : "No name";
+                    double currentPrice= dataObj.has("currentPrice") ? dataObj.get("currentPrice").getAsDouble() : 0.0;
+                    double bidIncrease = dataObj.has("bidIncrease") ? dataObj.get("bidIncrease").getAsDouble() : 0.0;
+                    String sellerAccount = dataObj.has("sellerAccountName") && !dataObj.get("sellerAccountName").isJsonNull()
+                            ? dataObj.get("sellerAccountName").getAsString() : "";
+                    String description = dataObj.has("description") && !dataObj.get("description").isJsonNull()
+                            ? dataObj.get("description").getAsString() : "";
+                    String imageURL    = dataObj.has("imageURL") && !dataObj.get("imageURL").isJsonNull()
+                            ? dataObj.get("imageURL").getAsString() : "";
+
+                    LocalDateTime startTime = LocalDateTime.now();
+                    if (dataObj.has("startTime") && !dataObj.get("startTime").isJsonNull())
+                        startTime = LocalDateTime.parse(dataObj.get("startTime").getAsString());
+
+                    LocalDateTime endTime = LocalDateTime.now().plusDays(1);
+                    if (dataObj.has("endTime") && !dataObj.get("endTime").isJsonNull())
+                        endTime = LocalDateTime.parse(dataObj.get("endTime").getAsString());
+
+                    AuctionFactory factory = AuctionFactoryProducer.getFactory(type);
+                    AuctionSession session = factory.createAuctionSession(
+                            startTime, endTime, currentPrice, bidIncrease,
+                            sellerAccount, name, description, imageURL);
+
+                    session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
+                    String statusStr = dataObj.has("statusOfAuction")
+                            ? dataObj.get("statusOfAuction").getAsString() : "ONGOING";
+                    try {
+                        session.setStatusOfAuction(StatusOfAuction.valueOf(statusStr));
+                    } catch (Exception ignored) {
+                        session.setStatusOfAuction(StatusOfAuction.ONGOING);
+                    }
+                    listMyItems.add(session);
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("[Manager] Lỗi render: " + e.getMessage());
+        }
+    }
+
+    // Sửa handleServerResponse → gọi renderMyAuctions
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                String status = jsonResponse.get("status").getAsString();
-
-                if ("SUCCESS".equals(status) && jsonResponse.has("payload") && jsonResponse.get("payload").isJsonArray()) {
-                    JsonArray myArray = jsonResponse.getAsJsonArray("payload");
-                    listMyItems.clear();
-
-                    for (JsonElement element : myArray) {
-                        JsonObject dataObj = element.getAsJsonObject();
-
-                        String type = dataObj.has("type") ? dataObj.get("type").getAsString() : "Khác";
-                        String name = dataObj.has("name") ? dataObj.get("name").getAsString() : "No name";
-                        double currentPrice = dataObj.has("currentPrice") ? dataObj.get("currentPrice").getAsDouble() : 0.0;
-                        double bidIncrease = dataObj.has("bidIncrease") ? dataObj.get("bidIncrease").getAsDouble() : 0.0;
-                        String sellerAccount = dataObj.has("sellerAccountName") && !dataObj.get("sellerAccountName").isJsonNull() ? dataObj.get("sellerAccountName").getAsString() : "";
-                        String description = dataObj.has("description") && !dataObj.get("description").isJsonNull() ? dataObj.get("description").getAsString() : "";
-                        String imageURL = dataObj.has("imageURL") && !dataObj.get("imageURL").isJsonNull() ? dataObj.get("imageURL").getAsString() : "";
-                        LocalDateTime startTime = LocalDateTime.now();
-                        if (dataObj.has("startTime") && !dataObj.get("startTime").isJsonNull()) {
-                            startTime = LocalDateTime.parse(dataObj.get("startTime").getAsString());
-                        }
-                        LocalDateTime endTime = LocalDateTime.now().plusDays(1);
-                        if (dataObj.has("endTime") && !dataObj.get("endTime").isJsonNull()) {
-                            endTime = LocalDateTime.parse(dataObj.get("endTime").getAsString());
-                        }
-                        AuctionFactory factory = AuctionFactoryProducer.getFactory(type);
-                        AuctionSession session = factory.createAuctionSession(
-                                startTime, endTime, currentPrice, bidIncrease,
-                                sellerAccount, name, description, imageURL
-                        );
-                        session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
-                        String statusString = dataObj.has("statusOfAuction") ? dataObj.get("statusOfAuction").getAsString() : "ONGOING";
-                        try {
-                            session.setStatusOfAuction(StatusOfAuction.valueOf(statusString));
-                        } catch (Exception ignored) {
-                            session.setStatusOfAuction(StatusOfAuction.ONGOING);
-                        }
-                        listMyItems.add(session);
-                    }
+                JsonObject json = JsonParser.parseString(response).getAsJsonObject();
+                String status = json.has("status") ? json.get("status").getAsString() : "";
+                // Chỉ xử lý khi SUCCESS + payload là array (tránh nhầm với các response khác)
+                if ("SUCCESS".equals(status)
+                        && json.has("payload")
+                        && json.get("payload").isJsonArray()) {
+                    renderMyAuctions(response);
                 }
-            } catch (Exception e) {
-                if (response.contains("{")) {
-                    logger.severe("❌ LỖI ĐỌC JSON TRANG MANAGER: " + response);
-                }
-            }
+            } catch (Exception ignored) {}
         });
     }
 }

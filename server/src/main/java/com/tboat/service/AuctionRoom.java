@@ -2,12 +2,13 @@ package com.tboat.service;
 
 import com.tboat.ServerMain;
 import com.tboat.dao.AuctionSessionDAO;
-import com.tboat.dao.HistoryBidDAO;
+import com.tboat.dao.HistoryDAO;
 import com.tboat.dao.UserDAO;
 import com.tboat.database.DatabaseConnection;
 import com.tboat.models.AuctionSession;
 import com.tboat.models.History;
 import com.tboat.models.StatusOfAuction;
+import com.tboat.socket.ClientContext;
 import com.tboat.socket.ClientHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,10 +29,10 @@ public class AuctionRoom {
     private String lastBidder;
     private boolean isFinished = false;
 
-    private final List<ClientHandler> subscribers = new CopyOnWriteArrayList<>();
+    private final List<ClientContext> subscribers = new CopyOnWriteArrayList<>();
     private final AuctionSessionDAO sessionDAO = new AuctionSessionDAO();
     private final UserDAO userDAO = new UserDAO();
-    private final HistoryBidDAO historyDAO = new HistoryBidDAO();
+    private final HistoryDAO historyDAO = new HistoryDAO();
     private final BiddingService biddingService = new BiddingService(); // Khởi tạo một lần dùng mãi mãi
 
     public AuctionRoom(int sessionId, double startingPrice) {
@@ -150,7 +151,7 @@ public class AuctionRoom {
      */
     public void broadcast(String action, String message, Object payload) {
         if (subscribers.isEmpty()) return; // Tối ưu: Nếu phòng trống thì khỏi tốn công chạy đa luồng
-        for (ClientHandler client : subscribers) {
+        for (ClientContext client : subscribers) {
             CompletableFuture.runAsync(() -> {
                 try {
                     client.sendSystemMessage(action, message, payload);
@@ -161,8 +162,8 @@ public class AuctionRoom {
         }
     }
 
-    public void addSubscriber(ClientHandler client) { subscribers.add(client); }
-    public void removeSubscriber(ClientHandler client) { subscribers.remove(client); }
+    public void addSubscriber(ClientContext client) { subscribers.add(client); }
+    public void removeSubscriber(ClientContext client) { subscribers.remove(client); }
     public double getCurrentPrice() { return currentPrice; }
     public String getLastBidder() { return lastBidder; }
     public int getSessionId() { return sessionId; }

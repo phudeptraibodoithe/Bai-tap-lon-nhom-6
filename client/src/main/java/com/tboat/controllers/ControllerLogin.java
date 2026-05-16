@@ -74,12 +74,6 @@ public class ControllerLogin extends BaseController implements SocketListener {
                         if ("Đăng nhập thành công".equals(message)) {
                             JsonObject payload = jsonResponse.getAsJsonObject("payload");
 
-                            String role = payload.has("role") ? payload.get("role").getAsString() : "";
-                            if ("admin".equalsIgnoreCase(signText.getText().trim()) || "ADMIN".equalsIgnoreCase(role)) {
-                                changeScene(err, "admin.fxml");
-                                break;
-                            }
-
                             String nickname = payload.has("nickname") ? payload.get("nickname").getAsString() : "";
                             double balance = payload.has("balance") ? payload.get("balance").getAsDouble() : 0.0;
                             String avatarURL = payload.has("avatarURL") ? payload.get("avatarURL").getAsString() : "null";
@@ -87,6 +81,11 @@ public class ControllerLogin extends BaseController implements SocketListener {
 
                             User loggedUser = new User(signText.getText(), null, nickname, balance, description, avatarURL);
                             UserSession.getInstance().createUserSession(loggedUser);
+                            String role = payload.has("role") ? payload.get("role").getAsString() : "";
+                            if ("admin".equalsIgnoreCase(signText.getText().trim()) || "ADMIN".equalsIgnoreCase(role)) {
+                                changeScene(err, "admin.fxml");
+                                break;
+                            }
                             changeScene(err, "TrangChu.fxml");
                         }
                         break;

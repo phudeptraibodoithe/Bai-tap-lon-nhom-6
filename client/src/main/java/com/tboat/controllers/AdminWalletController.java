@@ -38,7 +38,6 @@ public class AdminWalletController extends BaseController implements Initializab
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle){
-        SocketManager.getInstance().subscribe(this); // Đừng quên subscribe socket
         updateBalanceLabel();
         setupAmountFieldFormat(); // Thêm hàm format khi gõ
         txtPin.setText("123456");

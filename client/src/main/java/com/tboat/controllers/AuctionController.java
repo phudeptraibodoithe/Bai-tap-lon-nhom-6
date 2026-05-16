@@ -29,11 +29,10 @@ public class AuctionController extends BaseController implements SocketListener 
     private static final Logger log = LoggerFactory.getLogger(AuctionController.class);
 
     // --- CONSTANTS cho CSS và Format ---
-    private static final String STYLE_SUCCESS = "-fx-text-fill: #2ecc71; -fx-font-weight: bold;";
-    private static final String STYLE_ERROR = "-fx-text-fill: #e74c3c; -fx-font-weight: bold;";
-    private static final String STYLE_WARNING = "-fx-text-fill: #e67e22; -fx-font-weight: bold; -fx-font-size: 20px;";
-    private static final String STYLE_ENDED = "-fx-text-fill: red; -fx-font-weight: bold; -fx-font-size: 28px;";
-    private static final String STYLE_ONGOING = "-fx-text-fill: #2ecc71; -fx-font-weight: bold; -fx-font-size: 28px;";
+    private static final String STYLE_SUCCESS = "#2ecc71";
+    private static final String STYLE_ERROR = "#e74c3c";
+    private static final String STYLE_WARNING = "#e67e22";
+    private static final String STYLE_ENDED = "red";
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     // --- FXML FIELDS (Đã chuẩn hóa thành camelCase) ---
@@ -110,7 +109,7 @@ public class AuctionController extends BaseController implements SocketListener 
                 if (empty || price == null) {
                     setText(null);
                 } else {
-                    setText(CurrencyFormatter.format(price));
+                    setText(CurrencyFormatter.formatDisplay(price));
                     setStyle("-fx-alignment: CENTER-RIGHT; -fx-text-fill: #2ecc71; -fx-font-weight: bold;");
                 }
             }
@@ -145,7 +144,7 @@ public class AuctionController extends BaseController implements SocketListener 
         if (sellerName != null) sellerName.setText("Người bán: " + currentSession.getSellerAccountName());
 
         description.setText(currentSession.getDescription() != null ? "Mô tả: " + currentSession.getDescription() : "Mô tả: Không có.");
-        currentPrice.setText(CurrencyFormatter.format(currentSession.getCurrentPrice()));
+        currentPrice.setText(CurrencyFormatter.formatDisplay(currentSession.getCurrentPrice()));
 
         updateHighestBidderLabel();
 
@@ -164,12 +163,20 @@ public class AuctionController extends BaseController implements SocketListener 
         highestBidder.setText(statusText);
     }
 
+    // Hàm chính điều phối giao diện
     private void setupAuctionState() {
         if (btnBid == null || bidAmount == null || timeRemaining == null) return;
-        if (auctionTimer != null) auctionTimer.stop();
 
         StatusOfAuction status = currentSession.getStatusOfAuction();
-        boolean disableInputs = isUserSeller || status == StatusOfAuction.ENDED || status == StatusOfAuction.CANCELED || status == StatusOfAuction.NOT_STARTED;
+
+        setupInputState(status); // Cập nhật ô nhập và nút bấm
+        setupTimerState(status); // Cập nhật đồng hồ đếm ngược
+    }
+
+    // 1. Hàm chuyên xử lý ô Text Input và Nút bấm (Dành cho Mua / Bán)
+    private void setupInputState(StatusOfAuction status) {
+        boolean disableInputs = isUserSeller || status == StatusOfAuction.ENDED ||
+                status == StatusOfAuction.CANCELED || status == StatusOfAuction.NOT_STARTED;
 
         btnBid.setDisable(disableInputs);
         bidAmount.setDisable(disableInputs);
@@ -178,19 +185,31 @@ public class AuctionController extends BaseController implements SocketListener 
             bidAmount.setPromptText("Bạn là người bán sản phẩm này...");
         } else if (status == StatusOfAuction.ENDED || status == StatusOfAuction.CANCELED) {
             bidAmount.setPromptText("Phiên đấu giá đã khép lại.");
+        } else if (status == StatusOfAuction.NOT_STARTED) {
+            bidAmount.setPromptText("Chưa tới giờ đấu giá...");
+        } else {
+            bidAmount.setPromptText("Nhập giá đặt tại đây...");
+        }
+    }
+
+    // 2. Hàm chuyên xử lý Đồng hồ (Hiển thị cho cả Người bán và Người mua)
+    private void setupTimerState(StatusOfAuction status) {
+        if (auctionTimer != null) {
+            auctionTimer.stop(); // Đảm bảo reset lại timer cũ (nếu có)
+        }
+
+        if (status == StatusOfAuction.ENDED || status == StatusOfAuction.CANCELED) {
             timeRemaining.setText("00 : 00 : 00");
             timeRemaining.setStyle(STYLE_ENDED);
         } else if (status == StatusOfAuction.NOT_STARTED) {
-            bidAmount.setPromptText("Chưa tới giờ đấu giá...");
             String startTimeStr = currentSession.getStartTime() != null
                     ? currentSession.getStartTime().format(DateTimeFormatter.ofPattern("HH:mm - dd/MM"))
                     : "Sắp diễn ra...";
             timeRemaining.setText("Bắt đầu: " + startTimeStr);
             timeRemaining.setStyle(STYLE_WARNING);
         } else if (status == StatusOfAuction.ONGOING) {
-            if (!isUserSeller) bidAmount.setPromptText("Nhập giá đặt tại đây...");
-            timeRemaining.setStyle(STYLE_ONGOING);
-            startTimer();
+            timeRemaining.setStyle(STYLE_SUCCESS);
+            startTimer(); // Gọi bộ đếm thời gian
         }
     }
 
@@ -233,7 +252,7 @@ public class AuctionController extends BaseController implements SocketListener 
             double nextMin = currentSession.getCurrentPrice() + currentSession.getBidIncrease();
 
             if (bidValue < nextMin) {
-                AlertUtils.showStatus(lblNotification, "Giá tối thiểu: " + CurrencyFormatter.format(nextMin), STYLE_ERROR);
+                AlertUtils.showStatus(lblNotification, "Giá tối thiểu: " + CurrencyFormatter.formatDisplay(nextMin), STYLE_ERROR);
                 return;
             }
 
@@ -279,7 +298,8 @@ public class AuctionController extends BaseController implements SocketListener 
     private void handleNewBid(JsonObject payloadObj) {
         double newPrice = payloadObj.get("newPrice").getAsDouble();
         String newLeader = payloadObj.get("newLeader").getAsString();
-        String nowTime = payloadObj.has("bidTime") ? TimeUtils.parseServerTime(payloadObj.get("bidTime")) : LocalDateTime.now().format(TIME_FORMATTER);
+        LocalDateTime parsedTime = payloadObj.has("bidTime") ? TimeUtils.parseServerTime(payloadObj.get("bidTime")) : LocalDateTime.now();
+        String nowTime = parsedTime.format(TIME_FORMATTER);
 
         currentSession.setCurrentPrice(newPrice);
         currentSession.setHighestBidderAccount(newLeader);
@@ -295,8 +315,8 @@ public class AuctionController extends BaseController implements SocketListener 
             listBids.clear();
             for (JsonElement element : jsonResponse.getAsJsonArray("payload")) {
                 JsonObject bidObj = element.getAsJsonObject();
-                String time = TimeUtils.parseServerTime(bidObj.get("bidTime"));
-                String user = bidObj.has("bidderAccount") ? bidObj.get("bidderAccount").getAsString() : "Unknown";
+                LocalDateTime parsedTime = TimeUtils.parseServerTime(bidObj.get("bidTime"));
+                String time = (parsedTime != null) ? parsedTime.format(TIME_FORMATTER) : LocalDateTime.now().format(TIME_FORMATTER);                String user = bidObj.has("bidderAccount") ? bidObj.get("bidderAccount").getAsString() : "Unknown";
                 double price = bidObj.has("bidAmount") ? bidObj.get("bidAmount").getAsDouble() : 0.0;
                 listBids.add(new BidEntry(time, user, price));
             }

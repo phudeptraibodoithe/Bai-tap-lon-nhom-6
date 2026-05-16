@@ -35,9 +35,9 @@ public class ControllerProfile extends BaseController implements Initializable, 
     @FXML private TextArea desc;
 
     // --- CONSTANTS ---
-    private static final String STYLE_SUCCESS = "-fx-text-fill: #2ecc71; -fx-font-weight: bold;";
-    private static final String STYLE_ERROR = "-fx-text-fill: #e74c3c; -fx-font-weight: bold;";
-    private static final String STYLE_PROCESSING = "-fx-text-fill: #3498db; -fx-font-weight: bold;";
+    private static final String STYLE_SUCCESS = "#2ecc71";
+    private static final String STYLE_ERROR = "#e74c3c";
+    private static final String STYLE_PROCESSING = "#3498db";
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {

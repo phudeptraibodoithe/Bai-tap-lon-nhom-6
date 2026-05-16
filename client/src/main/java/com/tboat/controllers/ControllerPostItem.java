@@ -40,9 +40,9 @@ public class ControllerPostItem extends BaseController implements Initializable,
     private File selectedFile;
     private static final Logger log = Logger.getLogger(ControllerPostItem.class.getName());
 
-    private static final String STYLE_SUCCESS = "-fx-text-fill: #2ecc71; -fx-font-weight: bold;";
-    private static final String STYLE_ERROR = "-fx-text-fill: #e74c3c; -fx-font-weight: bold;";
-    private static final String STYLE_PROCESSING = "-fx-text-fill: #3498db; -fx-font-weight: bold;";
+    private static final String STYLE_SUCCESS = "#2ecc71";
+    private static final String STYLE_ERROR = "#e74c3c";
+    private static final String STYLE_PROCESSING = "#3498db";
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {

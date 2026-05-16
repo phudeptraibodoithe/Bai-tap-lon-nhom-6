@@ -18,21 +18,35 @@ public class TimeUtils {
     private static final DateTimeFormatter STANDARD_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     // Ép kiểu thời gian từ Server (timestamp hoặc chuỗi ISO) về chuẩn hiển thị
-    public static String parseServerTime(JsonElement timeElement) {
-        if (timeElement == null || timeElement.isJsonNull()) return "";
+    // Ép kiểu thời gian từ Server (timestamp hoặc chuỗi) về chuẩn LocalDateTime của Java
+    public static LocalDateTime parseServerTime(JsonElement timeElement) {
+        if (timeElement == null || timeElement.isJsonNull()) return null;
         try {
+            // Trường hợp 1: Server trả về Timestamp (kiểu số long)
             if (timeElement.isJsonPrimitive() && timeElement.getAsJsonPrimitive().isNumber()) {
-                LocalDateTime dateTime = LocalDateTime.ofInstant(
+                return LocalDateTime.ofInstant(
                         Instant.ofEpochMilli(timeElement.getAsLong()),
                         ZoneId.systemDefault()
                 );
-                return dateTime.format(STANDARD_FORMATTER);
             } else {
-                String time = timeElement.getAsString();
-                return time.contains("T") ? time.replace("T", " ").substring(0, 19) : time;
+                // Trường hợp 2: Server trả về chuỗi String
+                String timeStr = timeElement.getAsString().replace(" ", "T");
+
+                // Nếu chuỗi bị thiếu giây (VD: 2026-05-16T17:22 - dài 16 ký tự), tự động bù thêm ":00"
+                if (timeStr.length() == 16) {
+                    timeStr += ":00";
+                }
+
+                // Cắt đi phần thừa nếu chuỗi dài hơn chuẩn (chống lỗi OutOfBounds)
+                if (timeStr.length() > 19) {
+                    timeStr = timeStr.substring(0, 19);
+                }
+
+                return LocalDateTime.parse(timeStr);
             }
         } catch (Exception e) {
-            return "";
+            System.err.println("Lỗi parse thời gian từ Server: " + e.getMessage() + " - Dữ liệu gốc: " + timeElement.toString());
+            return null; // Trả về null để Controller tự dùng fallback (như LocalDateTime.now())
         }
     }
 
@@ -92,5 +106,9 @@ public class TimeUtils {
             }
         });
     }
-    // Thêm các hàm khác như format thời gian cho label, tính toán thời gian còn lại...
+
+    public static String formatTimeDisplay(LocalDateTime dateTime) {
+        if (dateTime == null) return "";
+        return dateTime.format(STANDARD_FORMATTER);
+    }
 }

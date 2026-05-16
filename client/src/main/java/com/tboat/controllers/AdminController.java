@@ -77,7 +77,7 @@ public class AdminController extends BaseController implements Initializable, So
                 if (empty || price == null) {
                     setText(null);
                 } else {
-                    setText(CurrencyFormatter.format(price));
+                    setText(CurrencyFormatter.formatDisplay(price));
                 }
             }
         });

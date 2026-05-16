@@ -3,9 +3,11 @@ package com.tboat.utilsclient;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
+import java.util.logging.Logger;
 
 public class AlertUtils {
-
+    private static final Logger log = Logger.getLogger(AlertUtils.class.getName());
+    
     // Hàm nội bộ để setup giao diện chung (Icon, DialogPane)
     private static void styleAlert(Alert alert) {
         DialogPane dialogPane = alert.getDialogPane();
@@ -17,7 +19,7 @@ public class AlertUtils {
             Stage alertStage = (Stage) dialogPane.getScene().getWindow();
             alertStage.getIcons().add(new Image(AlertUtils.class.getResourceAsStream("/images/logo.png")));
         } catch (Exception e) {
-            System.out.println("Lỗi load icon cho Alert: " + e.getMessage());
+            log.warning("Lỗi load icon cho Alert: " + e.getMessage());
         }
     }
 

@@ -88,7 +88,7 @@ public class TrangChuController extends BaseController implements Initializable,
     @Override
     public void onReload() {
         loadAuctions();
-        System.out.println("Đã tải lại danh sách sản phẩm trang chủ!");
+        log.info("Đã tải lại danh sách sản phẩm trang chủ!");
     }
 
     public void loadAuctions() {
@@ -207,7 +207,7 @@ public class TrangChuController extends BaseController implements Initializable,
                                 session.setStartTime(LocalDateTime.parse(startStr));
                             }
                         } catch (Exception e) {
-                            logger.warning("⚠️ Lỗi đọc ngày tháng của sản phẩm ID " + id + ": " + e.getMessage());
+                            logger.warning("Lỗi đọc ngày tháng của sản phẩm ID " + id + ": " + e.getMessage());
                         }
 
                         // Tạo thẻ UI và "giấu" loại sản phẩm vào Data của Node
@@ -222,7 +222,7 @@ public class TrangChuController extends BaseController implements Initializable,
                 }
             } catch (Exception e) {
                 if (response.contains("{")) {
-                    logger.severe("❌ LỖI ĐỌC JSON TRANG CHỦ: " + response);
+                    logger.severe("LỖI ĐỌC JSON TRANG CHỦ: " + response);
                 }
             }
         });

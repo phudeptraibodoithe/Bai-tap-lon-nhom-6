@@ -7,6 +7,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.ucb.DataCache;
+import com.tboat.ucb.NavigationContext;
 import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.HeaderUtils;
 import com.tboat.utilsclient.UserSession;
@@ -39,11 +41,23 @@ public class ControllerHistory extends BaseController implements Initializable, 
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        SocketManager.getInstance().subscribe(this);
-        loadlichsu();
-
-        // ĐÃ THÊM: Gọi hàm thiết lập avatar và tên
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
+
+        // ── UCB: Cache-then-Network ──────────────────────────────────────────
+        String screenKey = BaseController.toScreenKey("history.fxml");
+        String cached    = DataCache.getInstance().get("GET_HISTORY");
+
+        if (cached != null) {
+            log.info("[History] Cache HIT → render ngay");
+            NavigationContext.getInstance().reportCacheHit(screenKey, true);
+            handleServerResponse(cached);
+            loadlichsu();
+        } else {
+            log.info("[History] Cache MISS → fetch server");
+            NavigationContext.getInstance().reportCacheHit(screenKey, false);
+            loadlichsu();
+        }
+        // ────────────────────────────────────────────────────────────────────
     }
 
     public void loadlichsu() {

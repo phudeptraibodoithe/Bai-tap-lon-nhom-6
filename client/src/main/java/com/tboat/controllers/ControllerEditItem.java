@@ -6,6 +6,7 @@ import com.google.gson.JsonParser;
 import com.tboat.models.AuctionSession;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.ucb.DataCache;
 import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.CurrencyFormatter;
 import com.tboat.utilsclient.CurrencyStringConverter;
@@ -58,13 +59,9 @@ public class ControllerEditItem extends BaseController implements Initializable,
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        SocketManager.getInstance().subscribe(this);
-
         setupPriceSpinners();
         setupDateTimeLogic();
         typeComboBox.getItems().addAll("Điện tử", "Thời trang", "Trang sức", "Khác");
-
-        // ĐÃ THÊM: Gọi class dùng chung để load tên và avatar
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
     }
 
@@ -356,10 +353,16 @@ public class ControllerEditItem extends BaseController implements Initializable,
                 String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
 
                 if ("SUCCESS".equals(status)) {
+                    DataCache.getInstance().invalidate("LIST_AVAILABLE");   // ← THÊM
+                    DataCache.getInstance().invalidate("GET_MY_AUCTIONS"); // ← THÊM
                     if (message.contains("Cập nhật thông tin")) {
+                        DataCache.getInstance().invalidate("GET_MY_AUCTIONS"); // ← THÊM
                         showStyledAlert(Alert.AlertType.INFORMATION, "Cập nhật thành công", "Đã cập nhật sản phẩm thành công!");
                         changeScene(thongbao, "manager.fxml");
+
                     } else if (message.contains("Đã hủy phiên")) {
+                        DataCache.getInstance().invalidate("GET_MY_AUCTIONS"); // ← THÊM
+                        DataCache.getInstance().invalidate("LIST_AVAILABLE");  // ← THÊM: xóa khỏi TrangChu luôn
                         showStyledAlert(Alert.AlertType.INFORMATION, "Xóa thành công", "Đã xóa sản phẩm thành công!");
                         changeScene(thongbao, "manager.fxml");
                     }

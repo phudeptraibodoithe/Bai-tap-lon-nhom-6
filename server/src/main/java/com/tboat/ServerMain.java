@@ -1,5 +1,6 @@
 package com.tboat;
 
+import com.tboat.logging.LogConfig;
 import com.tboat.service.AuctionTimerService;
 import com.tboat.socket.ClientHandler;
 import com.tboat.service.AuctionManager;
@@ -21,6 +22,14 @@ public class ServerMain {
     private static final Logger logger = LoggerFactory.getLogger(ServerMain.class);
 
     public static void main(String[] args) {
+        LogConfig logConfig = new LogConfig("logs/server", 10);
+        logConfig.start();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            logger.info("Server đang tắt...");
+            logConfig.stop();
+        }));
+
         int port = 8888;
         logger.info("[System]: Đang khởi tạo danh sách phòng đấu giá...");
         initAuctionRooms();

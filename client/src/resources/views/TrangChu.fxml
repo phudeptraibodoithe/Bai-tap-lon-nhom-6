@@ -72,13 +72,19 @@
 
                         <HBox alignment="CENTER" style="-fx-background-color: #EFEFEF; -fx-background-radius: 20; -fx-padding: 4;">
                             <children>
-                                <Button mnemonicParsing="false" style="-fx-background-color: white; -fx-background-radius: 16; -fx-padding: 8 20; -fx-cursor: hand;" text="All" textFill="#0A1128">
+                                <Button fx:id="btnFilterAll" mnemonicParsing="false" onAction="#filterAll" style="-fx-background-color: white; -fx-background-radius: 16; -fx-padding: 8 20; -fx-cursor: hand; -fx-text-fill: #0A1128;" text="Tất cả">
                                     <font><Font name="System Bold" size="13.0" /></font>
                                 </Button>
-                                <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-padding: 8 20; -fx-cursor: hand;" text="Ending Soon" textFill="#666666">
+                                <Button fx:id="btnFilterDienTu" mnemonicParsing="false" onAction="#filterDienTu" style="-fx-background-color: transparent; -fx-padding: 8 20; -fx-cursor: hand; -fx-text-fill: #666666;" text="Điện tử">
                                     <font><Font name="System Bold" size="13.0" /></font>
                                 </Button>
-                                <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-padding: 8 20; -fx-cursor: hand;" text="New Arrivals" textFill="#666666">
+                                <Button fx:id="btnFilterThoiTrang" mnemonicParsing="false" onAction="#filterThoiTrang" style="-fx-background-color: transparent; -fx-padding: 8 20; -fx-cursor: hand; -fx-text-fill: #666666;" text="Thời trang">
+                                    <font><Font name="System Bold" size="13.0" /></font>
+                                </Button>
+                                <Button fx:id="btnFilterTrangSuc" mnemonicParsing="false" onAction="#filterTrangSuc" style="-fx-background-color: transparent; -fx-padding: 8 20; -fx-cursor: hand; -fx-text-fill: #666666;" text="Trang sức">
+                                    <font><Font name="System Bold" size="13.0" /></font>
+                                </Button>
+                                <Button fx:id="btnFilterKhac" mnemonicParsing="false" onAction="#filterKhac" style="-fx-background-color: transparent; -fx-padding: 8 20; -fx-cursor: hand; -fx-text-fill: #666666;" text="Khác">
                                     <font><Font name="System Bold" size="13.0" /></font>
                                 </Button>
                             </children>

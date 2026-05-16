@@ -11,10 +11,13 @@ import com.tboat.models.AuctionSession;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.ucb.DataCache;
+import com.tboat.ucb.NavigationContext;
 import com.tboat.utils.GsonUtils;
-import com.tboat.utilsclient.HeaderUtils; // Đã thêm import
+import com.tboat.utilsclient.HeaderUtils;
 import com.tboat.utilsclient.ImageUtils;
 import javafx.application.Platform;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
@@ -30,6 +33,8 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import java.net.URL;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ResourceBundle;
 import java.util.logging.Logger;
 
@@ -42,20 +47,48 @@ public class TrangChuController extends BaseController implements Initializable,
     @FXML private Button btnPostItem;
     @FXML private Button btnHistory1;
 
-    // ĐÃ THÊM: Khai báo 2 biến UI cho Header
     @FXML private Label lblGreeting;
     @FXML private ImageView userAvatar;
+
+    // Các nút Bộ Lọc
+    @FXML private Button btnFilterAll;
+    @FXML private Button btnFilterDienTu;
+    @FXML private Button btnFilterThoiTrang;
+    @FXML private Button btnFilterTrangSuc;
+    @FXML private Button btnFilterKhac;
+
+    // Mảng lưu toàn bộ giao diện thẻ sản phẩm (để filter không cần load lại server)
+    private List<VBox> allCards = new ArrayList<>();
+    private String currentFilter = "Tất cả"; // Bộ lọc mặc định
 
     private final Gson gson = GsonUtils.getInstance();
     private static final Logger logger = Logger.getLogger(TrangChuController.class.getName());
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        SocketManager.getInstance().subscribe(this);
-        loadAuctions();
-
-        // ĐÃ THÊM: Gọi class dùng chung để hiển thị Avatar và tên User
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
+
+        // ── UCB: Cache-then-Network ──────────────────────────────────────────
+        String screenKey = BaseController.toScreenKey("TrangChu.fxml"); // "TrangChuFxml"
+        String cached    = DataCache.getInstance().get("LIST_AVAILABLE");
+
+        if (cached != null) {
+            log.info("[TrangChu] Cache HIT → render ngay");
+            NavigationContext.getInstance().reportCacheHit(screenKey, true);
+            handleServerResponse(cached);   // render từ cache (gọi lại chính hàm xử lý)
+            loadAuctions();                 // refresh ngầm
+        } else {
+            log.info("[TrangChu] Cache MISS → fetch server");
+            NavigationContext.getInstance().reportCacheHit(screenKey, false);
+            loadAuctions();
+        }
+        // ────────────────────────────────────────────────────────────────────
+    }
+
+    @Override
+    public void onReload() {
+        loadAuctions();
+        log.info("Đã tải lại danh sách sản phẩm trang chủ!");
     }
 
     public void loadAuctions() {
@@ -70,6 +103,48 @@ public class TrangChuController extends BaseController implements Initializable,
         SocketManager.getInstance().send(gson.toJson(request));
     }
 
+    // =======================================================
+    // CÁC HÀM XỬ LÝ BỘ LỌC KHI BẤM NÚT
+    // =======================================================
+    @FXML public void filterAll(ActionEvent event) { setFilter("Tất cả"); }
+    @FXML public void filterDienTu(ActionEvent event) { setFilter("Điện tử"); }
+    @FXML public void filterThoiTrang(ActionEvent event) { setFilter("Thời trang"); }
+    @FXML public void filterTrangSuc(ActionEvent event) { setFilter("Trang sức"); }
+    @FXML public void filterKhac(ActionEvent event) { setFilter("Khác"); }
+
+    private void setFilter(String category) {
+        this.currentFilter = category;
+        applyFilter();
+    }
+
+    private void applyFilter() {
+        if (itemContainer == null) return;
+
+        itemContainer.getChildren().clear();
+        for (VBox card : allCards) {
+            String cardType = (String) card.getUserData(); // Lấy loại SP đã giấu trong thẻ
+            if ("Tất cả".equals(currentFilter) || currentFilter.equals(cardType)) {
+                itemContainer.getChildren().add(card);
+            }
+        }
+        updateButtonStyles();
+    }
+
+    private void updateButtonStyles() {
+        Button[] buttons = {btnFilterAll, btnFilterDienTu, btnFilterThoiTrang, btnFilterTrangSuc, btnFilterKhac};
+        String[] filters = {"Tất cả", "Điện tử", "Thời trang", "Trang sức", "Khác"};
+
+        for (int i = 0; i < buttons.length; i++) {
+            if (buttons[i] != null) {
+                if (filters[i].equals(currentFilter)) {
+                    buttons[i].setStyle("-fx-background-color: white; -fx-background-radius: 16; -fx-padding: 8 20; -fx-cursor: hand; -fx-text-fill: #0A1128;");
+                } else {
+                    buttons[i].setStyle("-fx-background-color: transparent; -fx-padding: 8 20; -fx-cursor: hand; -fx-text-fill: #666666;");
+                }
+            }
+        }
+    }
+
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
@@ -80,9 +155,9 @@ public class TrangChuController extends BaseController implements Initializable,
                 if ("SUCCESS".equals(status) && jsonResponse.has("payload") && jsonResponse.get("payload").isJsonArray()) {
                     JsonArray auctionArray = jsonResponse.getAsJsonArray("payload");
 
-                    if (itemContainer != null) {
-                        itemContainer.getChildren().clear();
-                    }
+                    allCards.clear(); // Xóa sạch dữ liệu cũ
+                    if (itemContainer != null) itemContainer.getChildren().clear();
+
                     for (JsonElement element : auctionArray) {
                         JsonObject dataObj = element.getAsJsonObject();
                         int id = dataObj.has("id") ? dataObj.get("id").getAsInt() : 0;
@@ -132,15 +207,22 @@ public class TrangChuController extends BaseController implements Initializable,
                                 session.setStartTime(LocalDateTime.parse(startStr));
                             }
                         } catch (Exception e) {
-                            logger.warning("⚠️ Lỗi đọc ngày tháng của sản phẩm ID " + id + ": " + e.getMessage());
+                            logger.warning("Lỗi đọc ngày tháng của sản phẩm ID " + id + ": " + e.getMessage());
                         }
+
+                        // Tạo thẻ UI và "giấu" loại sản phẩm vào Data của Node
                         VBox productCard = createProductCard(session);
-                        itemContainer.getChildren().add(productCard);
+                        productCard.setUserData(type);
+
+                        allCards.add(productCard); // Lưu vào kho chứa
                     }
+
+                    // Lọc và hiển thị ra màn hình theo Filter đang chọn (mặc định là Tất cả)
+                    applyFilter();
                 }
             } catch (Exception e) {
                 if (response.contains("{")) {
-                    logger.severe("❌ LỖI ĐỌC JSON TRANG CHỦ: " + response);
+                    logger.severe("LỖI ĐỌC JSON TRANG CHỦ: " + response);
                 }
             }
         });

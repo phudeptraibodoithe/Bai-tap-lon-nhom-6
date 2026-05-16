@@ -32,17 +32,15 @@ public class ParticipationDAO {
         return null;
     }
 
-    public boolean addParticipation(Participation p) {
+    public void addParticipation(Participation p) {
         String sql = "INSERT INTO participation (accountName, auctionSessionId, roleType) VALUES (?, ?, ?)";
         try (Connection c = DatabaseConnection.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, p.getAccountName());
             ps.setInt(2, p.getAuctionSessionId());
             ps.setString(3, p.getRoleType());
-            return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             logger.error("Lỗi khi thêm Participation: ", e);
-            return false;
         }
     }
 }

@@ -6,4 +6,5 @@ module com.tboat.common {
 
     exports com.tboat.models;
     exports com.tboat.utils;
+    exports com.tboat.logging;
 }

@@ -1,7 +1,7 @@
 package com.tboat.models;
 
-public class AuctionFactoryProducer {
-    public static AuctionFactory getFactory(String type) {
+public class ItemFactoryProducer {
+    public static ItemFactory getFactory(String type) {
         if (type == null) {
             return new OtherFactory();
         }

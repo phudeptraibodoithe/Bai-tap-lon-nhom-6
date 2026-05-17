@@ -28,16 +28,15 @@ public class GsonUtils {
                                     : "Khác";
 
                             switch (type.trim()) {
-                                case "electronic":
                                 case "Điện tử":
-                                    return context.deserialize(json, ElectronicsAuction.class);
+                                    return context.deserialize(json, ElectronicsItem.class);
                                 case "Thời trang":
-                                    return context.deserialize(json, FashionAuction.class);
+                                    return context.deserialize(json, FashionItem.class);
                                 case "Trang sức":
-                                    return context.deserialize(json, JewelryAuction.class);
+                                    return context.deserialize(json, JewelryItem.class);
                                 case "Khác":
                                 default:
-                                    return context.deserialize(json, OtherAuction.class);
+                                    return context.deserialize(json, OtherItem.class);
                             }
                         }
                     })

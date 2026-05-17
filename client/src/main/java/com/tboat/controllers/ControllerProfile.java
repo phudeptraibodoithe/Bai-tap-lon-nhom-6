@@ -5,6 +5,8 @@ import com.google.gson.JsonParser;
 import com.tboat.models.User;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
+import com.tboat.ucb.DataCache;
+import com.tboat.ucb.NavigationContext;
 import com.tboat.utilsclient.*;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -42,11 +44,27 @@ public class ControllerProfile extends BaseController implements Initializable, 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         if (err != null) err.setText("");
-        SocketHelper.sendRequest("PROFILE");
+
+        // ── UCB: Cache-then-Network ──────────────────────────────────────────
+        String screenKey = BaseController.toScreenKey("profile.fxml");
+        String cached    = DataCache.getInstance().get("PROFILE");
+
+        // Luôn hiển thị data từ UserSession trước (instant, 0ms)
         user = UserSession.getInstance().getUser();
         if (user != null) {
             updateUI(user.getNickname(), user.getBalance(), user.getAvatarURL(), user.getDescription());
         }
+
+        if (cached != null) {
+            log.info("[Profile] Cache HIT → dùng cache + refresh ngầm");
+            NavigationContext.getInstance().reportCacheHit(screenKey, true);
+            handleServerResponse(cached); // Cập nhật nếu cache mới hơn UserSession
+        } else {
+            NavigationContext.getInstance().reportCacheHit(screenKey, false);
+        }
+        // Luôn fetch mới để sync (profile ít thay đổi nhưng cần chính xác)
+        SocketHelper.sendRequest("PROFILE");
+        // ────────────────────────────────────────────────────────────────────
     }
 
     private void updateUI(String nick, double bal, String avt, String description) {

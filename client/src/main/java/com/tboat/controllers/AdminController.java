@@ -4,7 +4,8 @@ import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.tboat.models.AuctionSession;
 import com.tboat.socket.SocketListener;
-import com.tboat.socket.SocketManager;
+import com.tboat.ucb.DataCache;
+import com.tboat.ucb.NavigationContext;
 import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.AlertUtils;
 import com.tboat.utilsclient.CurrencyFormatter;
@@ -54,7 +55,36 @@ public class AdminController extends BaseController implements Initializable, So
         this.setupActionColumn(this.colReject, "REJECT_ITEM");
         this.sessionList = FXCollections.observableArrayList();
         this.tableSessions.setItems(this.sessionList);
-        loadPendingItems();
+
+        // ── UCB: Cache-then-Network ──────────────────────────────────────────
+        String screenKey = BaseController.toScreenKey("admin.fxml");
+        String cached    = DataCache.getInstance().get("GET_PENDING_ITEMS");
+
+        if (cached != null) {
+            log.info("[Admin] Cache HIT → render ngay");
+            NavigationContext.getInstance().reportCacheHit(screenKey, true);
+            renderPendingItems(cached);
+            loadPendingItems(); // refresh ngầm
+        } else {
+            log.info("[Admin] Cache MISS → fetch server");
+            NavigationContext.getInstance().reportCacheHit(screenKey, false);
+            loadPendingItems();
+        }
+    }
+
+    private void renderPendingItems(String response) {
+        try {
+            JsonObject json = JsonParser.parseString(response).getAsJsonObject();
+            String message  = json.has("message") ? json.get("message").getAsString() : "";
+            if ("Danh sách chờ duyệt".equals(message)) {
+                sessionList.clear();
+                Type listType = new TypeToken<ArrayList<AuctionSession>>(){}.getType();
+                List<AuctionSession> items = gson.fromJson(json.get("payload"), listType);
+                if (items != null) sessionList.addAll(items);
+            }
+        } catch (Exception e) {
+            log.warning("[Admin] Lỗi render: " + e.getMessage());
+        }
     }
 
     private void loadPendingItems() {
@@ -144,15 +174,10 @@ public class AdminController extends BaseController implements Initializable, So
 
     private void handleSuccessCase(JsonObject jsonResponse, String message) {
         if ("Danh sách chờ duyệt".equals(message)) {
-            sessionList.clear();
-            Type listType = new TypeToken<ArrayList<AuctionSession>>(){}.getType();
-            List<AuctionSession> items = gson.fromJson(jsonResponse.get("payload"), listType);
-            if (items != null) sessionList.addAll(items);
-        }
-        else if ("Đã duyệt và bắt đầu đấu giá".equals(message)) {
+            renderPendingItems(jsonResponse.toString()); // ← dùng method mới
+        } else if ("Đã duyệt và bắt đầu đấu giá".equals(message)) {
             AlertUtils.showStatus(err, "Đã DUYỆT sản phẩm!", "green");
-        }
-        else if ("Đã từ chối sản phẩm".equals(message)) {
+        } else if ("Đã từ chối sản phẩm".equals(message)) {
             AlertUtils.showStatus(err, "Đã TỪ CHỐI sản phẩm!", "#cc7a00");
         }
     }

@@ -3,6 +3,7 @@ package com.tboat.controllers;
 import com.google.gson.JsonObject;
 import com.tboat.models.AuctionSession;
 import com.tboat.socket.SocketListener;
+import com.tboat.ucb.DataCache;
 import com.tboat.utilsclient.*;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -184,13 +185,18 @@ public class ControllerEditItem extends BaseController implements Initializable,
                 String message = SocketHelper.getMessage(response);
 
                 if ("SUCCESS".equals(status)) {
+                    DataCache.getInstance().invalidate("LIST_AVAILABLE");   // ← THÊM
+                    DataCache.getInstance().invalidate("GET_MY_AUCTIONS"); // ← THÊM
                     if (message.contains("Cập nhật thông tin")) {
+                        DataCache.getInstance().invalidate("GET_MY_AUCTIONS"); // ← THÊM
                         AlertUtils.showStatus(thongbao, "Cập nhật thành công!", STYLE_SUCCESS);
-                        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Thành công", "Đã cập nhật sản phẩm thành công!");
+                        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Cập nhật thành công", "Đã cập nhật sản phẩm thành công!");
                         changeScene(thongbao, "manager.fxml");
                     } else if (message.contains("Đã hủy phiên")) {
+                        DataCache.getInstance().invalidate("GET_MY_AUCTIONS"); // ← THÊM
+                        DataCache.getInstance().invalidate("LIST_AVAILABLE");  // ← THÊM: xóa khỏi TrangChu luôn
                         AlertUtils.showStatus(thongbao, "Xóa thành công!", STYLE_SUCCESS);
-                        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Thành công", "Đã xóa sản phẩm thành công!");
+                        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Xóa thành công", "Đã xóa sản phẩm thành công!");
                         changeScene(thongbao, "manager.fxml");
                     }
                 } else if ("ERROR".equals(status) || "FAILED".equals(status)) {

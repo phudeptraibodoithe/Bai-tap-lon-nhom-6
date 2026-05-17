@@ -29,10 +29,10 @@ public class AuctionController extends BaseController implements SocketListener 
     private static final Logger log = LoggerFactory.getLogger(AuctionController.class);
 
     // --- CONSTANTS cho CSS và Format ---
-    private static final String STYLE_SUCCESS = "#2ecc71";
-    private static final String STYLE_ERROR = "#e74c3c";
-    private static final String STYLE_WARNING = "#e67e22";
-    private static final String STYLE_ENDED = "red";
+    private static final String STYLE_SUCCESS = "-fx-text-fill: #2ecc71; -fx-font-weight: bold; -fx-font-size: 17px;";
+    private static final String STYLE_ERROR = "-fx-text-fill: #e74c3c; -fx-font-weight: bold; -fx-font-size: 17px;";
+    private static final String STYLE_WARNING = "-fx-text-fill: #e67e22; -fx-font-weight: bold; -fx-font-size: 17px;";
+    private static final String STYLE_ENDED = "-fx-text-fill: red; -fx-font-weight: bold; -fx-font-size: 17px";
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     // --- FXML FIELDS (Đã chuẩn hóa thành camelCase) ---

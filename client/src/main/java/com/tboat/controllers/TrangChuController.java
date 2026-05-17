@@ -4,11 +4,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.tboat.models.AuctionFactory;
-import com.tboat.models.AuctionFactoryProducer;
 import com.tboat.models.AuctionSession;
+import com.tboat.models.ItemFactory;
+import com.tboat.models.ItemFactoryProducer;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.SocketListener;
+import com.tboat.ucb.DataCache;
+import com.tboat.ucb.NavigationContext;
 import com.tboat.utilsclient.*;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -50,6 +52,21 @@ public class TrangChuController extends BaseController implements Initializable,
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        // ── UCB: Cache-then-Network ──────────────────────────────────────────
+        String screenKey = BaseController.toScreenKey("TrangChu.fxml"); // "TrangChuFxml"
+        String cached    = DataCache.getInstance().get("LIST_AVAILABLE");
+
+        if (cached != null) {
+            log.info("[TrangChu] Cache HIT → render ngay");
+            NavigationContext.getInstance().reportCacheHit(screenKey, true);
+            handleServerResponse(cached);   // render từ cache (gọi lại chính hàm xử lý)
+            loadAuctions();                 // refresh ngầm
+        } else {
+            log.info("[TrangChu] Cache MISS → fetch server");
+            NavigationContext.getInstance().reportCacheHit(screenKey, false);
+            loadAuctions();
+        }
+
         loadAuctions();
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
     }
@@ -146,10 +163,10 @@ public class TrangChuController extends BaseController implements Initializable,
                                 imageBase64 = imageBase64.substring(imageBase64.indexOf(",") + 1);
                             }
 
-                            AuctionFactory factory = AuctionFactoryProducer.getFactory(type);
-                            AuctionSession session = factory.createAuctionSession(
+                            ItemFactory factory = ItemFactoryProducer.getFactory(type);
+                            AuctionSession session = new AuctionSession(
                                     startTime, endTime, currentPrice, bidIncrease,
-                                    sellerAccount, name, description, imageBase64
+                                    factory.createItem()
                             );
                             session.setId(id);
                             session.setHighestBidderAccount(highestBidder);

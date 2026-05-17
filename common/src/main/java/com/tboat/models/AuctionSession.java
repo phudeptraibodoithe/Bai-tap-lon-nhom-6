@@ -2,23 +2,20 @@ package com.tboat.models;
 
 import java.time.LocalDateTime;
 
-public abstract class AuctionSession {
+public class AuctionSession {
     private int id;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private double currentPrice;
     private double bidIncrease;
     private StatusOfAuction statusOfAuction;
-    private String sellerAccountName;
-    private String type;
-    private String name;
-    private String description;
-    private String imageURL;
+    private Item item;
     private String highestBidderAccount;
+    private int itemId;
+
 
     public AuctionSession(int id, LocalDateTime startTime, LocalDateTime endTime, double currentPrice,
-                          double bidIncrease, StatusOfAuction statusOfAuction, String sellerAccountName,
-                          String type, String name, String description, String imageURL,
+                          double bidIncrease, StatusOfAuction statusOfAuction, Item item,
                           String highestBidderAccount) {
         this.id = id;
         this.startTime = startTime;
@@ -26,27 +23,19 @@ public abstract class AuctionSession {
         this.currentPrice = currentPrice;
         this.bidIncrease = bidIncrease;
         this.statusOfAuction = statusOfAuction;
-        this.sellerAccountName = sellerAccountName;
-        this.type = type;
-        this.name = name;
-        this.description = description;
-        this.imageURL = imageURL;
+        this.item = item;
         this.highestBidderAccount = highestBidderAccount;
     }
+    
     public AuctionSession() {}
 
     public AuctionSession(LocalDateTime startTime, LocalDateTime endTime, double currentPrice,
-                          double bidIncrease, String sellerAccountName, String type, String name,
-                          String description, String imageURL) {
+                          double bidIncrease, Item item) {
         this.startTime = startTime;
         this.endTime = endTime;
         this.currentPrice = currentPrice;
         this.bidIncrease = bidIncrease;
-        this.sellerAccountName = sellerAccountName;
-        this.type = type;
-        this.name = name;
-        this.description = description;
-        this.imageURL = imageURL;
+        this.item = item;
         this.highestBidderAccount = null;
         updateStatusBasedOnTime();
     }
@@ -55,8 +44,8 @@ public abstract class AuctionSession {
         this.id = id;
         this.currentPrice = currentPrice;
         this.bidIncrease = bidIncrease;
-        this.sellerAccountName = sellerAccountName;
-        this.name = name;
+        this.item.setSellerAccountName(sellerAccountName);
+        this.item.setName(name);
     }
     public void updateStatusBasedOnTime() {
         if (this.startTime == null || this.endTime == null) {
@@ -77,13 +66,13 @@ public abstract class AuctionSession {
     public StatusOfAuction getStatusOfAuction() { return statusOfAuction; }
     public LocalDateTime getStartTime() { return startTime; }
     public LocalDateTime getEndTime() { return endTime; }
-    public String getName() { return name; }
+    public String getName() { return item.getName(); }
     public double getCurrentPrice() { return currentPrice; }
     public double getBidIncrease() { return bidIncrease; }
-    public String getDescription() { return description; }
-    public String getImageURL() { return imageURL; }
-    public String getSellerAccountName() { return sellerAccountName; }
-    public String getType() { return type; }
+    public String getDescription() { return item.getDescription(); }
+    public String getImageURL() { return item.getImageURL(); }
+    public String getSellerAccountName() { return item.getSellerAccountName(); }
+    public String getType() { return item.getType(); }
     public String getHighestBidderAccount() { return highestBidderAccount; }
     // Setters
     public void setHighestBidderAccount(String highestBidderAccount) {
@@ -111,13 +100,17 @@ public abstract class AuctionSession {
     }
 
     public void setImageURL(String imageURL) {
-        this.imageURL = imageURL;
+        item.setImageURL(imageURL);
     }
+    // Thêm getter/setter
+    public int getItemId() { return itemId; }
+    public void setItemId(int itemId) { this.itemId = itemId; }
 
+    // Thêm getter trả về Item object (để ItemDAO dùng)
+    public Item getItem() { return item; }
     // 2. THÊM CÁC SETTER CÒN THIẾU
     public void setId(int id) { this.id = id; }
-    public void setSellerAccountName(String sellerAccountName) { this.sellerAccountName = sellerAccountName; }
-    public void setType(String type) { this.type = type; }
-    public void setName(String name) { this.name = name; }
-    public void setDescription(String description) { this.description = description; }
+    public void setSellerAccountName(String sellerAccountName) { this.item.setSellerAccountName(sellerAccountName); }
+    public void setName(String name) { this.item.setName(name); }
+    public void setDescription(String description) { this.item.setDescription(description); }
 }

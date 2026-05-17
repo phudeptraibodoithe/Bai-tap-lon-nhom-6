@@ -83,7 +83,6 @@ public class TrangChuController extends BaseController implements Initializable,
     @Override
     public void onReload() {
         loadAuctions();
-        System.out.println("Đã tải lại danh sách sản phẩm trang chủ!");
     }
 
     public void loadAuctions() {

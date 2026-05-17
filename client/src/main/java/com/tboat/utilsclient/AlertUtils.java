@@ -7,7 +7,7 @@ import java.util.logging.Logger;
 
 public class AlertUtils {
     private static final Logger log = Logger.getLogger(AlertUtils.class.getName());
-
+    
     // Hàm nội bộ để setup giao diện chung (Icon, DialogPane)
     private static void styleAlert(Alert alert) {
         DialogPane dialogPane = alert.getDialogPane();

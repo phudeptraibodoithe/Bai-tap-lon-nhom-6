@@ -316,7 +316,8 @@ public class AuctionController extends BaseController implements SocketListener 
             for (JsonElement element : jsonResponse.getAsJsonArray("payload")) {
                 JsonObject bidObj = element.getAsJsonObject();
                 LocalDateTime parsedTime = TimeUtils.parseServerTime(bidObj.get("bidTime"));
-                String time = (parsedTime != null) ? parsedTime.format(TIME_FORMATTER) : LocalDateTime.now().format(TIME_FORMATTER);                String user = bidObj.has("bidderAccount") ? bidObj.get("bidderAccount").getAsString() : "Unknown";
+                String time = (parsedTime != null) ? parsedTime.format(TIME_FORMATTER) : LocalDateTime.now().format(TIME_FORMATTER);
+                String user = bidObj.has("bidderAccount") ? bidObj.get("bidderAccount").getAsString() : "Unknown";
                 double price = bidObj.has("bidAmount") ? bidObj.get("bidAmount").getAsDouble() : 0.0;
                 listBids.add(new BidEntry(time, user, price));
             }

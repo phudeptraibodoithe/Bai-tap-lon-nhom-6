@@ -51,7 +51,6 @@ public class ControllerLogin extends BaseController implements SocketListener {
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                // 👉 Sử dụng Utils đọc trạng thái
                 String status = SocketHelper.getStatus(response);
                 String message = SocketHelper.getMessage(response);
 
@@ -66,11 +65,8 @@ public class ControllerLogin extends BaseController implements SocketListener {
                         String description = payload.has("description") ? payload.get("description").getAsString() : "";
                         String role = payload.has("role") ? payload.get("role").getAsString() : "";
 
-                        // 👉 Lưu User Session
                         User loggedUser = new User(signText.getText(), null, nickname, balance, description, avatarURL);
                         UserSession.getInstance().createUserSession(loggedUser);
-
-                        // Chuyển Scene dựa trên Role
                         if ("admin".equalsIgnoreCase(signText.getText().trim()) || "ADMIN".equalsIgnoreCase(role)) {
                             changeScene(err, "admin.fxml");
                         } else {

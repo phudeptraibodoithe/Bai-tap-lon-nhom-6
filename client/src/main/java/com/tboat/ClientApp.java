@@ -18,10 +18,11 @@ public class ClientApp extends Application {
     private static final Logger log = LoggerFactory.getLogger(ClientApp.class);
     @Override
     public void start(Stage stage) throws Exception {
-// ── UCB System khởi động ─────────────────────────────────
+        // ── UCB System khởi động ─────────────────────────────────
         UCBEngine.getInstance();   // Load lịch sử từ Preferences
         SocketManager.getInstance().subscribe(CacheInterceptor.getInstance());
         log.info("[UCB] CacheInterceptor đã đăng ký.");
+        // ─────────────────────────────────────────────────────────
 
         Parent root = FXMLLoader.load(getClass().getResource("/views/start.fxml"));
         Scene scene = new Scene(root);

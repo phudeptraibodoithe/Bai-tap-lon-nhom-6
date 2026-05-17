@@ -9,9 +9,12 @@ import com.tboat.models.ItemFactory;
 import com.tboat.models.ItemFactoryProducer;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.SocketListener;
+import com.tboat.socket.SocketManager;
 import com.tboat.ucb.DataCache;
 import com.tboat.ucb.NavigationContext;
-import com.tboat.utilsclient.*;
+import com.tboat.utils.GsonUtils;
+import com.tboat.utilsclient.HeaderUtils;
+import com.tboat.utilsclient.ImageUtils;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -52,6 +55,8 @@ public class TrangChuController extends BaseController implements Initializable,
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
+
         // ── UCB: Cache-then-Network ──────────────────────────────────────────
         String screenKey = BaseController.toScreenKey("TrangChu.fxml"); // "TrangChuFxml"
         String cached    = DataCache.getInstance().get("LIST_AVAILABLE");
@@ -66,9 +71,13 @@ public class TrangChuController extends BaseController implements Initializable,
             NavigationContext.getInstance().reportCacheHit(screenKey, false);
             loadAuctions();
         }
+        // ────────────────────────────────────────────────────────────────────
+    }
 
+    @Override
+    public void onReload() {
         loadAuctions();
-        HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
+        log.info("Đã tải lại danh sách sản phẩm trang chủ!");
     }
 
     @Override
@@ -185,10 +194,13 @@ public class TrangChuController extends BaseController implements Initializable,
 
                         applyFilter();
                     }
+
+                    // Lọc và hiển thị ra màn hình theo Filter đang chọn (mặc định là Tất cả)
+                    applyFilter();
                 }
             } catch (Exception e) {
                 if (response.contains("{")) {
-                    logger.severe("❌ LỖI ĐỌC JSON TRANG CHỦ: " + response);
+                    logger.severe("LỖI ĐỌC JSON TRANG CHỦ: " + response);
                 }
             }
         });

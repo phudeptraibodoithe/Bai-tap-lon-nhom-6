@@ -105,47 +105,4 @@ public class CurrencyFormatter {
         });
     }
 
-    public static void setupCurrencySpinner(Spinner<Double> spinner, double initialValue, double step) {
-        SpinnerValueFactory.DoubleSpinnerValueFactory factory =
-                new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, initialValue, step);
-
-        // Tận dụng chính CurrencyStringConverter ở đây!
-        factory.setConverter(new CurrencyStringConverter());
-        spinner.setValueFactory(factory);
-        spinner.setEditable(true);
-
-        TextField editor = spinner.getEditor();
-
-        // 1. Format Real-time khi gõ
-        editor.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue == null || newValue.isEmpty()) return;
-            String digits = newValue.replaceAll("[^\\d]", "");
-            if (digits.isEmpty()) {
-                editor.setText("");
-                return;
-            }
-            try {
-                double value = Double.parseDouble(digits);
-                String formatted = formatDisplay(value);
-                Platform.runLater(() -> {
-                    int currentCaret = editor.getCaretPosition();
-                    int oldLength = editor.getText().length();
-                    editor.setText(formatted);
-                    int newLength = formatted.length();
-                    int selection = currentCaret + (newLength - oldLength);
-                    editor.positionCaret(Math.max(0, Math.min(selection, newLength - 4))); // -4 để né chữ " VNĐ"
-                });
-            } catch (NumberFormatException e) {
-                editor.setText(oldValue);
-            }
-        });
-
-        // 2. Tự động commit giá trị khi click ra ngoài (mất focus)
-        editor.focusedProperty().addListener((obs, oldVal, newVal) -> {
-            if (!newVal) {
-                Double value = new CurrencyStringConverter().fromString(editor.getText());
-                spinner.getValueFactory().setValue(value);
-            }
-        });
-    }
 }

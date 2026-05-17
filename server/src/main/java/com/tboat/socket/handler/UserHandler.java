@@ -22,9 +22,9 @@ public class UserHandler {
     public void getProfile() {
         User user = userDAO.getUser(context.getClientId());
         if (user != null) {
-            context.sendResponse(new Response<>("PROFILE_INFO", "Thông tin hồ sơ", user));
+            context.sendResponse(new Response<>("GET_PROFILE", "PROFILE_INFO", "Thông tin hồ sơ", user));
         } else {
-            context.sendResponse(new Response<>("ERROR", "Không tìm thấy người dùng", null));
+            context.sendResponse(new Response<>("GET_PROFILE", "ERROR", "Không tìm thấy người dùng", null));
         }
     }
 
@@ -37,6 +37,7 @@ public class UserHandler {
 
         boolean ok = userDAO.updateProfile(context.getClientId(), desc, avatar);
         context.sendResponse(new Response<>(
+                "UPDATE_PROFILE",
                 ok ? "SUCCESS" : "ERROR",
                 ok ? "Cập nhật thành công" : "Lỗi cập nhật",
                 null));
@@ -49,12 +50,13 @@ public class UserHandler {
         try (Connection conn = DatabaseConnection.getConnection()) {
             boolean ok = userDAO.updateBalance(conn, context.getClientId(), amount);
             context.sendResponse(new Response<>(
+                    "TRANSACTION",
                     ok ? "SUCCESS" : "FAILED",
                     ok ? "Giao dịch đã được xử lý!" : "Giao dịch bị từ chối (Số dư không đủ).",
                     ok ? amount : null));
         } catch (SQLException e) {
             log.error("Lỗi DB khi TRANSACTION [{}]: {}", context.getClientId(), e.getMessage(), e);
-            context.sendResponse(new Response<>("ERROR", "Lỗi kết nối cơ sở dữ liệu", null));
+            context.sendResponse(new Response<>("TRANSACTION", "ERROR", "Lỗi kết nối cơ sở dữ liệu", null));
         }
     }
 }

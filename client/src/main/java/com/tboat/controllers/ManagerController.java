@@ -1,15 +1,10 @@
 package com.tboat.controllers;
 
 import com.google.gson.*;
-import com.tboat.models.AuctionSession;
-import com.tboat.models.ItemFactory;
-import com.tboat.models.ItemFactoryProducer;
-import com.tboat.models.StatusOfAuction;
+import com.tboat.models.*;
 import com.tboat.socket.SocketListener;
-import com.tboat.socket.SocketManager;
 import com.tboat.ucb.DataCache;
 import com.tboat.ucb.NavigationContext;
-import com.tboat.utils.GsonUtils;
 import com.tboat.utilsclient.*;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -32,11 +27,9 @@ public class ManagerController extends BaseController implements Initializable, 
     private static final Logger logger = Logger.getLogger(ManagerController.class.getName());
     private final ObservableList<AuctionSession> listMyItems = FXCollections.observableArrayList();
 
-    // --- CONSTANTS CHO CSS STYLE ---
-    private static final String STYLE_BTN_EDIT = "-fx-background-color: #3498db; -fx-text-fill: white; -fx-cursor: hand;";
+    private static final String STYLE_BTN_EDIT   = "-fx-background-color: #3498db; -fx-text-fill: white; -fx-cursor: hand;";
     private static final String STYLE_BTN_CLOSED = "-fx-background-color: #bdc3c7; -fx-text-fill: white;";
 
-    // --- FXML FIELDS ---
     @FXML private TableView<AuctionSession> tableMyItems;
     @FXML private TableColumn<AuctionSession, Integer> colId;
     @FXML private TableColumn<AuctionSession, String> colName;
@@ -46,8 +39,6 @@ public class ManagerController extends BaseController implements Initializable, 
     @FXML private TableColumn<AuctionSession, Void> colAction;
     @FXML private Label lblGreeting;
     @FXML private ImageView userAvatar;
-
-    // ================== KHỞI TẠO & ĐIỀU PHỐI DỮ LIỆU ==================
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -64,15 +55,13 @@ public class ManagerController extends BaseController implements Initializable, 
             logger.info("[Manager] Cache HIT → Hiển thị giao diện ngay lập tức.");
             NavigationContext.getInstance().reportCacheHit(screenKey, true);
             renderMyAuctions(cachedData);
-            loadMyAuctions(); // Gửi yêu cầu cập nhật ngầm qua mạng
+            loadMyAuctions();
         } else {
             logger.info("[Manager] Cache MISS → Đợi dữ liệu từ mạng.");
             NavigationContext.getInstance().reportCacheHit(screenKey, false);
             loadMyAuctions();
         }
     }
-
-    // ================== CẤU HÌNH BẢNG JAVAFX (TABLEVIEW) ==================
 
     private void setupTableColumns() {
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
@@ -94,7 +83,6 @@ public class ManagerController extends BaseController implements Initializable, 
                 btn.setOnAction((ActionEvent event) -> {
                     AuctionSession data = getTableView().getItems().get(getIndex());
                     logger.info("Bạn vừa bấm vào sản phẩm để sửa: " + data.getName());
-
                     ControllerEditItem editController = changeSceneAndGetController((Node) event.getSource(), "editItem.fxml");
                     if (editController != null) {
                         editController.setEditData(data);
@@ -110,7 +98,6 @@ public class ManagerController extends BaseController implements Initializable, 
                 } else {
                     AuctionSession session = getTableRow().getItem();
                     StatusOfAuction status = session.getStatusOfAuction();
-
                     if (status == StatusOfAuction.ENDED || status == StatusOfAuction.CANCELED) {
                         btn.setDisable(true);
                         btn.setText("Đã đóng");
@@ -134,7 +121,6 @@ public class ManagerController extends BaseController implements Initializable, 
     private void renderMyAuctions(String response) {
         try {
             if (!"SUCCESS".equals(SocketHelper.getStatus(response))) return;
-
             JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
             if (!jsonResponse.has("payload") || !jsonResponse.get("payload").isJsonArray()) return;
 
@@ -144,11 +130,9 @@ public class ManagerController extends BaseController implements Initializable, 
             for (JsonElement element : myArray) {
                 try {
                     AuctionSession session = parseSingleAuctionSession(element.getAsJsonObject());
-                    if (session != null) {
-                        listMyItems.add(session);
-                    }
+                    if (session != null) listMyItems.add(session);
                 } catch (Exception e) {
-                    logger.warning("[Manager] Lỗi xử lý một phiên đấu giá: " + e.getMessage());
+                    logger.warning("[Manager] Lỗi xử lý một phiên: " + e.getMessage());
                 }
             }
         } catch (Exception e) {
@@ -157,25 +141,21 @@ public class ManagerController extends BaseController implements Initializable, 
     }
 
     private AuctionSession parseSingleAuctionSession(JsonObject dataObj) {
-        String type = getStringJson(dataObj, "type", "Khác");
-        String name = getStringJson(dataObj, "name", "No name");
-        double currentPrice = getDoubleJson(dataObj, "currentPrice", 0.0);
-        double bidIncrease = getDoubleJson(dataObj, "bidIncrease", 0.0);
+        String type          = getStringJson(dataObj, "type", "Khác");
+        String name          = getStringJson(dataObj, "name", "");
+        String description   = getStringJson(dataObj, "description", "");
+        String imageURL      = getStringJson(dataObj, "imageURL", "");
         String sellerAccount = getStringJson(dataObj, "sellerAccountName", "");
-        String description = getStringJson(dataObj, "description", "");
-        String imageURL = getStringJson(dataObj, "imageURL", "");
+        double currentPrice  = getDoubleJson(dataObj, "currentPrice", 0.0);
+        double bidIncrease   = getDoubleJson(dataObj, "bidIncrease", 0.0);
 
-        LocalDateTime startTime = dataObj.has("startTime") ? TimeUtils.parseServerTime(dataObj.get("startTime")) : null;
-        if (startTime == null) startTime = LocalDateTime.now();
-
-        LocalDateTime endTime = dataObj.has("endTime") ? TimeUtils.parseServerTime(dataObj.get("endTime")) : null;
-        if (endTime == null) endTime = LocalDateTime.now().plusDays(1);
+        LocalDateTime startTime = dataObj.has("startTime") ? TimeUtils.parseServerTime(dataObj.get("startTime")) : LocalDateTime.now();
+        LocalDateTime endTime   = dataObj.has("endTime")   ? TimeUtils.parseServerTime(dataObj.get("endTime"))   : LocalDateTime.now().plusDays(1);
 
         ItemFactory factory = ItemFactoryProducer.getFactory(type);
-        AuctionSession session = new AuctionSession(
-                startTime, endTime, currentPrice, bidIncrease,
-                factory.createItem()
-        );
+        Item item = factory.createItem(sellerAccount, name, description, imageURL);
+
+        AuctionSession session = new AuctionSession(startTime, endTime, currentPrice, bidIncrease, item);
         session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
 
         String statusStr = getStringJson(dataObj, "statusOfAuction", "ONGOING");
@@ -184,28 +164,22 @@ public class ManagerController extends BaseController implements Initializable, 
         } catch (Exception ignored) {
             session.setStatusOfAuction(StatusOfAuction.ONGOING);
         }
-
         return session;
     }
 
-
-    // Sửa handleServerResponse → gọi renderMyAuctions
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                String status = SocketHelper.getStatus(response);
+                if (!"GET_MY_AUCTIONS".equals(SocketHelper.getType(response))) return;
 
-                if ("SUCCESS".equals(status)) {
-                    JsonObject json = JsonParser.parseString(response).getAsJsonObject();
-
-                    if (json.has("payload") && json.get("payload").isJsonArray()) {
-                        DataCache.getInstance().put("GET_MY_AUCTIONS", response);
-                        renderMyAuctions(response);
-                    }
+                if ("SUCCESS".equals(SocketHelper.getStatus(response))
+                        && SocketHelper.getPayloadArray(response) != null) {
+                    DataCache.getInstance().put("GET_MY_AUCTIONS", response);
+                    renderMyAuctions(response);
                 }
             } catch (Exception e) {
-                logger.warning("[Manager] Lỗi xử lý phản hồi máy chủ: " + e.getMessage());
+                logger.warning("[Manager] Lỗi xử lý phản hồi: " + e.getMessage());
             }
         });
     }

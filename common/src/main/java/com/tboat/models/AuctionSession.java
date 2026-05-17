@@ -40,13 +40,6 @@ public class AuctionSession {
         updateStatusBasedOnTime();
     }
 
-    public AuctionSession(int id, String name, double currentPrice, double bidIncrease,String sellerAccountName){
-        this.id = id;
-        this.currentPrice = currentPrice;
-        this.bidIncrease = bidIncrease;
-        this.item.setSellerAccountName(sellerAccountName);
-        this.item.setName(name);
-    }
     public void updateStatusBasedOnTime() {
         if (this.startTime == null || this.endTime == null) {
             return;

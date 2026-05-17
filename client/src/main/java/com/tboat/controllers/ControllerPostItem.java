@@ -3,7 +3,6 @@ package com.tboat.controllers;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
-import com.tboat.socket.SocketManager;
 import com.tboat.utilsclient.*;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -14,10 +13,6 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.shape.Rectangle;
-import javafx.stage.FileChooser;
-import javafx.stage.Stage;
-
 import java.io.File;
 import java.net.URL;
 import java.time.LocalDateTime;
@@ -127,13 +122,15 @@ public class ControllerPostItem extends BaseController implements Initializable,
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                String status = SocketHelper.getStatus(response);
+                if (!"POST_ITEM".equals(SocketHelper.getType(response))) return;
+
+                String status  = SocketHelper.getStatus(response);
                 String message = SocketHelper.getMessage(response);
 
-                if ("SUCCESS".equals(status) && message.contains("Đăng sản phẩm")) {
+                if ("SUCCESS".equals(status)) {
                     JsonObject json = JsonParser.parseString(response).getAsJsonObject();
-                    String id = json.has("payload") && !json.get("payload").isJsonNull() ? json.get("payload").getAsString() : "N/A";
-
+                    String id = json.has("payload") && !json.get("payload").isJsonNull()
+                            ? json.get("payload").getAsString() : "N/A";
                     AlertUtils.showStatus(thongbao, "Đăng bán thành công! ID Phiên: " + id, STYLE_SUCCESS);
                     AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Thành công", "Đăng sản phẩm thành công!");
                     changeScene(thongbao, "trangchu.fxml");

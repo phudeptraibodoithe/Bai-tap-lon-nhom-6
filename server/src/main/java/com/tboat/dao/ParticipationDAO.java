@@ -39,6 +39,7 @@ public class ParticipationDAO {
             ps.setString(1, p.getAccountName());
             ps.setInt(2, p.getAuctionSessionId());
             ps.setString(3, p.getRoleType());
+            ps.executeUpdate();
         } catch (SQLException e) {
             logger.error("Lỗi khi thêm Participation: ", e);
         }

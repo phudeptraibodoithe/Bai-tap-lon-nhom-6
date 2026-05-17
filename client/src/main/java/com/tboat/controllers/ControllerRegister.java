@@ -67,7 +67,8 @@ public class ControllerRegister extends BaseController implements SocketListener
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                // 👉 Sử dụng Utils đọc trạng thái siêu nhanh
+                if (!"REGISTER".equals(SocketHelper.getType(response))) return;
+
                 String status = SocketHelper.getStatus(response);
                 String message = SocketHelper.getMessage(response);
 

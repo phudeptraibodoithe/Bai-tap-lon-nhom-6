@@ -53,7 +53,7 @@ public class CommandDispatcher {
 
             // Kiểm tra auth trước khi xử lý
             if (!PUBLIC_ACTIONS.contains(action) && context.isGuest()) {
-                context.sendResponse(new Response<>("ERROR", "Vui lòng đăng nhập", null));
+                context.sendResponse(new Response<>("AUTH_ERROR", "ERROR", "Vui lòng đăng nhập", null));
                 return action;
             }
 
@@ -61,7 +61,7 @@ public class CommandDispatcher {
 
         } catch (Exception e) {
             log.error("Lỗi dispatch cho client {}: {}", context.getClientId(), e.getMessage(), e);
-            context.sendResponse(new Response<>("ERROR", "Lỗi xử lý yêu cầu", null));
+            context.sendResponse(new Response<>("ERROR_DISPATCH", "ERROR", "Lỗi xử lý yêu cầu", null));
         }
         return action;
     }
@@ -96,8 +96,8 @@ public class CommandDispatcher {
             case "GET_MY_AUCTIONS" -> historyHandler.getMyAuctions();
             case "GET_SESSION_BIDS"-> historyHandler.getSessionBids(raw);
 
-            default -> context.sendResponse(
-                new Response<>("ERROR", "Lệnh không xác định: " + action, null));
+            default -> context.sendResponse(new Response<>("UNKNOWN", "ERROR", "Lệnh không xác định: " + action, null));
+
         }
     }
 }

@@ -271,22 +271,29 @@ public class AuctionController extends BaseController implements SocketListener 
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                // Sử dụng SocketResponseHelper để code gọn hơn
-                String status = SocketHelper.getStatus(response);
+                String type    = SocketHelper.getType(response);
+                String status  = SocketHelper.getStatus(response);
                 String message = SocketHelper.getMessage(response);
 
-                // Vẫn parse Object gốc để lấy payload cho tiện
-                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+                boolean isBroadcast  = "NEW_BID".equals(status) || "AUCTION_STARTED".equals(status)
+                        || "AUCTION_FINISHED".equals(status) || "TIME_EXTENDED".equals(status)
+                        || "SERVER_READY".equals(status);
+                boolean isMyResponse = "JOIN".equals(type) || "BID".equals(type)
+                        || "GET_SESSION_BIDS".equals(type) || "CANCEL_AUCTION".equals(type);
 
+                if (!isBroadcast && !isMyResponse) return;
+
+                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
                 switch (status) {
-                    case "AUCTION_STARTED" -> handleAuctionStarted(message);
+                    case "AUCTION_STARTED"  -> handleAuctionStarted(message);
                     case "NEW_BID"          -> handleNewBid(jsonResponse.getAsJsonObject("payload"));
                     case "SUCCESS"          -> handleSuccessMessage(jsonResponse, message);
                     case "JOIN_SUCCESS"     -> handleJoinSuccess(jsonResponse);
                     case "TIME_EXTENDED"    -> AlertUtils.showAlert(Alert.AlertType.WARNING, "Đấu giá kịch tính!", message);
-                    case "AUCTION_FINISHED" -> handleAuctionFinished(jsonResponse, message); // Nhớ đổi hàm showAlert trong handleAuctionFinished thành AlertUtils luôn nhé
+                    case "AUCTION_FINISHED" -> handleAuctionFinished(jsonResponse, message);
                     case "FAILED"           -> handleFailedMessage(jsonResponse, message);
-                    case "ERROR" -> AlertUtils.showStatus(lblNotification, "⚠️ " + message, STYLE_ERROR);                    case "SERVER_READY"     -> {}
+                    case "ERROR"            -> AlertUtils.showStatus(lblNotification, "⚠️ " + message, STYLE_ERROR);
+                    case "SERVER_READY"     -> {}
                     default -> log.warn("Không xử lý được status: {}", status);
                 }
             } catch (Exception e) {

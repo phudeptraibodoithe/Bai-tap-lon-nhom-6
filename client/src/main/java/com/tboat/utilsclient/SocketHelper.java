@@ -1,5 +1,6 @@
 package com.tboat.utilsclient;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -46,6 +47,40 @@ public class SocketHelper {
         }
 
         SocketManager.getInstance().send(GsonUtils.getInstance().toJson(request));
+    }
+
+    public static String getType(String jsonResponse) {
+        try {
+            JsonObject obj = JsonParser.parseString(jsonResponse).getAsJsonObject();
+            return obj.has("type") ? obj.get("type").getAsString() : "";
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    public static JsonArray getPayloadArray(String jsonResponse) {
+        try {
+            JsonObject obj = JsonParser.parseString(jsonResponse).getAsJsonObject();
+            if (obj.has("payload") && obj.get("payload").isJsonArray()) {
+                return obj.getAsJsonArray("payload");
+            }
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public static JsonObject getPayloadObject(String jsonResponse) {
+        try {
+            JsonObject obj = JsonParser.parseString(jsonResponse).getAsJsonObject();
+            if (obj.has("payload") && !obj.get("payload").isJsonNull()
+                    && obj.get("payload").isJsonObject()) {
+                return obj.getAsJsonObject("payload");
+            }
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // Hàm Overload cho các request không cần payload (như PROFILE, LOGOUT)

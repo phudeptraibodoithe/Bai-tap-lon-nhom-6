@@ -41,8 +41,8 @@ public class ClientHandler implements Runnable {
             // Gắn output vào context để các handler có thể gửi response
             context.setOut(out);
 
-            sendResponse(new Response<>("SERVER_READY",
-                "Chào mừng bạn đến với hệ thống đấu giá TBoat!", null));
+            sendResponse(new Response<>("SERVER_READY", "SUCCESS",
+                    "Chào mừng bạn đến với hệ thống đấu giá TBoat!", null));
 
             String line;
             while ((line = in.readLine()) != null) {

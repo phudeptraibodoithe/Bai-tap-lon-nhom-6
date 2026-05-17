@@ -69,60 +69,50 @@ public class ControllerHistory extends BaseController implements Initializable, 
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                String status = SocketHelper.getStatus(response);
-                if (!"SUCCESS".equals(status)) return;
+                if (!"GET_HISTORY".equals(SocketHelper.getType(response))) return;
+                if (!"SUCCESS".equals(SocketHelper.getStatus(response))) return;
 
-                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                if (!jsonResponse.has("payload") || jsonResponse.get("payload").isJsonNull()) return;
+                JsonArray historyArray = SocketHelper.getPayloadArray(response);
+                if (historyArray == null) return;
 
-                JsonArray historyArray = jsonResponse.getAsJsonArray("payload");
                 lichsu.getChildren().clear();
                 String me = UserSession.getInstance().getUsername();
 
                 for (JsonElement element : historyArray) {
                     JsonObject dataObj = element.getAsJsonObject();
 
-                    String name = getStringSafe(dataObj, "name", "N/A");
-                    String id = getStringSafe(dataObj, "auctionSessionId", "0");
-                    String role = getStringSafe(dataObj, "roleType", "BIDDER");
+                    String name   = getStringSafe(dataObj, "name", "N/A");
+                    String id     = getStringSafe(dataObj, "auctionSessionId", "0");
+                    String role   = getStringSafe(dataObj, "roleType", "BIDDER");
                     String winner = (dataObj.has("winnerAccountName") && !dataObj.get("winnerAccountName").isJsonNull())
                             ? dataObj.get("winnerAccountName").getAsString() : null;
                     double finalPrice = dataObj.has("finalPrice") ? dataObj.get("finalPrice").getAsDouble() : 0.0;
 
-                    String statusText;
-                    String moneyDisplay;
-                    String colorStatus;
+                    String statusText, moneyDisplay, colorStatus;
 
                     if ("SELLER".equalsIgnoreCase(role)) {
-                        // --- GÓC NHÌN NGƯỜI BÁN ---
                         name = "[BÁN] " + name;
                         if (winner == null) {
-                            statusText = "Đang rao bán";
-                            moneyDisplay = "0 VNĐ";
-                            colorStatus = "#f39c12"; // Cam
+                            statusText = "Đang rao bán"; moneyDisplay = "0 VNĐ"; colorStatus = "#f39c12";
                         } else {
                             statusText = "Đã bán";
                             moneyDisplay = "+" + CurrencyFormatter.formatDisplay(finalPrice * PAYOUT_RATE);
-                            colorStatus = "#27ae60"; // Xanh
+                            colorStatus = "#27ae60";
                         }
                     } else {
-                        // --- GÓC NHÌN NGƯỜI MUA ---
                         name = "[MUA] " + name;
                         if (winner == null) {
-                            statusText = "Đang diễn ra";
-                            moneyDisplay = "0 VNĐ";
-                            colorStatus = "#f39c12"; // Cam
+                            statusText = "Đang diễn ra"; moneyDisplay = "0 VNĐ"; colorStatus = "#f39c12";
                         } else if (me.equalsIgnoreCase(winner)) {
                             statusText = "Thành công";
                             moneyDisplay = "-" + CurrencyFormatter.formatDisplay(finalPrice);
-                            colorStatus = "#27ae60"; // Xanh
+                            colorStatus = "#27ae60";
                         } else {
                             statusText = "Thất bại";
-                            moneyDisplay = CurrencyFormatter.formatDisplay(finalPrice); // Hiện giá kết thúc của phiên
-                            colorStatus = "#e74c3c"; // Đỏ
+                            moneyDisplay = CurrencyFormatter.formatDisplay(finalPrice);
+                            colorStatus = "#e74c3c";
                         }
                     }
-
                     lichsu.getChildren().add(createHistoryRow(name, "ID: " + id, statusText, moneyDisplay, colorStatus));
                 }
             } catch (Exception e) {

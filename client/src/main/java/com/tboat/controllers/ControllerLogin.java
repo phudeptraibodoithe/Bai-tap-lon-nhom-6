@@ -51,6 +51,8 @@ public class ControllerLogin extends BaseController implements SocketListener {
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
+                if (!"LOGIN".equals(SocketHelper.getType(response))) return;
+
                 String status = SocketHelper.getStatus(response);
                 String message = SocketHelper.getMessage(response);
 
@@ -68,9 +70,9 @@ public class ControllerLogin extends BaseController implements SocketListener {
                         User loggedUser = new User(signText.getText(), null, nickname, balance, description, avatarURL);
                         UserSession.getInstance().createUserSession(loggedUser);
                         if ("admin".equalsIgnoreCase(signText.getText().trim()) || "ADMIN".equalsIgnoreCase(role)) {
-                            changeScene(err, "admin.fxml");
+                            changeScene(signText, "admin.fxml");
                         } else {
-                            changeScene(err, "TrangChu.fxml");
+                            changeScene(signText, "TrangChu.fxml");
                         }
                     }
                 } else if ("FAILED".equals(status) || "ERROR".equals(status)) {

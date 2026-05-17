@@ -40,9 +40,10 @@ public class HistoryDAO {
     public List<Map<String, Object>> getHistoryByAccount(String accountName) {
         List<Map<String, Object>> list = new ArrayList<>();
         // Thêm p.roleType vào câu SELECT
-        String sql = "SELECT p.auctionSessionId, p.roleType, s.name, h.winnerAccountName, h.finalPrice " +
+        String sql = "SELECT p.auctionSessionId, p.roleType, i.name, h.winnerAccountName, h.finalPrice " +
                 "FROM participation p " +
                 "JOIN auction_session s ON p.auctionSessionId = s.id " +
+                "JOIN item i ON s.itemId = i.id " +          // ← THÊM dòng này
                 "LEFT JOIN history h ON p.auctionSessionId = h.auctionSessionId " +
                 "WHERE p.accountName = ? " +
                 "ORDER BY h.completedAt DESC";

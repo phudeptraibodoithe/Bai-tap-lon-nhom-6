@@ -75,13 +75,16 @@ public class AdminController extends BaseController implements Initializable, So
     private void renderPendingItems(String response) {
         try {
             JsonObject json = JsonParser.parseString(response).getAsJsonObject();
-            String message  = json.has("message") ? json.get("message").getAsString() : "";
-            if ("Danh sách chờ duyệt".equals(message)) {
-                sessionList.clear();
-                Type listType = new TypeToken<ArrayList<AuctionSession>>(){}.getType();
-                List<AuctionSession> items = gson.fromJson(json.get("payload"), listType);
-                if (items != null) sessionList.addAll(items);
-            }
+
+            // FILTER bằng type thay vì message cho chắc
+            String type = json.has("type") ? json.get("type").getAsString() : "";
+            if (!"GET_PENDING_ITEMS".equals(type)) return;
+
+            sessionList.clear();
+            Type listType = new TypeToken<ArrayList<AuctionSession>>(){}.getType();
+            List<AuctionSession> items = gson.fromJson(json.get("payload"), listType);
+            if (items != null) sessionList.addAll(items);
+
         } catch (Exception e) {
             log.warning("[Admin] Lỗi render: " + e.getMessage());
         }
@@ -134,11 +137,9 @@ public class AdminController extends BaseController implements Initializable, So
             }
         });
     }
-
     public void switchToAdminNapRut(ActionEvent event) {
         changeScene((Node) event.getSource(), "adminNapRut.fxml");
     }
-
     public void logout(ActionEvent e) {
         if (AlertUtils.showConfirmation("Xác nhận đăng xuất", "Bạn có chắc chắn muốn đăng xuất không?")) {
             SocketHelper.sendRequest("LOGOUT", null);
@@ -151,19 +152,22 @@ public class AdminController extends BaseController implements Initializable, So
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                String status = SocketHelper.getStatus(response);
+                String type    = SocketHelper.getType(response);
+                String status  = SocketHelper.getStatus(response);
                 String message = SocketHelper.getMessage(response);
-                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+
+                boolean isBroadcast  = "NEW_PENDING_ITEM".equals(status) || "NEW_ITEM".equals(status);
+                boolean isMyResponse = "GET_PENDING_ITEMS".equals(type) || "APPROVE_ITEM".equals(type)
+                        || "REJECT_ITEM".equals(type) || "LOGOUT".equals(type);
+
+                if (!isBroadcast && !isMyResponse) return;
 
                 switch (status) {
-                    case "SUCCESS" -> handleSuccessCase(jsonResponse, message);
-
-                    // ĐÂY CHÍNH LÀ CHỖ GIÚP BẢNG "LUÔN LẮNG NGHE" VÀ TỰ CẬP NHẬT
+                    case "SUCCESS" -> handleSuccessCase(JsonParser.parseString(response).getAsJsonObject(), message);
                     case "NEW_PENDING_ITEM", "NEW_ITEM" -> {
                         loadPendingItems();
                         AlertUtils.showStatus(err, "Có người dùng vừa đăng sản phẩm mới! Đã tự động cập nhật.", "#9b59b6");
                     }
-
                     case "ERROR" -> AlertUtils.showStatus(err, "Lỗi: " + message, "red");
                 }
             } catch (Exception e) {

@@ -1,4 +1,3 @@
-
 package com.tboat.socket.handler;
 
 import com.google.gson.reflect.TypeToken;
@@ -27,9 +26,9 @@ public class AuthHandler {
         if (res == ResponseCode.SUCCESS) {
             context.setClientId(creds.getAccountName());
             User fullUser = userDAO.getUser(context.getClientId());
-            context.sendResponse(new Response<>("SUCCESS", "Đăng nhập thành công", fullUser));
+            context.sendResponse(new Response<>("LOGIN", "SUCCESS", "Đăng nhập thành công", fullUser));
         } else {
-            context.sendResponse(new Response<>("FAILED", res.name(), null));
+            context.sendResponse(new Response<>("LOGIN", "FAILED", res.name(), null));
         }
     }
 
@@ -39,10 +38,12 @@ public class AuthHandler {
         User user = req.getPayload();
 
         ResponseCode res = userManager.register(
-            user.getAccountName(), user.getPassword(), user.getNickname());
+                user.getAccountName(), user.getPassword(), user.getNickname());
 
         context.sendResponse(new Response<>(
-            res == ResponseCode.SUCCESS ? "SUCCESS" : "FAILED", res.name(), null));
+                "REGISTER",
+                res == ResponseCode.SUCCESS ? "SUCCESS" : "FAILED",
+                res.name(), null));
     }
 
     public void logout() {
@@ -51,6 +52,6 @@ public class AuthHandler {
         if (context.getCurrentRoom() != null)
             context.getCurrentRoom().removeSubscriber(context);
         context.setCurrentRoom(null);
-        context.sendResponse(new Response<>("SUCCESS", "Đã đăng xuất", null));
+        context.sendResponse(new Response<>("LOGOUT", "SUCCESS", "Đã đăng xuất", null));
     }
 }

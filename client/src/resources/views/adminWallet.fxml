@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import java.net.URL?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
@@ -12,87 +13,82 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox minHeight="650.0" minWidth="950.0" prefHeight="650.0" prefWidth="950.0" style="-fx-background-color: #f4f7f6;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.AdminWalletController">
+<VBox maxHeight="Infinity" maxWidth="Infinity" prefHeight="700.0" prefWidth="1000.0" styleClass="admin-root" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.AdminWalletController">
+
+    <stylesheets>
+        <URL value="@../styles/application.css" />
+    </stylesheets>
+
     <children>
-        <HBox alignment="CENTER_LEFT" minWidth="-Infinity" prefHeight="70.0" spacing="20.0" style="-fx-background-color: #2c3e50; -fx-border-color: #1a252f; -fx-border-width: 0 0 1 0;">
+        <HBox alignment="CENTER_LEFT" prefHeight="60.0" spacing="20.0" styleClass="admin-header">
             <padding>
-                <Insets left="30.0" right="30.0" />
+                <Insets left="20.0" right="20.0" />
             </padding>
             <children>
-                <ImageView fitHeight="59.0" fitWidth="129.0" pickOnBounds="true" preserveRatio="true">
-                    <image>
-                        <Image url="@../images/logo.png" />
-                    </image>
-                </ImageView>
+                <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;">
+                    <graphic>
+                        <ImageView fitHeight="59.0" fitWidth="129.0" pickOnBounds="true" preserveRatio="true">
+                            <image>
+                                <Image url="@../images/logo.png" />
+                            </image>
+                        </ImageView>
+                    </graphic>
+                </Button>
 
-                <!-- GOM 2 TAB CÒN LẠI VÀO HBOX ĐỂ CHỐNG VỠ GIAO DIỆN -->
                 <HBox alignment="CENTER_LEFT" minWidth="-Infinity" spacing="10.0">
                     <children>
-                        <!-- Tab Quản Trị (Không active) -->
-                        <Button mnemonicParsing="false" onAction="#switchToAdmin" style="-fx-background-color: transparent; -fx-background-radius: 8; -fx-padding: 8 18; -fx-cursor: hand;" text="HỆ THỐNG QUẢN TRỊ" textFill="WHITE">
+                        <Button mnemonicParsing="false" onAction="#switchToAdmin" styleClass="btn-admin-nav" text="HỆ THỐNG QUẢN TRỊ" textFill="WHITE">
                             <font><Font name="System Bold" size="14.0" /></font>
                         </Button>
-                        <!-- Tab Số Dư (Active - màu xanh dương) -->
-                        <Button mnemonicParsing="false" onAction="#switchToWalletAdmin" style="-fx-background-radius: 8; -fx-background-color: transparent; -fx-padding: 8 18; -fx-cursor: hand;" text="QUẢN LÝ SỐ DƯ" textFill="WHITE">
+                        <Button mnemonicParsing="false" styleClass="btn-admin-nav" text="QUẢN LÝ SỐ DƯ" textFill="WHITE">
                             <font><Font name="System Bold" size="14.0" /></font>
                         </Button>
                     </children>
                     <HBox.margin><Insets left="15.0" /></HBox.margin>
                 </HBox>
 
-                <!-- Đẩy nội dung sang 2 bên -->
                 <Region HBox.hgrow="ALWAYS" />
 
-                <!-- LỜI CHÀO & NÚT ĐĂNG XUẤT -->
                 <HBox alignment="CENTER_RIGHT" minWidth="-Infinity" spacing="15.0">
                     <children>
                         <Label text="Xin chào, Admin!" textFill="WHITE">
                             <font><Font name="System Bold" size="14.0" /></font>
                         </Label>
-                        <Button mnemonicParsing="false" onAction="#logout" prefHeight="27.0" prefWidth="89.0" style="-fx-background-color: #e74c3c; -fx-background-radius: 5; -fx-cursor: hand; -fx-padding: 6 15;" text="Đăng xuất" textFill="WHITE">
-                            <font>
-                                <Font name="System Bold" size="12.0" />
-                            </font>
+                        <Button mnemonicParsing="false" onAction="#logout" styleClass="btn-logout" text="Đăng xuất" textFill="WHITE">
+                            <font><Font name="System Bold" size="12.0" /></font>
                         </Button>
                     </children>
                 </HBox>
             </children>
         </HBox>
 
-        <!-- PHẦN NỘI DUNG CHÍNH (GIỮ NGUYÊN LOGIC CỦA USER) -->
-        <VBox alignment="CENTER" VBox.vgrow="ALWAYS">
+        <VBox alignment="CENTER" VBox.vgrow="ALWAYS" maxWidth="Infinity" maxHeight="Infinity">
+            <padding>
+                <Insets bottom="30.0" left="40.0" right="40.0" top="30.0" />
+            </padding>
             <children>
-                <HBox maxWidth="750.0" minWidth="750.0" spacing="40.0" style="-fx-background-color: white; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 15, 0, 0, 5);">
+                <HBox spacing="40.0" styleClass="wallet-card" VBox.vgrow="ALWAYS" maxWidth="1000.0" maxHeight="500.0">
                     <padding>
-                        <Insets bottom="40.0" left="40.0" right="40.0" top="40.0" />
+                        <Insets bottom="40.0" left="50.0" right="50.0" top="40.0" />
                     </padding>
                     <children>
 
-                        <!-- CỘT TRÁI: THÔNG TIN VÍ -->
-                        <VBox prefWidth="300.0" spacing="20.0">
+                        <VBox spacing="20.0" HBox.hgrow="ALWAYS">
                             <children>
                                 <Label text="SỐ DƯ">
-                                    <font>
-                                        <Font name="System Bold" size="22.0" />
-                                    </font>
+                                    <font><Font name="System Bold" size="22.0" /></font>
                                 </Label>
 
-                                <VBox alignment="CENTER" prefHeight="130.0" spacing="10.0" style="-fx-background-color: #e8f5e9; -fx-background-radius: 10; -fx-border-color: #c8e6c9; -fx-border-radius: 10;">
+                                <VBox alignment="CENTER" prefHeight="130.0" spacing="10.0" styleClass="balance-box" VBox.vgrow="ALWAYS">
                                     <children>
                                         <Label text="Số dư khả dụng" textFill="#2e7d32">
-                                            <font>
-                                                <Font size="15.0" />
-                                            </font>
+                                            <font><Font size="15.0" /></font>
                                         </Label>
                                         <Label fx:id="lblBalance" text="0" textFill="#1b5e20">
-                                            <font>
-                                                <Font name="System Bold" size="32.0" />
-                                            </font>
+                                            <font><Font name="System Bold" size="32.0" /></font>
                                         </Label>
                                         <Label text="VNĐ" textFill="#2e7d32">
-                                            <font>
-                                                <Font name="System Bold" size="14.0" />
-                                            </font>
+                                            <font><Font name="System Bold" size="14.0" /></font>
                                         </Label>
                                     </children>
                                 </VBox>
@@ -101,26 +97,19 @@
 
                         <Pane prefWidth="1.0" style="-fx-background-color: #eeeeee;" />
 
-                        <!-- CỘT PHẢI: TẠO GIAO DỊCH -->
-                        <VBox prefWidth="320.0" spacing="18.0">
+                        <VBox spacing="18.0" HBox.hgrow="ALWAYS">
                             <children>
                                 <Label text="Lệnh Giao Dịch">
-                                    <font>
-                                        <Font name="System Bold" size="22.0" />
-                                    </font>
+                                    <font><Font name="System Bold" size="22.0" /></font>
                                 </Label>
 
                                 <HBox spacing="10.0">
                                     <children>
-                                        <Button fx:id="btnTabDeposit" mnemonicParsing="false" prefHeight="45.0" prefWidth="155.0" style="-fx-background-color: #4CAF50; -fx-background-radius: 5; -fx-cursor: hand;" text="Nạp Tiền" textFill="WHITE">
-                                            <font>
-                                                <Font name="System Bold" size="15.0" />
-                                            </font>
+                                        <Button fx:id="btnTabDeposit" mnemonicParsing="false" prefHeight="45.0" styleClass="tab-btn-active-deposit" text="Nạp Tiền" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                                            <font><Font name="System Bold" size="15.0" /></font>
                                         </Button>
-                                        <Button fx:id="btnTabWithdraw" mnemonicParsing="false" prefHeight="45.0" prefWidth="155.0" style="-fx-background-color: transparent; -fx-border-color: #cccccc; -fx-border-radius: 5; -fx-cursor: hand;" text="Rút Tiền" textFill="#666666">
-                                            <font>
-                                                <Font name="System Bold" size="15.0" />
-                                            </font>
+                                        <Button fx:id="btnTabWithdraw" mnemonicParsing="false" prefHeight="45.0" styleClass="tab-btn-inactive" text="Rút Tiền" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                                            <font><Font name="System Bold" size="15.0" /></font>
                                         </Button>
                                     </children>
                                 </HBox>
@@ -141,17 +130,14 @@
 
                                 <Region VBox.vgrow="ALWAYS" />
 
-                                <Button fx:id="btnSubmit" mnemonicParsing="false" prefHeight="50.0" prefWidth="320.0" style="-fx-background-color: #2c3e50; -fx-background-radius: 5; -fx-cursor: hand;" text="XÁC NHẬN GIAO DỊCH" textFill="WHITE">
-                                    <font>
-                                        <Font name="System Bold" size="16.0" />
-                                    </font>
+                                <Button fx:id="btnSubmit" mnemonicParsing="false" prefHeight="50.0" styleClass="btn-submit-deposit" text="XÁC NHẬN NẠP TIỀN" maxWidth="Infinity">
+                                    <font><Font name="System Bold" size="16.0" /></font>
                                 </Button>
                             </children>
                         </VBox>
 
                     </children>
                 </HBox>
-                <Region prefHeight="36.0" prefWidth="950.0" />
             </children>
         </VBox>
     </children>

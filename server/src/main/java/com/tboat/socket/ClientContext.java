@@ -56,7 +56,7 @@ public class ClientContext {
     }
 
     public synchronized void sendSystemMessage(String action, String message, Object payload) {
-        sendResponse(new Response<>(action, message, payload));
+        sendResponse(new Response<>(action, "SYSTEM", message, payload));
     }
 
     /** Tiện ích parse JSON — dùng chung trong tất cả Handler */

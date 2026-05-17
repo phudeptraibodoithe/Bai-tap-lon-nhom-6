@@ -25,11 +25,11 @@ public abstract class BaseController {
 
     // ── Track màn hình hiện tại (static = share toàn app) ────────────────────
     private static String currentScreenKey = null;
-
     public void changeScene(Node node, String fxmlFileName) {
         // [Cũ] Hủy socket của màn hình hiện tại
         if (this instanceof SocketListener) {
             ((SocketListener) this).unregisterSocket();
+            log.info("[System] Đã hủy Socket: " + this.getClass().getSimpleName());
         }
 
         try {
@@ -39,6 +39,7 @@ public abstract class BaseController {
             Object nextController = loader.getController();
             if (nextController instanceof SocketListener) {
                 ((SocketListener) nextController).registerSocket();
+                log.info("[System] Đã đăng ký Socket: " + nextController.getClass().getSimpleName());
             }
 
             scene = node.getScene();
@@ -47,16 +48,11 @@ public abstract class BaseController {
                     getClass().getResource("/styles/Button.css").toExternalForm());
             scene.setRoot(root);
 
+            // [UCB] Ghi nhận navigate + trigger prefetch
+            trackNavigation(fxmlFileName);
+
         } catch (Exception e) {
             log.severe("[System] Lỗi chuyển scene → " + fxmlFileName + ": " + e.getMessage());
-            return; // ← Dừng lại, không chạy UCB nếu navigate thất bại
-        }
-
-        // UCB tracking tách ra try-catch RIÊNG — lỗi UCB KHÔNG được phá navigation
-        try {
-            trackNavigation(fxmlFileName);
-        } catch (Exception e) {
-            log.warning("[UCB] trackNavigation lỗi (không ảnh hưởng UI): " + e.getMessage());
         }
     }
 
@@ -66,16 +62,17 @@ public abstract class BaseController {
     public <T> T changeSceneAndGetController(Node node, String fxmlFileName) {
         if (this instanceof SocketListener) {
             ((SocketListener) this).unregisterSocket();
+            log.info("[System] Đã hủy Socket: " + this.getClass().getSimpleName());
         }
 
-        T nextController = null;
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/" + fxmlFileName));
             root = loader.load();
 
-            nextController = loader.getController();
+            T nextController = loader.getController();
             if (nextController instanceof SocketListener) {
                 ((SocketListener) nextController).registerSocket();
+                log.info("[System] Đã đăng ký Socket: " + nextController.getClass().getSimpleName());
             }
 
             scene = node.getScene();
@@ -84,21 +81,16 @@ public abstract class BaseController {
                     getClass().getResource("/styles/Button.css").toExternalForm());
             scene.setRoot(root);
 
+            // [UCB] Ghi nhận navigate + trigger prefetch
+            trackNavigation(fxmlFileName);
+
+            return nextController;
+
         } catch (Exception e) {
             log.severe("[System] Lỗi chuyển scene → " + fxmlFileName + ": " + e.getMessage());
             return null;
         }
-
-        // UCB riêng — không phá navigate
-        try {
-            trackNavigation(fxmlFileName);
-        } catch (Exception e) {
-            log.warning("[UCB] trackNavigation lỗi (không ảnh hưởng UI): " + e.getMessage());
-        }
-
-        return nextController;
     }
-
 
     // ─────────────────────────────────────────────────────────────────────────
     // UCB: Hàm trung tâm — gọi sau mỗi lần navigate thành công
@@ -135,11 +127,16 @@ public abstract class BaseController {
         return currentScreenKey;
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Các method cũ — GIỮ NGUYÊN 100%
+    // ─────────────────────────────────────────────────────────────────────────
     public void onReload() {
         log.info("Trang này chưa có dữ liệu động cần làm mới.");
     }
 
-    @FXML public void handleReloadClick(ActionEvent event) { onReload(); }
+    @FXML
+    public void handleReloadClick(ActionEvent event) { onReload(); }
+
     @FXML public void switchToMenu(Event event)         { changeScene((Node) event.getSource(), "TrangChu.fxml"); }
     @FXML public void switchToHistory(ActionEvent e)    { changeScene((Node) e.getSource(), "history.fxml"); }
     @FXML public void switchToPostItem(ActionEvent e)   { changeScene((Node) e.getSource(), "postItem.fxml"); }

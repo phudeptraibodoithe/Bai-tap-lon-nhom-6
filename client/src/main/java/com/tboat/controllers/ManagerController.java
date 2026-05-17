@@ -10,8 +10,7 @@ import com.tboat.socket.SocketManager;
 import com.tboat.ucb.DataCache;
 import com.tboat.ucb.NavigationContext;
 import com.tboat.utils.GsonUtils;
-import com.tboat.utilsclient.HeaderUtils; 
-import com.tboat.utilsclient.UserSession;
+import com.tboat.utilsclient.*;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -189,61 +188,6 @@ public class ManagerController extends BaseController implements Initializable, 
         return session;
     }
 
-    // Thêm method này vào ManagerController
-    private void renderMyAuctions(String response) {
-        try {
-            JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-            String status = jsonResponse.get("status").getAsString();
-
-            if ("SUCCESS".equals(status)
-                    && jsonResponse.has("payload")
-                    && jsonResponse.get("payload").isJsonArray()) {
-
-                JsonArray myArray = jsonResponse.getAsJsonArray("payload");
-                listMyItems.clear();
-
-                for (JsonElement element : myArray) {
-                    JsonObject dataObj = element.getAsJsonObject();
-
-                    String type        = dataObj.has("type") ? dataObj.get("type").getAsString() : "Khác";
-                    String name        = dataObj.has("name") ? dataObj.get("name").getAsString() : "No name";
-                    double currentPrice= dataObj.has("currentPrice") ? dataObj.get("currentPrice").getAsDouble() : 0.0;
-                    double bidIncrease = dataObj.has("bidIncrease") ? dataObj.get("bidIncrease").getAsDouble() : 0.0;
-                    String sellerAccount = dataObj.has("sellerAccountName") && !dataObj.get("sellerAccountName").isJsonNull()
-                            ? dataObj.get("sellerAccountName").getAsString() : "";
-                    String description = dataObj.has("description") && !dataObj.get("description").isJsonNull()
-                            ? dataObj.get("description").getAsString() : "";
-                    String imageURL    = dataObj.has("imageURL") && !dataObj.get("imageURL").isJsonNull()
-                            ? dataObj.get("imageURL").getAsString() : "";
-
-                    LocalDateTime startTime = LocalDateTime.now();
-                    if (dataObj.has("startTime") && !dataObj.get("startTime").isJsonNull())
-                        startTime = LocalDateTime.parse(dataObj.get("startTime").getAsString());
-
-                    LocalDateTime endTime = LocalDateTime.now().plusDays(1);
-                    if (dataObj.has("endTime") && !dataObj.get("endTime").isJsonNull())
-                        endTime = LocalDateTime.parse(dataObj.get("endTime").getAsString());
-
-                    AuctionFactory factory = AuctionFactoryProducer.getFactory(type);
-                    AuctionSession session = factory.createAuctionSession(
-                            startTime, endTime, currentPrice, bidIncrease,
-                            sellerAccount, name, description, imageURL);
-
-                    session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
-                    String statusStr = dataObj.has("statusOfAuction")
-                            ? dataObj.get("statusOfAuction").getAsString() : "ONGOING";
-                    try {
-                        session.setStatusOfAuction(StatusOfAuction.valueOf(statusStr));
-                    } catch (Exception ignored) {
-                        session.setStatusOfAuction(StatusOfAuction.ONGOING);
-                    }
-                    listMyItems.add(session);
-                }
-            }
-        } catch (Exception e) {
-            logger.warning("[Manager] Lỗi render: " + e.getMessage());
-        }
-    }
 
     // Sửa handleServerResponse → gọi renderMyAuctions
     @Override

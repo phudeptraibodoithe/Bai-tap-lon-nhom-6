@@ -13,8 +13,7 @@ import com.tboat.socket.SocketManager;
 import com.tboat.ucb.DataCache;
 import com.tboat.ucb.NavigationContext;
 import com.tboat.utils.GsonUtils;
-import com.tboat.utilsclient.HeaderUtils;
-import com.tboat.utilsclient.ImageUtils;
+import com.tboat.utilsclient.*;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -74,16 +73,10 @@ public class TrangChuController extends BaseController implements Initializable,
         // ────────────────────────────────────────────────────────────────────
     }
 
-    @Override
-    public void onReload() {
-        loadAuctions();
-        log.info("Đã tải lại danh sách sản phẩm trang chủ!");
-    }
 
     @Override
     public void onReload() {
         loadAuctions();
-        System.out.println("Đã tải lại danh sách sản phẩm trang chủ!");
     }
 
     public void loadAuctions() {

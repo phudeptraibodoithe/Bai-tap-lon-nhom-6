@@ -1,8 +1,6 @@
 package com.tboat.controllers;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.tboat.models.AuctionSession;
 import com.tboat.socket.SocketListener;
 import com.tboat.socket.SocketManager;
@@ -21,13 +19,10 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.shape.Rectangle;
-import javafx.stage.FileChooser;
-import javafx.stage.Stage;
-import javafx.util.StringConverter;
 
 import java.io.File;
 import java.net.URL;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ResourceBundle;
 import java.util.logging.Logger;
@@ -42,27 +37,46 @@ public class ControllerEditItem extends BaseController implements Initializable,
     @FXML private Spinner<Integer> hourStart, minuteStart, hourEnd, minuteEnd;
     @FXML private ComboBox<String> typeComboBox;
     @FXML private Button btnSaveItem;
-    @FXML private Button btnDeleteItem;
-    @FXML private Button btnCancelEdit;
-
-    // ĐÃ THÊM: Khai báo Label lời chào và ImageView avatar
     @FXML private Label lblGreeting;
     @FXML private ImageView userAvatar;
 
-    private Stage stage;
     private File selectedFile;
     private int currentSessionId;
     private String currentImageBase64 = null;
 
-    private Gson gson = GsonUtils.getInstance();
     private static final Logger log = Logger.getLogger(ControllerEditItem.class.getName());
+
+    // --- CONSTANTS ---
+    private static final String STYLE_SUCCESS = "#2ecc71";
+    private static final String STYLE_ERROR = "#e74c3c";
+    private static final String STYLE_PROCESSING = "#3498db";
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        setupPriceSpinners();
-        setupDateTimeLogic();
-        typeComboBox.getItems().addAll("Điện tử", "Thời trang", "Trang sức", "Khác");
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
+        if (thongbao != null) thongbao.setText("");
+        typeComboBox.getItems().addAll("Điện tử", "Thời trang", "Trang sức", "Khác");
+
+        // 👉 Áp dụng Utils xử lý tiền tệ
+        CurrencyFormatter.setupCurrencySpinner(priceSpinner, 0.0, 10000.0);
+        CurrencyFormatter.setupCurrencySpinner(jumpSpinner, 0.0, 5000.0);
+        priceSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null && newVal > 0) {
+                double maxJump = newVal * 0.5;
+                SpinnerValueFactory.DoubleSpinnerValueFactory jumpFactory =
+                        (SpinnerValueFactory.DoubleSpinnerValueFactory) jumpSpinner.getValueFactory();
+                jumpFactory.setMax(maxJump);
+                if (jumpSpinner.getValue() > maxJump) jumpFactory.setValue(maxJump);
+            }
+        });
+
+        // 👉 Áp dụng Utils xử lý thời gian
+        LocalTime now = LocalTime.now();
+        TimeUtils.setupDatePickers(datePickerStart, datePickerEnd);
+        TimeUtils.setupTimeSpinner(hourStart, 0, 23, now.getHour(), " giờ");
+        TimeUtils.setupTimeSpinner(minuteStart, 0, 59, now.getMinute(), " phút");
+        TimeUtils.setupTimeSpinner(hourEnd, 0, 23, now.plusHours(1).getHour(), " giờ");
+        TimeUtils.setupTimeSpinner(minuteEnd, 0, 59, now.getMinute(), " phút");
     }
 
     public void setEditData(AuctionSession session) {
@@ -93,15 +107,13 @@ public class ControllerEditItem extends BaseController implements Initializable,
             if (img != null) {
                 myImageView.setImage(img);
                 myImageView.setPreserveRatio(true);
-                Rectangle clip = new Rectangle(myImageView.getFitWidth(), myImageView.getFitHeight());
-                clip.setArcWidth(20);
-                clip.setArcHeight(20);
-                myImageView.setClip(clip);
+                ImageUtils.applyRoundedClip(myImageView, 20, 20);
             }
         }
-        if (session.getStartTime() != null && session.getStartTime().isBefore(java.time.LocalDateTime.now())) {
-            thongbao.setStyle("-fx-text-fill: red;");
-            thongbao.setText("Phiên đấu giá đã bắt đầu, không thể chỉnh sửa!");
+
+        // Block form nếu đấu giá đã chạy
+        if (session.getStartTime() != null && session.getStartTime().isBefore(LocalDateTime.now())) {
+            AlertUtils.showStatus(thongbao, "Phiên đấu giá đã bắt đầu, không thể chỉnh sửa!", STYLE_ERROR);
 
             if (btnSaveItem != null) btnSaveItem.setDisable(true);
             nameItem.setDisable(true);
@@ -118,63 +130,51 @@ public class ControllerEditItem extends BaseController implements Initializable,
         }
     }
 
+    public void uploadImage(MouseEvent event) {
+        selectedFile = ImageUtils.chooseImageFile(myImageView.getScene().getWindow(), "Chọn ảnh sản phẩm");
+        if (selectedFile != null) {
+            Image image = new Image(selectedFile.toURI().toString());
+            myImageView.setPreserveRatio(true);
+            ImageUtils.applyRoundedClip(myImageView, 20, 20);
+            myImageView.setImage(image);
+        }
+    }
+
     public void saveItem(ActionEvent e) {
-        String name = nameItem.getText();
-        String infor = inforItem.getText();
-        String type = typeComboBox.getValue();
-
-        java.time.LocalDateTime startTime = java.time.LocalDateTime.of(datePickerStart.getValue(),
-                java.time.LocalTime.of(hourStart.getValue(), minuteStart.getValue()));
-        java.time.LocalDateTime endTime = java.time.LocalDateTime.of(datePickerEnd.getValue(),
-                java.time.LocalTime.of(hourEnd.getValue(), minuteEnd.getValue()));
-
-        if (name.isEmpty() || infor.isEmpty()) {
-            showError("Tên và mô tả không được để trống!");
+        if (datePickerStart.getValue() == null || datePickerEnd.getValue() == null) {
+            AlertUtils.showStatus(thongbao, "Vui lòng chọn ngày tháng đầy đủ!", STYLE_ERROR);
             return;
         }
 
-        String base64Image = currentImageBase64;
-        if (selectedFile != null) {
-            base64Image = ImageUtils.fileToBase64(selectedFile);
+        LocalDateTime startDT = datePickerStart.getValue().atTime(hourStart.getValue(), minuteStart.getValue());
+        LocalDateTime endDT = datePickerEnd.getValue().atTime(hourEnd.getValue(), minuteEnd.getValue());
+
+        if (nameItem.getText().isEmpty() || inforItem.getText().isEmpty() || typeComboBox.getValue() == null) {
+            AlertUtils.showStatus(thongbao, "Tên, mô tả và loại sản phẩm không được để trống!", STYLE_ERROR);
+            return;
         }
 
-        JsonObject request = new JsonObject();
-        request.addProperty("action", "EDIT_ITEM");
+        AlertUtils.showStatus(thongbao, "Đang xử lý cập nhật...", STYLE_PROCESSING);
+
+        String base64Image = (selectedFile != null) ? ImageUtils.fileToBase64(selectedFile) : currentImageBase64;
 
         JsonObject payload = new JsonObject();
         payload.addProperty("id", currentSessionId);
-        payload.addProperty("name", name);
-        payload.addProperty("description", infor);
+        payload.addProperty("name", nameItem.getText());
+        payload.addProperty("description", inforItem.getText());
         payload.addProperty("imageURL", base64Image);
         payload.addProperty("currentPrice", priceSpinner.getValue());
         payload.addProperty("bidIncrease", jumpSpinner.getValue());
-        payload.addProperty("type", type);
-        request.add("payload", payload);
-        payload.addProperty("startTime", startTime.toString());
-        payload.addProperty("endTime", endTime.toString());
-        SocketManager.getInstance().send(gson.toJson(request));
+        payload.addProperty("type", typeComboBox.getValue());
+        payload.addProperty("startTime", startDT.toString());
+        payload.addProperty("endTime", endDT.toString());
 
-        thongbao.setStyle("-fx-text-fill: blue;");
-        thongbao.setText("Đang xử lý cập nhật...");
+        SocketHelper.sendRequest("EDIT_ITEM", payload);
     }
 
     public void deleteItem(ActionEvent e) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Cảnh báo Xóa");
-        DialogPane dialogPane = alert.getDialogPane();
-        dialogPane.getStylesheets().add(getClass().getResource("/styles/Button.css").toExternalForm());
-        Stage alertStage = (Stage) dialogPane.getScene().getWindow();
-        alertStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/logo.png")));
-        alert.setHeaderText(null);
-        alert.setContentText("Bạn có chắc chắn muốn xóa (hủy) sản phẩm này không?\nHành động này không thể hoàn tác!");
-        ButtonType btnYes = new ButtonType("Có, Xóa ngay", ButtonBar.ButtonData.OK_DONE);
-        ButtonType btnNo = new ButtonType("Không", ButtonBar.ButtonData.CANCEL_CLOSE);
-        alert.getButtonTypes().setAll(btnYes, btnNo);
-        if (alert.showAndWait().orElse(btnNo) == btnYes) {
-            JsonObject request = new JsonObject();
-            request.addProperty("action", "CANCEL_AUCTION");
-            request.addProperty("payload", currentSessionId);
-            SocketManager.getInstance().send(gson.toJson(request));
+        if (AlertUtils.showConfirmation("Cảnh báo Xóa", "Bạn có chắc chắn muốn xóa (hủy) sản phẩm này không?\nHành động này không thể hoàn tác!")) {
+            SocketHelper.sendRequest("CANCEL_AUCTION", currentSessionId);
         }
     }
 
@@ -182,217 +182,36 @@ public class ControllerEditItem extends BaseController implements Initializable,
         changeScene((Node) e.getSource(), "manager.fxml");
     }
 
-    private void setupPriceSpinners() {
-        SpinnerValueFactory.DoubleSpinnerValueFactory priceFactory =
-                new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, 0.0, 10000.0);
-
-        SpinnerValueFactory.DoubleSpinnerValueFactory jumpFactory =
-                new SpinnerValueFactory.DoubleSpinnerValueFactory(0.0, 1e18, 0.0, 5000.0);
-
-        CurrencyStringConverter currencyConverter = new CurrencyStringConverter();
-        priceFactory.setConverter(currencyConverter);
-        jumpFactory.setConverter(currencyConverter);
-
-        priceSpinner.setValueFactory(priceFactory);
-        jumpSpinner.setValueFactory(jumpFactory);
-
-        priceSpinner.setEditable(true);
-        jumpSpinner.setEditable(true);
-
-        addRealTimeFormatter(priceSpinner);
-        addRealTimeFormatter(jumpSpinner);
-
-        commitEditorText(priceSpinner);
-        commitEditorText(jumpSpinner);
-
-        priceSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal != null) {
-                double maxJump = newVal * 0.5;
-                jumpFactory.setMax(maxJump > 0 ? maxJump : 1e18);
-                if (jumpSpinner.getValue() > maxJump && newVal > 0) {
-                    jumpFactory.setValue(maxJump);
-                }
-            }
-        });
-    }
-
-    private void addRealTimeFormatter(Spinner<Double> spinner) {
-        TextField editor = spinner.getEditor();
-        editor.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue == null || newValue.isEmpty()) return;
-
-            String digits = newValue.replaceAll("[^\\d]", "");
-            if (digits.isEmpty()) {
-                editor.setText("");
-                return;
-            }
-
-            try {
-                double value = Double.parseDouble(digits);
-                String formatted = CurrencyFormatter.formatDisplay(value);
-
-                Platform.runLater(() -> {
-                    int currentCaret = editor.getCaretPosition();
-                    int oldLength = editor.getText().length();
-
-                    editor.setText(formatted);
-
-                    int newLength = formatted.length();
-                    int selection = currentCaret + (newLength - oldLength);
-                    editor.positionCaret(Math.max(0, Math.min(selection, newLength - 4)));
-                });
-            } catch (NumberFormatException e) {
-                editor.setText(oldValue);
-            }
-        });
-    }
-
-    private <T> void commitEditorText(Spinner<T> spinner) {
-        spinner.getEditor().focusedProperty().addListener((obs, oldVal, newVal) -> {
-            if (!newVal) {
-                String text = spinner.getEditor().getText();
-                StringConverter<T> converter = spinner.getValueFactory().getConverter();
-                if (converter != null) {
-                    T value = converter.fromString(text);
-                    spinner.getValueFactory().setValue(value);
-                }
-            }
-        });
-    }
-
-    private void setupDateTimeLogic() {
-        StringConverter<Integer> hourConverter = createTimeConverter(" giờ");
-        StringConverter<Integer> minuteConverter = createTimeConverter(" phút");
-        LocalTime nowTime = LocalTime.now();
-
-        configureSpinner(hourStart, 0, 23, nowTime.getHour(), hourConverter);
-        configureSpinner(minuteStart, 0, 59, nowTime.getMinute(), minuteConverter);
-        configureSpinner(hourEnd, 0, 23, nowTime.plusHours(1).getHour(), hourConverter);
-        configureSpinner(minuteEnd, 0, 59, nowTime.getMinute(), minuteConverter);
-
-        java.time.LocalDate today = java.time.LocalDate.now();
-        datePickerStart.setDayCellFactory(picker -> new DateCell() {
-            @Override
-            public void updateItem(java.time.LocalDate date, boolean empty) {
-                super.updateItem(date, empty);
-                setDisable(empty || date.compareTo(today) < 0);
-            }
-        });
-
-        datePickerStart.valueProperty().addListener((obs, oldVal, newVal) -> validateStartTime());
-        hourStart.valueProperty().addListener((obs, oldVal, newVal) -> validateStartTime());
-        minuteStart.valueProperty().addListener((obs, oldVal, newVal) -> validateStartTime());
-    }
-
-    private void validateStartTime() {
-        if (datePickerStart.getValue() == null) return;
-
-        java.time.LocalDate today = java.time.LocalDate.now();
-        java.time.LocalTime nowTime = java.time.LocalTime.now();
-        java.time.LocalDate selectedDate = datePickerStart.getValue();
-        if (selectedDate.isEqual(today)) {
-            int selectedHour = hourStart.getValue();
-            int selectedMinute = minuteStart.getValue();
-            if (selectedHour < nowTime.getHour()) {
-                hourStart.getValueFactory().setValue(nowTime.getHour());
-                minuteStart.getValueFactory().setValue(nowTime.getMinute());
-            }
-            else if (selectedHour == nowTime.getHour() && selectedMinute < nowTime.getMinute()) {
-                minuteStart.getValueFactory().setValue(nowTime.getMinute());
-            }
-        }
-    }
-
-    private StringConverter<Integer> createTimeConverter(String suffix) {
-        return new StringConverter<>() {
-            @Override public String toString(Integer value) { return (value == null) ? "00" + suffix : String.format("%02d%s", value, suffix); }
-            @Override public Integer fromString(String string) {
-                try {
-                    if (string == null || string.isEmpty()) return 0;
-                    return Integer.parseInt(string.replace(suffix, "").trim());
-                } catch (Exception e) { return 0; }
-            }
-        };
-    }
-
-    private void configureSpinner(Spinner<Integer> s, int min, int max, int init, StringConverter<Integer> conv) {
-        s.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(min, max, init));
-        s.getValueFactory().setConverter(conv);
-        s.setEditable(true);
-        s.getEditor().focusedProperty().addListener((obs, oldV, newV) -> { if (!newV) s.increment(0); });
-    }
-
-    private void showError(String msg) {
-        thongbao.setStyle("-fx-text-fill: red;");
-        thongbao.setText(msg);
-    }
-
-    public void uploadImage(MouseEvent event) {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Chọn ảnh sản phẩm");
-        fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif"));
-        stage = (Stage) myImageView.getScene().getWindow();
-        selectedFile = fileChooser.showOpenDialog(stage);
-
-        if (selectedFile != null) {
-            Image image = new Image(selectedFile.toURI().toString());
-            myImageView.setPreserveRatio(true);
-            Rectangle clip = new Rectangle(myImageView.getFitWidth(), myImageView.getFitHeight());
-            clip.setArcWidth(20); clip.setArcHeight(20);
-            myImageView.setClip(clip);
-            myImageView.setImage(image);
-        }
-    }
-
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                String status = jsonResponse.has("status") ? jsonResponse.get("status").getAsString() : jsonResponse.get("action").getAsString();
-                String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
+                String status = SocketHelper.getStatus(response);
+                String message = SocketHelper.getMessage(response);
 
                 if ("SUCCESS".equals(status)) {
                     DataCache.getInstance().invalidate("LIST_AVAILABLE");   // ← THÊM
                     DataCache.getInstance().invalidate("GET_MY_AUCTIONS"); // ← THÊM
                     if (message.contains("Cập nhật thông tin")) {
                         DataCache.getInstance().invalidate("GET_MY_AUCTIONS"); // ← THÊM
-                        showStyledAlert(Alert.AlertType.INFORMATION, "Cập nhật thành công", "Đã cập nhật sản phẩm thành công!");
+                        AlertUtils.showStatus(thongbao, "Cập nhật thành công!", STYLE_SUCCESS);
+                        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Cập nhật thành công", "Đã cập nhật sản phẩm thành công!");
                         changeScene(thongbao, "manager.fxml");
 
                     } else if (message.contains("Đã hủy phiên")) {
                         DataCache.getInstance().invalidate("GET_MY_AUCTIONS"); // ← THÊM
                         DataCache.getInstance().invalidate("LIST_AVAILABLE");  // ← THÊM: xóa khỏi TrangChu luôn
-                        showStyledAlert(Alert.AlertType.INFORMATION, "Xóa thành công", "Đã xóa sản phẩm thành công!");
+                        AlertUtils.showStatus(thongbao, "Xóa thành công!", STYLE_SUCCESS);
+                        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Xóa thành công", "Đã xóa sản phẩm thành công!");
                         changeScene(thongbao, "manager.fxml");
                     }
                 } else if ("ERROR".equals(status) || "FAILED".equals(status)) {
-                    showStyledAlert(Alert.AlertType.ERROR, "Lỗi", message);
-                    showError(message);
+                    AlertUtils.showStatus(thongbao, message, STYLE_ERROR);
                 }
             } catch (Exception e) {
-                showStyledAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Lỗi đọc dữ liệu từ server.");
+                AlertUtils.showStatus(thongbao, "Lỗi đọc dữ liệu từ server.", STYLE_ERROR);
+                log.severe("Lỗi parse JSON: " + response);
             }
         });
-    }
-
-    private void showStyledAlert(Alert.AlertType type, String title, String content) {
-        Alert alert = new Alert(type);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(content);
-        DialogPane dialogPane = alert.getDialogPane();
-        try {
-            URL cssUrl = getClass().getResource("/styles/Button.css");
-            if (cssUrl != null) {
-                dialogPane.getStylesheets().add(cssUrl.toExternalForm());
-            }
-            Stage alertStage = (Stage) dialogPane.getScene().getWindow();
-            alertStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/logo.png")));
-        } catch (Exception ex) {
-            log.warning("Không tải được CSS/Icon cho Alert: " + ex.getMessage());
-        }
-
-        alert.showAndWait();
     }
 }

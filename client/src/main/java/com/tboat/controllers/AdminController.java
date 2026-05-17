@@ -4,7 +4,6 @@ import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.tboat.models.AuctionSession;
 import com.tboat.socket.SocketListener;
-import com.tboat.socket.SocketManager;
 import com.tboat.ucb.DataCache;
 import com.tboat.ucb.NavigationContext;
 import com.tboat.utils.GsonUtils;
@@ -108,7 +107,7 @@ public class AdminController extends BaseController implements Initializable, So
                 if (empty || price == null) {
                     setText(null);
                 } else {
-                    setText(CurrencyFormatter.format(price));
+                    setText(CurrencyFormatter.formatDisplay(price));
                 }
             }
         });
@@ -173,7 +172,6 @@ public class AdminController extends BaseController implements Initializable, So
         });
     }
 
-    //handleSuccessCase → gọi renderPendingItems
     private void handleSuccessCase(JsonObject jsonResponse, String message) {
         if ("Danh sách chờ duyệt".equals(message)) {
             renderPendingItems(jsonResponse.toString()); // ← dùng method mới

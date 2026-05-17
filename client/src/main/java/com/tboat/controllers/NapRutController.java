@@ -1,14 +1,9 @@
 package com.tboat.controllers;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.socket.SocketListener;
-import com.tboat.socket.SocketManager;
-import com.tboat.utils.GsonUtils;
-import com.tboat.utilsclient.CurrencyFormatter;
-import com.tboat.utilsclient.HeaderUtils;
-import com.tboat.utilsclient.UserSession;
+import com.tboat.utilsclient.*;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -34,20 +29,19 @@ public class NapRutController extends BaseController implements Initializable, S
     @FXML private ImageView userAvatar;
 
     private double currentBalance = UserSession.getInstance().getBalance();
-    private final String CORRECT_PIN = "123456";
+    private final String CORRECT_PIN = "123456"; // Tạm thời hardcode, có thể cải tiến sau
     private boolean isDepositMode = true;
-    private final Gson gson = GsonUtils.getInstance();
     private static final Logger logger = Logger.getLogger(NapRutController.class.getName());
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle){
+        HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
         updateBalanceLabel();
         setupAmountFieldFormat();
         txtPin.setText("123456");
         btnTabDeposit.setOnAction(event -> switchToDepositMode());
         btnTabWithdraw.setOnAction(event -> switchToWithdrawMode());
         btnSubmit.setOnAction(event -> handleTransaction());
-        HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
     }
 
     private void setupAmountFieldFormat() {
@@ -78,12 +72,12 @@ public class NapRutController extends BaseController implements Initializable, S
         String pinText = txtPin.getText();
 
         if (amountText.trim().isEmpty() || pinText.trim().isEmpty()) {
-            showAlert(Alert.AlertType.WARNING, "Lỗi nhập liệu", "Vui lòng nhập đầy đủ Số tiền và Mã PIN!");
+            AlertUtils.showAlert(Alert.AlertType.WARNING, "Lỗi nhập liệu", "Vui lòng nhập đầy đủ Số tiền và Mã PIN!");
             return;
         }
 
         if (!pinText.equals(CORRECT_PIN)) {
-            showAlert(Alert.AlertType.ERROR, "Sai mã PIN", "Mã PIN không chính xác. Vui lòng thử lại!");
+            AlertUtils.showAlert(Alert.AlertType.ERROR, "Sai mã PIN", "Mã PIN không chính xác. Vui lòng thử lại!");
             return;
         }
 
@@ -91,21 +85,17 @@ public class NapRutController extends BaseController implements Initializable, S
             double amount = CurrencyFormatter.parse(amountText);
 
             if (amount <= 0) {
-                showAlert(Alert.AlertType.ERROR, "Lỗi số tiền", "Số tiền giao dịch phải lớn hơn 0!");
+                AlertUtils.showAlert(Alert.AlertType.ERROR, "Lỗi số tiền", "Số tiền giao dịch phải lớn hơn 0!");
                 return;
             }
 
             btnSubmit.setDisable(true);
             double amountToSend = isDepositMode ? amount : -amount;
 
-            JsonObject request = new JsonObject();
-            request.addProperty("action", "TRANSACTION");
-            request.addProperty("payload", amountToSend);
-
-            SocketManager.getInstance().send(gson.toJson(request));
+            SocketHelper.sendRequest("TRANSACTION", amountToSend);
 
         } catch (Exception e) {
-            showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Đã xảy ra lỗi khi xử lý số tiền.");
+            AlertUtils.showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Đã xảy ra lỗi khi xử lý số tiền.");
         }
     }
 
@@ -128,7 +118,7 @@ public class NapRutController extends BaseController implements Initializable, S
     }
 
     private void updateBalanceLabel() {
-        lblBalance.setText(CurrencyFormatter.format(currentBalance));
+        lblBalance.setText(CurrencyFormatter.formatDisplay(currentBalance));
     }
 
     @Override
@@ -137,11 +127,11 @@ public class NapRutController extends BaseController implements Initializable, S
             btnSubmit.setDisable(false);
 
             try {
-                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                String status = jsonResponse.has("status") ? jsonResponse.get("status").getAsString() : "";
-                String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
+                String status = SocketHelper.getStatus(response);
+                String message = SocketHelper.getMessage(response);
 
                 if ("SUCCESS".equals(status)) {
+                    JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
                     if (jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull()) {
                         double changedAmount = jsonResponse.get("payload").getAsDouble();
                         double newBalance = UserSession.getInstance().getUser().getBalance() + changedAmount;
@@ -152,25 +142,17 @@ public class NapRutController extends BaseController implements Initializable, S
                         txtAmount.setText("");
 
                         String successMsg = message.isEmpty() ? "Giao dịch đã được xử lý thành công!" : message;
-                        showAlert(Alert.AlertType.INFORMATION, "Thành công", successMsg);
+                        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Thành công", successMsg);
                     }
                 } else if ("FAILED".equals(status) || "ERROR".equals(status)) {
                     String errorMsg = message.isEmpty() ? "Giao dịch bị từ chối." : message;
-                    showAlert(Alert.AlertType.ERROR, "Thất bại", errorMsg);
+                    AlertUtils.showAlert(Alert.AlertType.ERROR, "Thất bại", errorMsg);
                 }
 
             } catch (Exception e) {
-                showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Lỗi đọc dữ liệu từ Server.");
+                AlertUtils.showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Lỗi đọc dữ liệu từ Server.");
                 logger.severe("❌ KHÔNG THỂ ĐỌC JSON NẠP/RÚT: " + response);
             }
         });
-    }
-
-    private void showAlert(Alert.AlertType type, String title, String message) {
-        Alert alert = new Alert(type);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
     }
 }

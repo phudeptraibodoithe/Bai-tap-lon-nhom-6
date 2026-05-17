@@ -1,20 +1,17 @@
 package com.tboat.controllers;
 
 import com.tboat.socket.SocketManager;
+import com.tboat.utilsclient.AlertUtils;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.VBox;
 
 import java.io.IOException;
 
 public class ControllerStart extends BaseController {
-
 
     @FXML private VBox serverPane;
     @FXML private TextField ipText;
@@ -22,6 +19,10 @@ public class ControllerStart extends BaseController {
 
     private ActionEvent pendingEvent;
     private String pendingFxml;
+
+    // --- CONSTANTS ---
+    private static final String STYLE_ERROR = "#e74c3c";
+    private static final String STYLE_PROCESSING = "#3498db";
 
     @FXML
     public void initialize() {
@@ -39,10 +40,15 @@ public class ControllerStart extends BaseController {
         }
     }
 
-    @Override @FXML public void switchToRegister(ActionEvent event) {
+    @Override
+    @FXML
+    public void switchToRegister(ActionEvent event) {
         handleAction(event, "register.fxml");
     }
-    @Override @FXML public void switchToLogin(ActionEvent event) {
+
+    @Override
+    @FXML
+    public void switchToLogin(ActionEvent event) {
         handleAction(event, "login.fxml");
     }
 
@@ -50,13 +56,12 @@ public class ControllerStart extends BaseController {
     public void connectServer(ActionEvent event) {
         String ipv4 = ipText.getText().trim();
         if (ipv4.isEmpty()) {
-            serverErr.setStyle("-fx-text-fill: red;");
-            serverErr.setText("Vui lòng nhập địa chỉ IP!");
+            AlertUtils.showStatus(serverErr, "Vui lòng nhập địa chỉ IP!", STYLE_ERROR);
             return;
         }
+
         ipText.setDisable(true);
-        serverErr.setStyle("-fx-text-fill: blue;");
-        serverErr.setText("Đang kết nối...");
+        AlertUtils.showStatus(serverErr, "Đang kết nối...", STYLE_PROCESSING);
 
         new Thread(() -> {
             try {
@@ -73,15 +78,13 @@ public class ControllerStart extends BaseController {
                             pendingFxml = null;
                         }
                     } else {
-                        serverErr.setStyle("-fx-text-fill: red;");
-                        serverErr.setText("Không thể kết nối đến IP này!");
+                        AlertUtils.showStatus(serverErr, "Không thể kết nối đến IP này!", STYLE_ERROR);
                     }
                 });
             } catch (IOException ex) {
                 Platform.runLater(() -> {
                     ipText.setDisable(false); // Mở lại UI
-                    serverErr.setStyle("-fx-text-fill: red;");
-                    serverErr.setText("Lỗi kết nối: " + ex.getMessage());
+                    AlertUtils.showStatus(serverErr, "Lỗi kết nối: " + ex.getMessage(), STYLE_ERROR);
                 });
             }
         }).start();

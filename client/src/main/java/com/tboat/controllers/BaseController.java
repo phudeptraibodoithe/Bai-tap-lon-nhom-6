@@ -27,6 +27,7 @@ public abstract class BaseController {
     private static String currentScreenKey = null;
 
     public void changeScene(Node node, String fxmlFileName) {
+        // [Cũ] Hủy socket của màn hình hiện tại
         if (this instanceof SocketListener) {
             ((SocketListener) this).unregisterSocket();
         }
@@ -59,6 +60,9 @@ public abstract class BaseController {
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // CORE: changeSceneAndGetController — thêm UCB hooks tương tự
+    // ─────────────────────────────────────────────────────────────────────────
     public <T> T changeSceneAndGetController(Node node, String fxmlFileName) {
         if (this instanceof SocketListener) {
             ((SocketListener) this).unregisterSocket();

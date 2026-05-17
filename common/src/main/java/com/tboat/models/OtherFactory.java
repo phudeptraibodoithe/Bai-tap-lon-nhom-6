@@ -1,13 +1,14 @@
 package com.tboat.models;
 
-import java.time.LocalDateTime;
-
-public class OtherFactory extends AuctionFactory {
+public class OtherFactory extends ItemFactory {
     @Override
-    public AuctionSession createAuctionSession(LocalDateTime startTime, LocalDateTime endTime,
-                                               double currentPrice, double bidIncrease, String sellerAccountName, String name,
-                                               String description, String imageURL) {
-        return new OtherAuction(startTime, endTime, currentPrice, bidIncrease,
-                                      sellerAccountName, name, description, imageURL);
+    public Item createItem(String sellerAccountName, String name,
+                           String description, String imageURL) {
+        return new OtherItem(sellerAccountName, name, description, imageURL);
+    }
+
+    @Override
+    public Item createItem() {
+        return new OtherItem();
     }
 }

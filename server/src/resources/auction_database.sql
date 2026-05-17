@@ -10,25 +10,34 @@ CREATE TABLE `user` (
   `avatarURL` MEDIUMTEXT DEFAULT NULL,
   PRIMARY KEY (`accountName`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 INSERT INTO user (accountName, password, nickname, balance, description, avatarURL)
 VALUES ('admin', 'admin', 'Quản trị viên', 0, 'Tài khoản điều hành hệ thống', 'null');
-CREATE TABLE `auction_session` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `startTime` datetime NOT NULL,
-  `endTime` datetime NOT NULL,
-  `currentPrice` double NOT NULL,
-  `bidIncrease` double NOT NULL,
-  `status` varchar(50) NOT NULL,
-  `sellerAccount` varchar(50) NOT NULL,
-  `type` varchar(50) NOT NULL,
-  `name` varchar(100) NOT NULL,
-  `highestBidderAccount` varchar(100) DEFAULT NULL,
-  `description` text DEFAULT NULL,
-  `imageURL` MEDIUMTEXT DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  CONSTRAINT `fk_session_seller` FOREIGN KEY (`sellerAccount`) REFERENCES `user` (`accountName`)
+
+CREATE TABLE `item` (
+                        `id` int NOT NULL AUTO_INCREMENT,
+                        `sellerAccountName` varchar(50) NOT NULL,
+                        `type` varchar(50) NOT NULL,        -- discriminator cho ItemFactoryProducer
+                        `name` varchar(100) NOT NULL,
+                        `description` text DEFAULT NULL,
+                        `imageURL` MEDIUMTEXT DEFAULT NULL,
+                        PRIMARY KEY (`id`),
+                        CONSTRAINT `fk_item_seller` FOREIGN KEY (`sellerAccountName`) REFERENCES `user` (`accountName`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `auction_session` (
+                                   `id` int NOT NULL AUTO_INCREMENT,
+                                   `startTime` datetime NOT NULL,
+                                   `endTime` datetime NOT NULL,
+                                   `currentPrice` double NOT NULL,
+                                   `bidIncrease` double NOT NULL,
+                                   `status` varchar(50) NOT NULL,
+                                   `highestBidderAccount` varchar(100) DEFAULT NULL,
+                                   `itemId` int NOT NULL,
+                                   PRIMARY KEY (`id`),
+                                   CONSTRAINT `fk_session_item` FOREIGN KEY (`itemId`) REFERENCES `item` (`id`),
+                                   CONSTRAINT `fk_session_highest_bidder` FOREIGN KEY (`highestBidderAccount`) REFERENCES `user` (`accountName`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `bid` (
   `id` int NOT NULL AUTO_INCREMENT,

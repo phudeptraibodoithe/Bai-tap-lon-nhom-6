@@ -23,11 +23,11 @@ public class ClientContext {
     private static final Logger log = LoggerFactory.getLogger(ClientContext.class);
 
     private static final Gson GSON = new GsonBuilder()
-        .registerTypeAdapter(LocalDateTime.class,
-            (JsonSerializer<LocalDateTime>) (src, t, ctx) -> new JsonPrimitive(src.toString()))
-        .registerTypeAdapter(LocalDateTime.class,
-            (JsonDeserializer<LocalDateTime>) (json, t, ctx) -> LocalDateTime.parse(json.getAsString()))
-        .create();
+            .registerTypeAdapter(LocalDateTime.class,
+                    (JsonSerializer<LocalDateTime>) (src, t, ctx) -> new JsonPrimitive(src.toString()))
+            .registerTypeAdapter(LocalDateTime.class,
+                    (JsonDeserializer<LocalDateTime>) (json, t, ctx) -> LocalDateTime.parse(json.getAsString()))
+            .create();
 
     private String clientId = "Guest";
     private AuctionRoom currentRoom;
@@ -70,7 +70,8 @@ public class ClientContext {
             log.info("[Server] Đã giải phóng tài nguyên cho user: {}", clientId);
         }
         if (currentRoom != null) {
-            currentRoom.removeSubscriber(null); // handler tự truyền 'this' phù hợp
+            currentRoom.removeSubscriber(this); //truyền chính object này
+            currentRoom = null;                 //tránh gọi lại lần 2
         }
     }
 }

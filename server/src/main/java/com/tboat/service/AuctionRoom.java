@@ -9,11 +9,11 @@ import com.tboat.models.AuctionSession;
 import com.tboat.models.History;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.ClientContext;
-import com.tboat.socket.ClientHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -79,41 +79,49 @@ public class AuctionRoom {
         isFinished = true;
 
         AuctionSession session = sessionDAO.getAuctionById(sessionId);
-        if (session != null) {
-            if (lastBidder != null) {
-                String seller = session.getSellerAccountName();
+        if (session == null) {
+            logger.error("[CRITICAL]: Không tìm thấy phiên {} trong DB!", sessionId);
+            AuctionManager.getInstance().removeRoom(sessionId);
+            return;
+        }
 
-                try {
-                    // 1. Cập nhật trạng thái phiên thành ENDED
-                    boolean statusOk = sessionDAO.updateSessionStatus(sessionId, StatusOfAuction.ENDED);
+        if (lastBidder != null) {
+            String seller = session.getSellerAccountName();
 
-                    // 2. Thêm vào bảng lịch sử
-                    History history = new History(sessionId, lastBidder, currentPrice, LocalDateTime.now());
-                    boolean historyOk = historyDAO.addHistory(history);
+            try (Connection conn = DatabaseConnection.getConnection()) {
+                conn.setAutoCommit(false);
 
-                    // 3. Gọi hàm chia tiền
-                    boolean paymentOk = divideMoney(seller, currentPrice);
+                // ✅ 3 bước dùng chung 1 connection — commit hoặc rollback cùng nhau
+                boolean statusOk  = sessionDAO.updateSessionStatus(
+                        conn, sessionId, StatusOfAuction.ENDED);
 
-                    // 4. Kiểm tra
-                    if (statusOk && historyOk && paymentOk) {
-                        Map<String, Object> payload = new HashMap<>();
-                        payload.put("winner", lastBidder);
-                        payload.put("finalPrice", currentPrice);
-                        broadcast("AUCTION_FINISHED", "Phiên đấu giá kết thúc thành công!", payload);
-                        logger.info("[Server]: ✅ Đã chốt phiên {} thành công!", sessionId);
-                    } else {
-                        logger.error("[CRITICAL]: Lỗi chốt phiên {} (DB thất bại)", sessionId);
-                    }
-                } catch (Exception e) {
-                    logger.error("[CRITICAL]: Ngoại lệ khi chốt phiên {}", sessionId, e);
+                boolean historyOk = historyDAO.addHistory(
+                        conn, new History(sessionId, lastBidder,
+                                currentPrice, LocalDateTime.now()));
+
+                boolean paymentOk = divideMoney(conn, seller, currentPrice);
+
+                if (statusOk && historyOk && paymentOk) {
+                    conn.commit(); // ✅ 1 commit duy nhất
+                    Map<String, Object> payload = new HashMap<>();
+                    payload.put("winner", lastBidder);
+                    payload.put("finalPrice", currentPrice);
+                    broadcast("AUCTION_FINISHED", "Phiên đấu giá kết thúc thành công!", payload);
+                    logger.info("[Server]: ✅ Đã chốt phiên {} thành công!", sessionId);
+                } else {
+                    conn.rollback(); // ✅ 1 rollback — tất cả hoặc không có gì
+                    logger.error("[CRITICAL]: Lỗi chốt phiên {}, đã Rollback toàn bộ!", sessionId);
                 }
 
-            } else {
-                // Trường hợp không ai mua
-                sessionDAO.updateSessionStatus(sessionId, StatusOfAuction.ENDED);
-                broadcast("AUCTION_FINISHED", "Kết thúc, không có người thắng", null);
+            } catch (Exception e) {
+                logger.error("[CRITICAL]: Ngoại lệ khi chốt phiên {}", sessionId, e);
             }
+
+        } else {
+            sessionDAO.updateSessionStatus(sessionId, StatusOfAuction.ENDED);
+            broadcast("AUCTION_FINISHED", "Kết thúc, không có người thắng", null);
         }
+
         AuctionManager.getInstance().removeRoom(sessionId);
     }
 
@@ -121,29 +129,19 @@ public class AuctionRoom {
      * Xử lý chia tiền: 10% cho Admin, 90% cho người bán
      * Trả về true nếu giao dịch an toàn và thành công
      */
-    private boolean divideMoney(String sellerAccount, double totalAmount) {
-        double adminFee = totalAmount * 0.10;
+    private boolean divideMoney(Connection conn, String sellerAccount, double totalAmount) throws SQLException {
+        double adminFee      = totalAmount * 0.10;
         double sellerRevenue = totalAmount - adminFee;
 
-        try (Connection conn = DatabaseConnection.getConnection()) {
-            conn.setAutoCommit(false);
+        boolean adminOk  = userDAO.updateBalance(conn, "admin", adminFee);
+        boolean sellerOk = userDAO.updateBalance(conn, sellerAccount, sellerRevenue);
 
-            boolean adminOk = userDAO.updateBalance(conn, "admin", adminFee);
-            boolean sellerOk = userDAO.updateBalance(conn, sellerAccount, sellerRevenue);
-
-            if (adminOk && sellerOk) {
-                conn.commit();
-                logger.info("[Payment]: Đã chia tiền -> Admin: {}, Seller: {}", adminFee, sellerRevenue);
-                return true;
-            } else {
-                conn.rollback(); // Lỗi 1 trong 2 thì hoàn tiền
-                logger.error("[Payment]: Lỗi khi cập nhật số dư, đã Rollback!");
-                return false;
-            }
-        } catch (Exception e) {
-            logger.error("[Payment]: Lỗi ngoại lệ khi chia tiền", e);
-            return false;
+        if (adminOk && sellerOk) {
+            logger.info("[Payment]: Đã chia tiền -> Admin: {}, Seller: {}", adminFee, sellerRevenue);
+            return true;
         }
+        return false;
+        // Không commit/rollback ở đây — để finishAuction() quyết định
     }
 
     /**

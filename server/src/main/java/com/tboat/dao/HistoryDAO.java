@@ -14,6 +14,22 @@ import org.slf4j.LoggerFactory;
 public class HistoryDAO {
     private static final Logger logger = LoggerFactory.getLogger(HistoryDAO.class);
 
+    // Overload mới — nhận conn từ ngoài
+    public boolean addHistory(Connection conn, History history) throws SQLException {
+        String sql = "INSERT INTO history (auctionSessionId, winnerAccountName, finalPrice, completedAt) " +
+                "VALUES (?, ?, ?, ?)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, history.getAuctionSessionId());
+            ps.setString(2, history.getWinnerAccountName());
+            ps.setDouble(3, history.getFinalPrice());
+            ps.setTimestamp(4, history.getCompletedAt() != null
+                    ? Timestamp.valueOf(history.getCompletedAt())
+                    : new Timestamp(System.currentTimeMillis()));
+            return ps.executeUpdate() > 0;
+        }
+    }
+// Giữ nguyên method cũ bên dưới — không xóa
+
     public boolean addHistory(History history) {
         String sql = "INSERT INTO history (auctionSessionId, winnerAccountName, finalPrice, completedAt) VALUES (?, ?, ?, ?)";
 

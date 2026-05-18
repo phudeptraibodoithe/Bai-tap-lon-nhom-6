@@ -21,7 +21,7 @@
             <configuration>
               <transformers>
                 <transformer>
-                  <mainClass>com.tboat.server.ServerApp</mainClass>
+                  <mainClass>com.tboat.ServerMain</mainClass>
                 </transformer>
               </transformers>
               <filters>

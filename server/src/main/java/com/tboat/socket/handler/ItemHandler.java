@@ -1,14 +1,17 @@
 package com.tboat.socket.handler;
 
-import com.google.gson.*;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.dao.ItemDAO;
 import com.tboat.dao.ParticipationDAO;
 import com.tboat.models.*;
-import com.tboat.service.*;
+import com.tboat.service.AuctionTimerService;
+import com.tboat.service.SellerService;
 import com.tboat.socket.ClientContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 
@@ -116,24 +119,16 @@ public class ItemHandler {
         try {
             int sessionId = JsonParser.parseString(raw)
                     .getAsJsonObject().get("payload").getAsInt();
-            boolean isUpdated = auctionDAO.updateSessionStatus(sessionId, StatusOfAuction.NOT_STARTED);
+            AuctionSession session = auctionDAO.getAuctionById(sessionId);
 
-            if (isUpdated) {
-                AuctionSession session = auctionDAO.getAuctionById(sessionId);
-
-                if (session != null) {
-                    AuctionTimerService.getInstance().scheduleAuction(session);
-                    context.sendResponse(new Response<>("APPROVE_ITEM", "SUCCESS",
-                            "Đã duyệt và bắt đầu đấu giá", sessionId));
-
-                    log.info("[Server] Admin duyệt thành công phiên ID: {}", sessionId);
-                } else {
-                    context.sendResponse(new Response<>("APPROVE_ITEM", "ERROR",
-                            "Không tìm thấy sản phẩm sau khi cập nhật", null));
-                }
+            if (session != null) {
+                AuctionTimerService.getInstance().scheduleAuction(session);
+                context.sendResponse(new Response<>("APPROVE_ITEM", "SUCCESS",
+                        "Đã duyệt! Hệ thống sẽ tự động canh giờ.", sessionId));
+                log.info("[Server] Admin duyệt phiên ID: {}", sessionId);
             } else {
                 context.sendResponse(new Response<>("APPROVE_ITEM", "ERROR",
-                        "Lỗi cập nhật trạng thái duyệt vào Database", null));
+                        "Không tìm thấy sản phẩm cần duyệt", null));
             }
         } catch (Exception e) {
             log.error("Lỗi APPROVE_ITEM: {}", e.getMessage(), e);

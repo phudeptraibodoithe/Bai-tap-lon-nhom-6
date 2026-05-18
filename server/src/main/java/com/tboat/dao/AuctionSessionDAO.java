@@ -125,6 +125,18 @@ public class AuctionSessionDAO {
         return list;
     }
 
+    // Overload mới — nhận conn từ ngoài để dùng chung transaction
+// Logic y hệt method cũ, chỉ khác là không tự getConnection()
+    public boolean updateSessionStatus(Connection conn, int sessionId, StatusOfAuction status) throws SQLException {
+        String sql = "UPDATE auction_session SET status = ? WHERE id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, status.name());
+            ps.setInt(2, sessionId);
+            return ps.executeUpdate() > 0;
+        }
+    }
+// Giữ nguyên method cũ bên dưới — không xóa, code chỗ khác vẫn dùng
+
     public boolean updateSessionStatus(int sessionId, StatusOfAuction status) {
         String sql = "UPDATE auction_session SET status = ? WHERE id = ?";
         try (Connection c = getConnection();

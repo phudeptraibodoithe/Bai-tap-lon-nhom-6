@@ -17,7 +17,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ServerMain {
-    private static final ExecutorService threadPool = Executors.newFixedThreadPool(100);
+    private static final ExecutorService threadPool = Executors.newFixedThreadPool(30);
     public static final ExecutorService broadcastExecutor = Executors.newFixedThreadPool(10);
     private static final Logger logger = LoggerFactory.getLogger(ServerMain.class);
 

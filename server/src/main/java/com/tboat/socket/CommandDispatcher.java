@@ -19,9 +19,12 @@ public class CommandDispatcher {
 
     private static final Logger log = LoggerFactory.getLogger(CommandDispatcher.class);
 
+    private static final List<String> ADMIN_ACTIONS =
+            Arrays.asList("GET_PENDING_ITEMS", "APPROVE_ITEM", "REJECT_ITEM");
+
+    // Các action Guest chưa đăng nhập vẫn được gọi
     private static final List<String> PUBLIC_ACTIONS =
-        Arrays.asList("LOGIN", "REGISTER", "LIST_AVAILABLE", "GET_PENDING_ITEMS",
-                       "APPROVE_ITEM", "REJECT_ITEM");
+            Arrays.asList("LOGIN", "REGISTER", "LIST_AVAILABLE");
 
     private final ClientContext context;
 
@@ -51,9 +54,15 @@ public class CommandDispatcher {
             JsonObject json = JsonParser.parseString(rawInput).getAsJsonObject();
             action = json.get("action").getAsString().toUpperCase();
 
-            // Kiểm tra auth trước khi xử lý
+            // Kiểm tra: Guest không được gọi các action cần đăng nhập
             if (!PUBLIC_ACTIONS.contains(action) && context.isGuest()) {
-                context.sendResponse(new Response<>("AUTH_ERROR", "ERROR", "Vui lòng đăng nhập", null));
+                context.sendResponse(new Response<>("AUTH_ERROR", "ERROR",
+                        "Vui lòng đăng nhập trước khi thực hiện thao tác này", null));
+                return action;
+            }
+
+            if (ADMIN_ACTIONS.contains(action) && !context.getClientId().equals("admin")) {
+                context.sendResponse(new Response<>("AUTH_ERROR", "ERROR", "Chỉ Admin mới thực hiện được!", null));
                 return action;
             }
 

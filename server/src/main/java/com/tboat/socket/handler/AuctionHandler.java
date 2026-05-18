@@ -5,7 +5,10 @@ import com.google.gson.JsonParser;
 import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.dao.ParticipationDAO;
 import com.tboat.dao.UserDAO;
-import com.tboat.models.*;
+import com.tboat.models.AuctionSession;
+import com.tboat.models.Participation;
+import com.tboat.models.Response;
+import com.tboat.models.StatusOfAuction;
 import com.tboat.service.AuctionManager;
 import com.tboat.service.AuctionRoom;
 import com.tboat.service.SellerService;
@@ -92,11 +95,7 @@ public class AuctionHandler {
         double price = JsonParser.parseString(raw)
                 .getAsJsonObject().get("payload").getAsDouble();
 
-        if (userDAO.getBalance(clientId) < price) {
-            context.sendResponse(new Response<>("BID", "FAILED", "Số dư không đủ", null));
-            return;
-        }
-
+//Không cần pre-check — BidderRole xử lý trong transaction nguyên tử
         boolean accepted = room.placeBid(price, clientId);
 
         if (accepted) {
@@ -124,11 +123,26 @@ public class AuctionHandler {
             boolean ok = sellerService.cancelAuction(context.getClientId(), sessionId);
 
             if (ok) {
+                //Lấy phòng TRƯỚC KHI xóa để còn broadcast được
+                AuctionRoom room = AuctionManager.getInstance().getRoom(sessionId);
+                if (room != null) {
+                    room.broadcast("AUCTION_CANCELED",
+                            "Phiên " + sessionId + " đã bị người bán hủy", sessionId);
+                }
+
+                //Xóa phòng SAU KHI đã broadcast
                 AuctionManager.getInstance().removeRoom(sessionId);
+
+                //Gửi phản hồi cho chính người gọi lệnh
                 context.sendResponse(new Response<>("CANCEL_AUCTION", "SUCCESS",
                         "Đã hủy phiên đấu giá thành công", sessionId));
-                context.sendSystemMessage("AUCTION_CANCELED",
-                        "Phiên " + sessionId + " đã bị người bán hủy", sessionId);
+
+                //Xóa client này ra khỏi phòng
+                if (context.getCurrentRoom() != null) {
+                    context.getCurrentRoom().removeSubscriber(context);
+                    context.setCurrentRoom(null);
+                }
+
             } else {
                 context.sendResponse(new Response<>("CANCEL_AUCTION", "ERROR",
                         "Không thể hủy (đã có người đặt giá)", null));

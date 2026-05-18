@@ -1,11 +1,19 @@
 package com.tboat.controllers;
 
-import com.google.gson.*;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.tboat.controllers.helper.AuctionUIHelper;
 import com.tboat.models.AuctionSession;
 import com.tboat.models.StatusOfAuction;
 import com.tboat.models.User;
+import com.tboat.session.UserSession;
+import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
-import com.tboat.utilsclient.*;
+import com.tboat.utilsclient.AlertUtils;
+import com.tboat.utilsclient.CurrencyFormatter;
+import com.tboat.utilsclient.HeaderUtils;
+import com.tboat.utilsclient.TimeUtils;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -33,9 +41,9 @@ public class AuctionController extends BaseController implements SocketListener 
     @FXML private Label description, currentPrice, highestBidder, lblNotification;
     @FXML private TextField bidAmount;
     @FXML private Button btnBid;
-    @FXML private TableView<BidEntry> tableBidHistory;
-    @FXML private TableColumn<BidEntry, String> colBidTime, colBidUser;
-    @FXML private TableColumn<BidEntry, Double> colBidPrice;
+    @FXML private TableView<com.tboat.models.BidEntry> tableBidHistory;
+    @FXML private TableColumn<com.tboat.models.BidEntry, String> colBidTime, colBidUser;
+    @FXML private TableColumn<com.tboat.models.BidEntry, Double> colBidPrice;
     @FXML private Label lblGreeting;
     @FXML private ImageView userAvatar;
     @FXML private LineChart<String, Number> bidLineChart;
@@ -50,7 +58,7 @@ public class AuctionController extends BaseController implements SocketListener 
 
     @FXML
     public void initialize() {
-        ObservableList<BidEntry> listBids = FXCollections.observableArrayList();
+        ObservableList<com.tboat.models.BidEntry> listBids = FXCollections.observableArrayList();
 
         ui = new AuctionUIHelper(
                 itemImage, timeRemaining, nameItem, idItem,
@@ -184,7 +192,7 @@ public class AuctionController extends BaseController implements SocketListener 
         currentSession.setCurrentPrice(newPrice);
         currentSession.setHighestBidderAccount(newLeader);
         ui.updateUI(currentSession);
-        ui.getListBids().add(new BidEntry(dt.format(AuctionUIHelper.TIME_FORMATTER), newLeader, newPrice));
+        ui.getListBids().add(new com.tboat.models.BidEntry(dt.format(AuctionUIHelper.TIME_FORMATTER), newLeader, newPrice));
         ui.refreshBidsAndChart();
         if (lblNotification != null) lblNotification.setText("");
     }
@@ -199,7 +207,7 @@ public class AuctionController extends BaseController implements SocketListener 
                         : LocalDateTime.now().format(AuctionUIHelper.TIME_FORMATTER);
                 String user  = bid.has("bidderAccount") ? bid.get("bidderAccount").getAsString() : "Unknown";
                 double price = bid.has("bidAmount")     ? bid.get("bidAmount").getAsDouble()     : 0.0;
-                ui.getListBids().add(new BidEntry(time, user, price));
+                ui.getListBids().add(new com.tboat.models.BidEntry(time, user, price));
             }
             ui.refreshBidsAndChart();
         } else if (msg.contains("Bạn đang dẫn đầu")) {

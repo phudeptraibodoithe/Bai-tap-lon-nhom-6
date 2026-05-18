@@ -2,16 +2,19 @@ package com.tboat.controllers;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.tboat.session.UserSession;
+import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
 import com.tboat.utilsclient.AlertUtils;
 import com.tboat.utilsclient.CurrencyFormatter;
-import com.tboat.utilsclient.SocketHelper;
-import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

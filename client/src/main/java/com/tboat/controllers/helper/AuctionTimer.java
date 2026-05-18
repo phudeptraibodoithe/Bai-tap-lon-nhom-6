@@ -1,4 +1,4 @@
-package com.tboat.utilsclient;
+package com.tboat.controllers.helper;
 
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;

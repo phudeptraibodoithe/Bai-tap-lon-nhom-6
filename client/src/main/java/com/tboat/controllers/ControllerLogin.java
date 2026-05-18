@@ -3,16 +3,17 @@ package com.tboat.controllers;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.models.User;
+import com.tboat.session.UserSession;
+import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
 import com.tboat.utilsclient.AlertUtils;
-import com.tboat.utilsclient.SocketHelper;
-import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+
 import java.util.logging.Logger;
 
 public class ControllerLogin extends BaseController implements SocketListener {

@@ -1,10 +1,9 @@
-package com.tboat.utilsclient;
+package com.tboat.socket;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.tboat.socket.SocketManager;
 import com.tboat.utils.GsonUtils;
 
 public class SocketHelper {

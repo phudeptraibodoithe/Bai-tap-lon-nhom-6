@@ -3,16 +3,13 @@ package com.tboat.controllers;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.tboat.models.AuctionSession;
-import com.tboat.models.Item;
-import com.tboat.models.ItemFactory;
-import com.tboat.models.ItemFactoryProducer;
-import com.tboat.models.StatusOfAuction;
+import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
 import com.tboat.ucb.DataCache;
 import com.tboat.ucb.NavigationContext;
-import com.tboat.utilsclient.*;
+import com.tboat.utilsclient.HeaderUtils;
+import com.tboat.utilsclient.JsonMapperUtils;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -25,7 +22,6 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 
 import java.net.URL;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
@@ -140,11 +136,9 @@ public class TrangChuController extends BaseController implements Initializable,
                     for (JsonElement element : auctionArray) {
                         try {
                             JsonObject dataObj = element.getAsJsonObject();
-                            AuctionSession session = parseSingleAuctionSession(dataObj);
+                            AuctionSession session = JsonMapperUtils.parseAuctionSession(dataObj);
 
-                            // Lấy type để filter
-                            String type = getStringJson(dataObj.has("item") ? dataObj.getAsJsonObject("item") : dataObj, "type", "Khác");
-
+                            String type = session.getItem().getType();
                             FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/productCard.fxml"));
                             VBox productCard = loader.load();
 
@@ -164,57 +158,5 @@ public class TrangChuController extends BaseController implements Initializable,
                 logger.severe("LỖI ĐỌC JSON TRANG CHỦ: " + e.getMessage());
             }
         });
-    }
-
-    // =======================================================
-    // HELPER METHODS (Dùng chung chuẩn giống ManagerController)
-    // =======================================================
-
-    private AuctionSession parseSingleAuctionSession(JsonObject dataObj) {
-        // Hỗ trợ cả object lồng nhau (item) hoặc object phẳng
-        JsonObject itemObj = dataObj.has("item") && dataObj.get("item").isJsonObject()
-                ? dataObj.getAsJsonObject("item")
-                : dataObj;
-
-        String type          = getStringJson(itemObj, "type", "Khác");
-        String name          = getStringJson(itemObj, "name", "Sản phẩm chưa có tên");
-        String description   = getStringJson(itemObj, "description", "Không có mô tả");
-        String imageURL      = getStringJson(itemObj, "imageURL", "");
-        String sellerAccount = getStringJson(itemObj, "sellerAccountName", "N/A");
-        String highestBidder = getStringJson(dataObj, "highestBidderAccount", "");
-
-        double currentPrice  = getDoubleJson(dataObj, "currentPrice", 0.0);
-        double bidIncrease   = getDoubleJson(dataObj, "bidIncrease", 0.0);
-
-        LocalDateTime startTime = dataObj.has("startTime") ? TimeUtils.parseServerTime(dataObj.get("startTime")) : LocalDateTime.now();
-        LocalDateTime endTime   = dataObj.has("endTime")   ? TimeUtils.parseServerTime(dataObj.get("endTime"))   : LocalDateTime.now().plusDays(1);
-
-        if (imageURL.startsWith("data:image")) {
-            imageURL = imageURL.substring(imageURL.indexOf(",") + 1);
-        }
-
-        ItemFactory factory = ItemFactoryProducer.getFactory(type);
-        Item item = factory.createItem(sellerAccount, name, description, imageURL);
-
-        AuctionSession session = new AuctionSession(startTime, endTime, currentPrice, bidIncrease, item);
-        session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
-        session.setHighestBidderAccount(highestBidder);
-
-        String statusStr = getStringJson(dataObj, "statusOfAuction", "ONGOING");
-        try {
-            session.setStatusOfAuction(StatusOfAuction.valueOf(statusStr));
-        } catch (Exception ignored) {
-            session.setStatusOfAuction(StatusOfAuction.ONGOING);
-        }
-
-        return session;
-    }
-
-    private String getStringJson(JsonObject json, String key, String defaultValue) {
-        return json.has(key) && !json.get(key).isJsonNull() ? json.get(key).getAsString() : defaultValue;
-    }
-
-    private double getDoubleJson(JsonObject json, String key, double defaultValue) {
-        return json.has(key) && !json.get(key).isJsonNull() ? json.get(key).getAsDouble() : defaultValue;
     }
 }

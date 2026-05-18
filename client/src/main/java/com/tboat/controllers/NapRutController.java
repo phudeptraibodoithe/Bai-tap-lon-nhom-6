@@ -2,8 +2,12 @@ package com.tboat.controllers;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.tboat.session.UserSession;
+import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
-import com.tboat.utilsclient.*;
+import com.tboat.utilsclient.AlertUtils;
+import com.tboat.utilsclient.CurrencyFormatter;
+import com.tboat.utilsclient.HeaderUtils;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;

@@ -1,4 +1,4 @@
-package com.tboat.controllers;
+package com.tboat.models;
 
 public class BidEntry {
     private final String time;

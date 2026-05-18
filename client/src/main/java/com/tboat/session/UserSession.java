@@ -1,4 +1,4 @@
-package com.tboat.utilsclient;
+package com.tboat.session;
 
 import com.tboat.models.User;
 

@@ -1,11 +1,19 @@
 package com.tboat.controllers;
 
-import com.google.gson.*;
-import com.tboat.models.*;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.tboat.models.AuctionSession;
+import com.tboat.models.StatusOfAuction;
+import com.tboat.session.UserSession;
+import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
 import com.tboat.ucb.DataCache;
 import com.tboat.ucb.NavigationContext;
-import com.tboat.utilsclient.*;
+import com.tboat.utilsclient.CurrencyFormatter;
+import com.tboat.utilsclient.HeaderUtils;
+import com.tboat.utilsclient.JsonMapperUtils;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -18,7 +26,6 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.ImageView;
 
 import java.net.URL;
-import java.time.LocalDateTime;
 import java.util.ResourceBundle;
 import java.util.logging.Logger;
 
@@ -129,7 +136,7 @@ public class ManagerController extends BaseController implements Initializable, 
 
             for (JsonElement element : myArray) {
                 try {
-                    AuctionSession session = parseSingleAuctionSession(element.getAsJsonObject());
+                    AuctionSession session = JsonMapperUtils.parseAuctionSession(element.getAsJsonObject());
                     if (session != null) listMyItems.add(session);
                 } catch (Exception e) {
                     logger.warning("[Manager] Lỗi xử lý một phiên: " + e.getMessage());
@@ -138,36 +145,6 @@ public class ManagerController extends BaseController implements Initializable, 
         } catch (Exception e) {
             logger.severe("[Manager] Khởi tạo dữ liệu bảng thất bại: " + e.getMessage());
         }
-    }
-
-    private AuctionSession parseSingleAuctionSession(JsonObject dataObj) {
-        JsonObject itemObj = dataObj.has("item") && dataObj.get("item").isJsonObject()
-                ? dataObj.getAsJsonObject("item")
-                : dataObj;
-        String type          = getStringJson(itemObj, "type", "Khác");
-        String name          = getStringJson(itemObj, "name", "");
-        String description   = getStringJson(itemObj, "description", "");
-        String imageURL      = getStringJson(itemObj, "imageURL", "");
-        String sellerAccount = getStringJson(itemObj, "sellerAccountName", "");
-        double currentPrice  = getDoubleJson(dataObj, "currentPrice", 0.0);
-        double bidIncrease   = getDoubleJson(dataObj, "bidIncrease", 0.0);
-
-        LocalDateTime startTime = dataObj.has("startTime") ? TimeUtils.parseServerTime(dataObj.get("startTime")) : LocalDateTime.now();
-        LocalDateTime endTime   = dataObj.has("endTime")   ? TimeUtils.parseServerTime(dataObj.get("endTime"))   : LocalDateTime.now().plusDays(1);
-
-        ItemFactory factory = ItemFactoryProducer.getFactory(type);
-        Item item = factory.createItem(sellerAccount, name, description, imageURL);
-
-        AuctionSession session = new AuctionSession(startTime, endTime, currentPrice, bidIncrease, item);
-        session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
-
-        String statusStr = getStringJson(dataObj, "statusOfAuction", "ONGOING");
-        try {
-            session.setStatusOfAuction(StatusOfAuction.valueOf(statusStr));
-        } catch (Exception ignored) {
-            session.setStatusOfAuction(StatusOfAuction.ONGOING);
-        }
-        return session;
     }
 
     @Override
@@ -185,13 +162,5 @@ public class ManagerController extends BaseController implements Initializable, 
                 logger.warning("[Manager] Lỗi xử lý phản hồi: " + e.getMessage());
             }
         });
-    }
-
-    private String getStringJson(JsonObject json, String key, String defaultValue) {
-        return json.has(key) && !json.get(key).isJsonNull() ? json.get(key).getAsString() : defaultValue;
-    }
-
-    private double getDoubleJson(JsonObject json, String key, double defaultValue) {
-        return json.has(key) && !json.get(key).isJsonNull() ? json.get(key).getAsDouble() : defaultValue;
     }
 }

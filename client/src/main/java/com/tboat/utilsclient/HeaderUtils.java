@@ -2,6 +2,7 @@ package com.tboat.utilsclient;
 
 import com.tboat.controllers.BaseController;
 import com.tboat.models.User;
+import com.tboat.session.UserSession;
 import javafx.application.Platform;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;

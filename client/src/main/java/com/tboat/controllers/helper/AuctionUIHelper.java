@@ -1,4 +1,4 @@
-package com.tboat.controllers;
+package com.tboat.controllers.helper;
 
 import com.tboat.models.AuctionSession;
 import com.tboat.models.StatusOfAuction;
@@ -25,7 +25,7 @@ public class AuctionUIHelper {
     private static final String STYLE_WARNING = "-fx-text-fill: #e67e22; -fx-font-weight: bold; -fx-font-size: 17px;";
     private static final String STYLE_ENDED   = "-fx-text-fill: red;    -fx-font-weight: bold; -fx-font-size: 17px;";
 
-    static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    public static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     // ── FXML refs (được inject từ controller) ─────────────────────────────────
     private final ImageView itemImage;
@@ -33,11 +33,11 @@ public class AuctionUIHelper {
     private final Label description, currentPrice, highestBidder, lblNotification;
     private final TextField bidAmount;
     private final Button btnBid;
-    private final TableView<BidEntry> tableBidHistory;
-    private final TableColumn<BidEntry, String> colBidTime, colBidUser;
-    private final TableColumn<BidEntry, Double> colBidPrice;
+    private final TableView<com.tboat.models.BidEntry> tableBidHistory;
+    private final TableColumn<com.tboat.models.BidEntry, String> colBidTime, colBidUser;
+    private final TableColumn<com.tboat.models.BidEntry, Double> colBidPrice;
     private final XYChart.Series<String, Number> priceSeries;
-    private final ObservableList<BidEntry> listBids;
+    private final ObservableList<com.tboat.models.BidEntry> listBids;
 
     // ── State ─────────────────────────────────────────────────────────────────
     private AuctionTimer auctionTimer;
@@ -46,9 +46,9 @@ public class AuctionUIHelper {
             ImageView itemImage, Label timeRemaining, Label nameItem, Label idItem,
             Label sellerName, Label description, Label currentPrice,
             Label highestBidder, Label lblNotification, TextField bidAmount, Button btnBid,
-            TableView<BidEntry> tableBidHistory, TableColumn<BidEntry, String> colBidTime,
-            TableColumn<BidEntry, String> colBidUser, TableColumn<BidEntry, Double> colBidPrice,
-            LineChart<String, Number> bidLineChart, ObservableList<BidEntry> listBids
+            TableView<com.tboat.models.BidEntry> tableBidHistory, TableColumn<com.tboat.models.BidEntry, String> colBidTime,
+            TableColumn<com.tboat.models.BidEntry, String> colBidUser, TableColumn<com.tboat.models.BidEntry, Double> colBidPrice,
+            LineChart<String, Number> bidLineChart, ObservableList<com.tboat.models.BidEntry> listBids
     ) {
         this.itemImage       = itemImage;
         this.timeRemaining   = timeRemaining;
@@ -223,9 +223,9 @@ public class AuctionUIHelper {
         // Chart: cũ → mới
         Platform.runLater(() -> {
             priceSeries.getData().clear();
-            ObservableList<BidEntry> chrono = FXCollections.observableArrayList(listBids);
+            ObservableList<com.tboat.models.BidEntry> chrono = FXCollections.observableArrayList(listBids);
             chrono.sort((a, b) -> a.getTime().compareTo(b.getTime()));
-            for (BidEntry bid : chrono) {
+            for (com.tboat.models.BidEntry bid : chrono) {
                 String label = bid.getTime().length() > 11
                         ? bid.getTime().substring(11) : bid.getTime();
                 priceSeries.getData().add(new XYChart.Data<>(label, bid.getPrice()));
@@ -235,6 +235,6 @@ public class AuctionUIHelper {
 
     // ── Getters ──────────────────────────────────────────────────────────────
 
-    public ObservableList<BidEntry> getListBids()  { return listBids; }
+    public ObservableList<com.tboat.models.BidEntry> getListBids()  { return listBids; }
     public Label getLblNotification()              { return lblNotification; }
 }

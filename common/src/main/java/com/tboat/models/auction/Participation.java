@@ -1,4 +1,4 @@
-package com.tboat.models;
+package com.tboat.models.auction;
 
 public class Participation {
     private String accountName;

@@ -1,4 +1,7 @@
-package com.tboat.models;
+package com.tboat.models.item.factory;
+
+import com.tboat.models.item.Item;
+import com.tboat.models.item.JewelryItem;
 
 public class JewelryFactory extends ItemFactory {
     @Override

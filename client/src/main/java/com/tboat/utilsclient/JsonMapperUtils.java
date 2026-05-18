@@ -1,11 +1,11 @@
 package com.tboat.utilsclient;
 
 import com.google.gson.JsonObject;
-import com.tboat.models.AuctionSession;
-import com.tboat.models.Item;
-import com.tboat.models.ItemFactory;
-import com.tboat.models.ItemFactoryProducer;
-import com.tboat.models.StatusOfAuction;
+import com.tboat.models.auction.AuctionSession;
+import com.tboat.models.item.Item;
+import com.tboat.models.item.factory.ItemFactory;
+import com.tboat.models.item.factory.ItemFactoryProducer;
+import com.tboat.models.auction.StatusOfAuction;
 
 import java.time.LocalDateTime;
 

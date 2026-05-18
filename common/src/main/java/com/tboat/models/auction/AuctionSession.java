@@ -1,4 +1,6 @@
-package com.tboat.models;
+package com.tboat.models.auction;
+
+import com.tboat.models.item.Item;
 
 import java.time.LocalDateTime;
 

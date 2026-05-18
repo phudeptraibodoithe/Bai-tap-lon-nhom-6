@@ -1,6 +1,6 @@
 package com.tboat.controllers;
 
-import com.tboat.models.AuctionSession;
+import com.tboat.models.auction.AuctionSession;
 import com.tboat.utilsclient.CurrencyFormatter;
 import com.tboat.utilsclient.ImageUtils;
 import javafx.event.ActionEvent;

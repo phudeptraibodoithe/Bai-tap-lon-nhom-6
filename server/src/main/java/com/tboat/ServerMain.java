@@ -5,7 +5,7 @@ import com.tboat.service.AuctionTimerService;
 import com.tboat.socket.ClientHandler;
 import com.tboat.service.AuctionManager;
 import com.tboat.dao.AuctionSessionDAO;
-import com.tboat.models.AuctionSession;
+import com.tboat.models.auction.AuctionSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;

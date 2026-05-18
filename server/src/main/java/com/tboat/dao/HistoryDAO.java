@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.tboat.database.DatabaseConnection;
-import com.tboat.models.History;
+import com.tboat.models.auction.History;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

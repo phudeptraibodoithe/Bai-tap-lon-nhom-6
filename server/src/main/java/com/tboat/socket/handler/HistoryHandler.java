@@ -4,7 +4,7 @@ import com.google.gson.JsonParser;
 import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.dao.BidDAO;
 import com.tboat.dao.HistoryDAO;
-import com.tboat.models.Response;
+import com.tboat.models.network.Response;
 import com.tboat.socket.ClientContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

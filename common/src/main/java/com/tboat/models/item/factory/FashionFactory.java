@@ -1,4 +1,7 @@
-package com.tboat.models;
+package com.tboat.models.item.factory;
+
+import com.tboat.models.item.FashionItem;
+import com.tboat.models.item.Item;
 
 public class FashionFactory extends ItemFactory {
     @Override

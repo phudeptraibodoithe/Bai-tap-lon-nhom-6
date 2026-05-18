@@ -1,4 +1,4 @@
-package com.tboat.models;
+package com.tboat.models.core;
 
 import java.time.LocalDateTime;
 

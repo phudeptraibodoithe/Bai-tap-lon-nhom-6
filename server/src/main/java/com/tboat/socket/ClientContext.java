@@ -1,7 +1,7 @@
 package com.tboat.socket;
 
 import com.google.gson.*;
-import com.tboat.models.Response;
+import com.tboat.models.network.Response;
 import com.tboat.service.AuctionRoom;
 import com.tboat.service.UserManager;
 import org.slf4j.Logger;

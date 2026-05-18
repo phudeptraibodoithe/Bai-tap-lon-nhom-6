@@ -1,4 +1,4 @@
-package com.tboat.models;
+package com.tboat.models.core;
 
 public class Admin extends Person {
 

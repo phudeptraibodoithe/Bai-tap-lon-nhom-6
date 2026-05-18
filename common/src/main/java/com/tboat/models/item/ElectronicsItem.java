@@ -1,4 +1,4 @@
-package com.tboat.models;
+package com.tboat.models.item;
 
 public class ElectronicsItem extends Item {
 

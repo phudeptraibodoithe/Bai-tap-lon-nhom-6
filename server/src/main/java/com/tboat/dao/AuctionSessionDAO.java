@@ -3,7 +3,12 @@ package com.tboat.dao;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import com.tboat.models.*;
+
+import com.tboat.models.auction.AuctionSession;
+import com.tboat.models.auction.StatusOfAuction;
+import com.tboat.models.item.Item;
+import com.tboat.models.item.factory.ItemFactory;
+import com.tboat.models.item.factory.ItemFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

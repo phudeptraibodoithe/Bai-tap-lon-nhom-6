@@ -2,9 +2,9 @@ package com.tboat.socket.handler;
 
 import com.google.gson.reflect.TypeToken;
 import com.tboat.dao.UserDAO;
-import com.tboat.models.Request;
-import com.tboat.models.Response;
-import com.tboat.models.User;
+import com.tboat.models.network.Request;
+import com.tboat.models.network.Response;
+import com.tboat.models.core.User;
 import com.tboat.service.UserManager;
 import com.tboat.socket.ClientContext;
 import com.tboat.utils.ResponseCode;

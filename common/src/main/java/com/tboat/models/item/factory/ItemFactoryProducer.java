@@ -1,4 +1,4 @@
-package com.tboat.models;
+package com.tboat.models.item.factory;
 
 public class ItemFactoryProducer {
     public static ItemFactory getFactory(String type) {

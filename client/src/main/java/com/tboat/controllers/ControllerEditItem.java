@@ -1,7 +1,7 @@
 package com.tboat.controllers;
 
 import com.google.gson.JsonObject;
-import com.tboat.models.AuctionSession;
+import com.tboat.models.auction.AuctionSession;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
 import com.tboat.ucb.DataCache;

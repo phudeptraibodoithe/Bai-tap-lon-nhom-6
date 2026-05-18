@@ -1,4 +1,4 @@
-package com.tboat.models;
+package com.tboat.models.network;
 
 public class Response<T> {
     private String status;

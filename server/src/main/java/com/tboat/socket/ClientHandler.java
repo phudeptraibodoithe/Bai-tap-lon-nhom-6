@@ -1,6 +1,6 @@
 package com.tboat.socket;
 
-import com.tboat.models.Response;
+import com.tboat.models.network.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

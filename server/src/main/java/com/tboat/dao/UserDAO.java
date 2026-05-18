@@ -1,7 +1,7 @@
 package com.tboat.dao;
 
 import com.tboat.database.DatabaseConnection;
-import com.tboat.models.User;
+import com.tboat.models.core.User;
 import com.tboat.utils.ResponseCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

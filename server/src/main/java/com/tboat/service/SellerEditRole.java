@@ -4,9 +4,9 @@ import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.dao.BidDAO;
 import com.tboat.dao.HistoryDAO;
 import com.tboat.dao.UserDAO;
-import com.tboat.models.AuctionSession;
-import com.tboat.models.StatusOfAuction;
-import com.tboat.models.User;
+import com.tboat.models.auction.AuctionSession;
+import com.tboat.models.auction.StatusOfAuction;
+import com.tboat.models.core.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

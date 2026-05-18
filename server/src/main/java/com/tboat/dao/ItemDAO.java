@@ -1,6 +1,6 @@
 package com.tboat.dao;
 
-import com.tboat.models.Item;
+import com.tboat.models.item.Item;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

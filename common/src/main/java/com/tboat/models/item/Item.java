@@ -1,4 +1,4 @@
-package com.tboat.models;
+package com.tboat.models.item;
 
 public abstract class Item {
     private int id;

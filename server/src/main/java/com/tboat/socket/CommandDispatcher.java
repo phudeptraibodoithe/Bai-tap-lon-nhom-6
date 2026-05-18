@@ -2,7 +2,7 @@ package com.tboat.socket;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.tboat.models.Response;
+import com.tboat.models.network.Response;
 import com.tboat.socket.handler.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

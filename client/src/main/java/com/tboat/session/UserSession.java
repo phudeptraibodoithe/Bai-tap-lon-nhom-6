@@ -1,6 +1,6 @@
 package com.tboat.session;
 
-import com.tboat.models.User;
+import com.tboat.models.core.User;
 
 public class UserSession {
     private static UserSession instance;

@@ -2,7 +2,7 @@ package com.tboat.controllers;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.tboat.models.User;
+import com.tboat.models.core.User;
 import com.tboat.session.UserSession;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;

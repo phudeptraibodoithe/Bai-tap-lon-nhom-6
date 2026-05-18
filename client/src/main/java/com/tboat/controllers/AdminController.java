@@ -1,16 +1,12 @@
 package com.tboat.controllers;
 
 import com.google.gson.*;
-import com.google.gson.reflect.TypeToken;
-import com.tboat.models.AuctionSession;
+import com.tboat.models.*;
 import com.tboat.socket.SocketListener;
 import com.tboat.ucb.DataCache;
 import com.tboat.ucb.NavigationContext;
 import com.tboat.utils.GsonUtils;
-import com.tboat.utilsclient.AlertUtils;
-import com.tboat.utilsclient.CurrencyFormatter;
-import com.tboat.utilsclient.SocketHelper;
-import com.tboat.utilsclient.UserSession;
+import com.tboat.utilsclient.*;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -20,11 +16,8 @@ import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-
-import java.lang.reflect.Type;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalDateTime;
 import java.util.ResourceBundle;
 import java.util.logging.Logger;
 
@@ -75,19 +68,54 @@ public class AdminController extends BaseController implements Initializable, So
     private void renderPendingItems(String response) {
         try {
             JsonObject json = JsonParser.parseString(response).getAsJsonObject();
-
-            // FILTER bằng type thay vì message cho chắc
-            String type = json.has("type") ? json.get("type").getAsString() : "";
-            if (!"GET_PENDING_ITEMS".equals(type)) return;
+            if (!"GET_PENDING_ITEMS".equals(json.has("type") ? json.get("type").getAsString() : "")) return;
+            if (!json.has("payload") || !json.get("payload").isJsonArray()) return;
 
             sessionList.clear();
-            Type listType = new TypeToken<ArrayList<AuctionSession>>(){}.getType();
-            List<AuctionSession> items = gson.fromJson(json.get("payload"), listType);
-            if (items != null) sessionList.addAll(items);
-
+            for (JsonElement element : json.getAsJsonArray("payload")) {
+                AuctionSession session = parseSingleAuctionSession(element.getAsJsonObject());
+                if (session != null) sessionList.add(session);
+            }
         } catch (Exception e) {
             log.warning("[Admin] Lỗi render: " + e.getMessage());
         }
+    }
+
+    private AuctionSession parseSingleAuctionSession(JsonObject dataObj) {
+        JsonObject itemObj = dataObj.has("item") && dataObj.get("item").isJsonObject()
+                ? dataObj.getAsJsonObject("item") : dataObj;
+
+        String type          = getStringJson(itemObj, "type", "Khác");
+        String name          = getStringJson(itemObj, "name", "");
+        String description   = getStringJson(itemObj, "description", "");
+        String imageURL      = getStringJson(itemObj, "imageURL", "");
+        String sellerAccount = getStringJson(itemObj, "sellerAccountName", "");
+        double currentPrice  = getDoubleJson(dataObj, "currentPrice", 0.0);
+        double bidIncrease   = getDoubleJson(dataObj, "bidIncrease", 0.0);
+
+        ItemFactory factory = ItemFactoryProducer.getFactory(type);
+        Item item = factory.createItem(sellerAccount, name, description, imageURL);
+
+        AuctionSession session = new AuctionSession(
+                dataObj.has("startTime") ? TimeUtils.parseServerTime(dataObj.get("startTime")) : LocalDateTime.now(),
+                dataObj.has("endTime")   ? TimeUtils.parseServerTime(dataObj.get("endTime"))   : LocalDateTime.now().plusDays(1),
+                currentPrice, bidIncrease, item
+        );
+        session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
+
+        try {
+            session.setStatusOfAuction(StatusOfAuction.valueOf(getStringJson(dataObj, "statusOfAuction", "ONGOING")));
+        } catch (Exception ignored) {
+            session.setStatusOfAuction(StatusOfAuction.ONGOING);
+        }
+        return session;
+    }
+
+    private String getStringJson(JsonObject json, String key, String def) {
+        return json.has(key) && !json.get(key).isJsonNull() ? json.get(key).getAsString() : def;
+    }
+    private double getDoubleJson(JsonObject json, String key, double def) {
+        return json.has(key) && !json.get(key).isJsonNull() ? json.get(key).getAsDouble() : def;
     }
 
     private void loadPendingItems() {
@@ -138,7 +166,7 @@ public class AdminController extends BaseController implements Initializable, So
         });
     }
     public void switchToAdminNapRut(ActionEvent event) {
-        changeScene((Node) event.getSource(), "adminNapRut.fxml");
+        changeScene((Node) event.getSource(), "adminWallet.fxml");
     }
     public void logout(ActionEvent e) {
         if (AlertUtils.showConfirmation("Xác nhận đăng xuất", "Bạn có chắc chắn muốn đăng xuất không?")) {

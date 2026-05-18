@@ -116,16 +116,24 @@ public class ItemHandler {
         try {
             int sessionId = JsonParser.parseString(raw)
                     .getAsJsonObject().get("payload").getAsInt();
-            AuctionSession session = auctionDAO.getAuctionById(sessionId);
+            boolean isUpdated = auctionDAO.updateSessionStatus(sessionId, StatusOfAuction.NOT_STARTED);
 
-            if (session != null) {
-                AuctionTimerService.getInstance().scheduleAuction(session);
-                context.sendResponse(new Response<>("APPROVE_ITEM", "SUCCESS",
-                        "Đã duyệt! Hệ thống sẽ tự động canh giờ.", sessionId));
-                log.info("[Server] Admin duyệt phiên ID: {}", sessionId);
+            if (isUpdated) {
+                AuctionSession session = auctionDAO.getAuctionById(sessionId);
+
+                if (session != null) {
+                    AuctionTimerService.getInstance().scheduleAuction(session);
+                    context.sendResponse(new Response<>("APPROVE_ITEM", "SUCCESS",
+                            "Đã duyệt và bắt đầu đấu giá", sessionId));
+
+                    log.info("[Server] Admin duyệt thành công phiên ID: {}", sessionId);
+                } else {
+                    context.sendResponse(new Response<>("APPROVE_ITEM", "ERROR",
+                            "Không tìm thấy sản phẩm sau khi cập nhật", null));
+                }
             } else {
                 context.sendResponse(new Response<>("APPROVE_ITEM", "ERROR",
-                        "Không tìm thấy sản phẩm cần duyệt", null));
+                        "Lỗi cập nhật trạng thái duyệt vào Database", null));
             }
         } catch (Exception e) {
             log.error("Lỗi APPROVE_ITEM: {}", e.getMessage(), e);

@@ -143,7 +143,6 @@ public abstract class BaseController {
     @FXML public void switchToWallet(ActionEvent e)     { changeScene((Node) e.getSource(), "NapRut.fxml"); }
     @FXML public void switchToProfile(ActionEvent e)    { changeScene((Node) e.getSource(), "profile.fxml"); }
     @FXML public void switchToManager(ActionEvent e)    { changeScene((Node) e.getSource(), "manager.fxml"); }
-    @FXML public void switchToWalletAdmin(ActionEvent e){ changeScene((Node) e.getSource(), "adminWallet.fxml"); }
     @FXML public void switchToLogin(ActionEvent e) throws IOException     { changeScene((Node) e.getSource(), "login.fxml"); }
     @FXML public void switchToRegister(ActionEvent e) throws IOException  { changeScene((Node) e.getSource(), "register.fxml"); }
     @FXML public void switchToStart(MouseEvent e) throws IOException      { changeScene((Node) e.getSource(), "start.fxml"); }

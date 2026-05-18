@@ -119,6 +119,7 @@ public class ManagerController extends BaseController implements Initializable, 
     }
 
     private void renderMyAuctions(String response) {
+        logger.info("[DEBUG] RAW: " + response); // THÊM DÒNG NÀY
         try {
             if (!"SUCCESS".equals(SocketHelper.getStatus(response))) return;
             JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
@@ -141,11 +142,14 @@ public class ManagerController extends BaseController implements Initializable, 
     }
 
     private AuctionSession parseSingleAuctionSession(JsonObject dataObj) {
-        String type          = getStringJson(dataObj, "type", "Khác");
-        String name          = getStringJson(dataObj, "name", "");
-        String description   = getStringJson(dataObj, "description", "");
-        String imageURL      = getStringJson(dataObj, "imageURL", "");
-        String sellerAccount = getStringJson(dataObj, "sellerAccountName", "");
+        JsonObject itemObj = dataObj.has("item") && dataObj.get("item").isJsonObject()
+                ? dataObj.getAsJsonObject("item")
+                : dataObj;
+        String type          = getStringJson(itemObj, "type", "Khác");
+        String name          = getStringJson(itemObj, "name", "");
+        String description   = getStringJson(itemObj, "description", "");
+        String imageURL      = getStringJson(itemObj, "imageURL", "");
+        String sellerAccount = getStringJson(itemObj, "sellerAccountName", "");
         double currentPrice  = getDoubleJson(dataObj, "currentPrice", 0.0);
         double bidIncrease   = getDoubleJson(dataObj, "bidIncrease", 0.0);
 

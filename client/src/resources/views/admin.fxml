@@ -68,7 +68,7 @@
     </top>
 
     <center>
-        <VBox spacing="15.0" BorderPane.alignment="CENTER" VBox.vgrow="ALWAYS" maxWidth="Infinity" maxHeight="Infinity">
+        <VBox maxHeight="Infinity" maxWidth="Infinity" spacing="15.0" BorderPane.alignment="CENTER" VBox.vgrow="ALWAYS">
             <padding>
                 <Insets bottom="30.0" left="40.0" right="40.0" top="30.0" />
             </padding>
@@ -78,7 +78,7 @@
                     <font><Font name="System Bold" size="24.0" /></font>
                 </Label>
 
-                <Label fx:id="err" text="Đang tải dữ liệu..." textFill="#3498db">
+                <Label fx:id="err" textFill="#3498db">
                     <font><Font name="System Italic" size="14.0" /></font>
                 </Label>
 

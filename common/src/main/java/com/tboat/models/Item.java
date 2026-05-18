@@ -6,12 +6,14 @@ public abstract class Item {
     private String name;
     private String description;
     private String imageURL;
+    private String type;
 
     public Item(String sellerAccountName, String name, String description, String imageURL) {
         this.sellerAccountName = sellerAccountName;
         this.name = name;
         this.description = description;
         this.imageURL = imageURL;
+        this.type = getType();
     }
     public Item() {}
 

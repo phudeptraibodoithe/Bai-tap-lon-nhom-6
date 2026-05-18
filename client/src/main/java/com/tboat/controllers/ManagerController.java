@@ -119,7 +119,6 @@ public class ManagerController extends BaseController implements Initializable, 
     }
 
     private void renderMyAuctions(String response) {
-        logger.info("[DEBUG] RAW: " + response); // THÊM DÒNG NÀY
         try {
             if (!"SUCCESS".equals(SocketHelper.getStatus(response))) return;
             JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();

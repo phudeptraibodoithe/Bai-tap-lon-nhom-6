@@ -5,8 +5,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.models.AuctionSession;
+import com.tboat.models.Item;
 import com.tboat.models.ItemFactory;
 import com.tboat.models.ItemFactoryProducer;
+import com.tboat.models.StatusOfAuction;
 import com.tboat.socket.SocketListener;
 import com.tboat.ucb.DataCache;
 import com.tboat.ucb.NavigationContext;
@@ -127,7 +129,6 @@ public class TrangChuController extends BaseController implements Initializable,
                 String status = SocketHelper.getStatus(response);
 
                 if ("SUCCESS".equals(status)) {
-
                     if (!"LIST_AVAILABLE".equals(SocketHelper.getType(response))) return;
 
                     JsonArray auctionArray = SocketHelper.getPayloadArray(response);
@@ -137,35 +138,13 @@ public class TrangChuController extends BaseController implements Initializable,
                     if (itemContainer != null) itemContainer.getChildren().clear();
 
                     for (JsonElement element : auctionArray) {
-                        JsonObject dataObj = element.getAsJsonObject();
-                        int id = dataObj.has("id") ? dataObj.get("id").getAsInt() : 0;
-                        String type = dataObj.has("type") ? dataObj.get("type").getAsString() : "Khác";
-                        String name = dataObj.has("name") ? dataObj.get("name").getAsString() : "Sản phẩm chưa có tên";
-                        double currentPrice = dataObj.has("currentPrice") ? dataObj.get("currentPrice").getAsDouble() : 0.0;
-                        double bidIncrease = dataObj.has("bidIncrease") ? dataObj.get("bidIncrease").getAsDouble() : 0.0;
-                        String description = dataObj.has("description") ? dataObj.get("description").getAsString() : "Không có mô tả";
-                        String highestBidder = dataObj.has("highestBidderAccount") && !dataObj.get("highestBidderAccount").isJsonNull() ? dataObj.get("highestBidderAccount").getAsString() : "";
-                        String sellerAccount = dataObj.has("sellerAccountName") && !dataObj.get("sellerAccountName").isJsonNull() ? dataObj.get("sellerAccountName").getAsString() : "N/A";
-                        String imageBase64 = dataObj.has("imageURL") ? dataObj.get("imageURL").getAsString() : "";
-
-                        LocalDateTime startTime = dataObj.has("startTime") ? TimeUtils.parseServerTime(dataObj.get("startTime")) : LocalDateTime.now();
-                        LocalDateTime endTime = dataObj.has("endTime") ? TimeUtils.parseServerTime(dataObj.get("endTime")) : LocalDateTime.now().plusDays(1);
-
-                        if (imageBase64.startsWith("data:image")) {
-                            imageBase64 = imageBase64.substring(imageBase64.indexOf(",") + 1);
-                        }
-
-                        ItemFactory factory = ItemFactoryProducer.getFactory(type);
-                        AuctionSession session = new AuctionSession(
-                                startTime, endTime, currentPrice, bidIncrease,
-                                factory.createItem()
-                        );
-                        session.setId(id);
-                        session.setHighestBidderAccount(highestBidder);
-
-                        String statusString = dataObj.has("statusOfAuction") ? dataObj.get("statusOfAuction").getAsString() : "ONGOING";
-
                         try {
+                            JsonObject dataObj = element.getAsJsonObject();
+                            AuctionSession session = parseSingleAuctionSession(dataObj);
+
+                            // Lấy type để filter
+                            String type = getStringJson(dataObj.has("item") ? dataObj.getAsJsonObject("item") : dataObj, "type", "Khác");
+
                             FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/productCard.fxml"));
                             VBox productCard = loader.load();
 
@@ -174,16 +153,68 @@ public class TrangChuController extends BaseController implements Initializable,
 
                             productCard.setUserData(type);
                             allCards.add(productCard);
+
                         } catch (Exception ex) {
-                            logger.severe("Lỗi nạp FXML thẻ sản phẩm: " + ex.getMessage());
+                            logger.severe("[TrangChu] Lỗi nạp FXML hoặc xử lý thẻ sản phẩm: " + ex.getMessage());
                         }
-                        applyFilter();
                     }
+                    applyFilter();
                 }
             } catch (Exception e) {
-                // Đã cấu trúc lại khối Try-Catch và đóng ngoặc đúng cách
                 logger.severe("LỖI ĐỌC JSON TRANG CHỦ: " + e.getMessage());
             }
         });
+    }
+
+    // =======================================================
+    // HELPER METHODS (Dùng chung chuẩn giống ManagerController)
+    // =======================================================
+
+    private AuctionSession parseSingleAuctionSession(JsonObject dataObj) {
+        // Hỗ trợ cả object lồng nhau (item) hoặc object phẳng
+        JsonObject itemObj = dataObj.has("item") && dataObj.get("item").isJsonObject()
+                ? dataObj.getAsJsonObject("item")
+                : dataObj;
+
+        String type          = getStringJson(itemObj, "type", "Khác");
+        String name          = getStringJson(itemObj, "name", "Sản phẩm chưa có tên");
+        String description   = getStringJson(itemObj, "description", "Không có mô tả");
+        String imageURL      = getStringJson(itemObj, "imageURL", "");
+        String sellerAccount = getStringJson(itemObj, "sellerAccountName", "N/A");
+        String highestBidder = getStringJson(dataObj, "highestBidderAccount", "");
+
+        double currentPrice  = getDoubleJson(dataObj, "currentPrice", 0.0);
+        double bidIncrease   = getDoubleJson(dataObj, "bidIncrease", 0.0);
+
+        LocalDateTime startTime = dataObj.has("startTime") ? TimeUtils.parseServerTime(dataObj.get("startTime")) : LocalDateTime.now();
+        LocalDateTime endTime   = dataObj.has("endTime")   ? TimeUtils.parseServerTime(dataObj.get("endTime"))   : LocalDateTime.now().plusDays(1);
+
+        if (imageURL.startsWith("data:image")) {
+            imageURL = imageURL.substring(imageURL.indexOf(",") + 1);
+        }
+
+        ItemFactory factory = ItemFactoryProducer.getFactory(type);
+        Item item = factory.createItem(sellerAccount, name, description, imageURL);
+
+        AuctionSession session = new AuctionSession(startTime, endTime, currentPrice, bidIncrease, item);
+        session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
+        session.setHighestBidderAccount(highestBidder);
+
+        String statusStr = getStringJson(dataObj, "statusOfAuction", "ONGOING");
+        try {
+            session.setStatusOfAuction(StatusOfAuction.valueOf(statusStr));
+        } catch (Exception ignored) {
+            session.setStatusOfAuction(StatusOfAuction.ONGOING);
+        }
+
+        return session;
+    }
+
+    private String getStringJson(JsonObject json, String key, String defaultValue) {
+        return json.has(key) && !json.get(key).isJsonNull() ? json.get(key).getAsString() : defaultValue;
+    }
+
+    private double getDoubleJson(JsonObject json, String key, double defaultValue) {
+        return json.has(key) && !json.get(key).isJsonNull() ? json.get(key).getAsDouble() : defaultValue;
     }
 }

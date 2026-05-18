@@ -35,9 +35,6 @@ public class AlertUtils {
 
     // ── Public API ───────────────────────────────────────────────────────────
 
-    /**
-     * Hiển thị hộp thoại thông báo thông thường (chỉ nút Đóng).
-     */
     public static void showAlert(Alert.AlertType type, String title, String message) {
         Alert alert = new Alert(type);
         alert.setTitle(title);
@@ -50,10 +47,6 @@ public class AlertUtils {
         alert.showAndWait();
     }
 
-    /**
-     * Hiển thị hộp thoại xác nhận (Có / Không).
-     * Trả về true nếu người dùng bấm "Có".
-     */
     public static boolean showConfirmation(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle(title);
@@ -68,21 +61,24 @@ public class AlertUtils {
     }
 
     /**
-     * Hiển thị thông báo inline lên Label, rồi tự động xóa sau {@value STATUS_DISPLAY_SECONDS} giây.
-     * An toàn khi gọi từ bất kỳ thread nào.
+     * Hiển thị thông báo inline lên Label, tự động xóa sau vài giây.
+     * Hỗ trợ truyền vào cả mã màu (VD: "#ff0000") HOẶC chuỗi CSS hoàn chỉnh (VD: "-fx-text-fill: red;")
      */
-    public static void showStatus(Label label, String msg, String color) {
+    public static void showStatus(Label label, String msg, String styleOrColor) {
         if (label == null) return;
 
         Platform.runLater(() -> {
             label.setText(msg);
-            label.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: bold;");
 
-            // Tự động xóa sau STATUS_DISPLAY_SECONDS giây
+            // 👉 KIỂM TRA THÔNG MINH: Nếu chuỗi truyền vào là CSS hợp lệ thì xài luôn
+            if (styleOrColor != null && styleOrColor.contains("-fx-")) {
+                label.setStyle(styleOrColor);
+            } else {
+                label.setStyle("-fx-text-fill: " + styleOrColor + "; -fx-font-weight: bold;");
+            }
+
             PauseTransition pause = new PauseTransition(Duration.seconds(STATUS_DISPLAY_SECONDS));
             pause.setOnFinished(e -> {
-                // Chỉ xóa nếu label vẫn đang hiển thị đúng message này
-                // (tránh xóa nhầm message mới hơn)
                 if (msg.equals(label.getText())) {
                     label.setText("");
                     label.setStyle("");
@@ -95,12 +91,18 @@ public class AlertUtils {
     /**
      * Overload cho phép tuỳ chỉnh thời gian hiển thị (giây).
      */
-    public static void showStatus(Label label, String msg, String color, double seconds) {
+    public static void showStatus(Label label, String msg, String styleOrColor, double seconds) {
         if (label == null) return;
 
         Platform.runLater(() -> {
             label.setText(msg);
-            label.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: bold;");
+
+            // 👉 ĐỒNG BỘ LOGIC KIỂM TRA BÊN TRÊN
+            if (styleOrColor != null && styleOrColor.contains("-fx-")) {
+                label.setStyle(styleOrColor);
+            } else {
+                label.setStyle("-fx-text-fill: " + styleOrColor + "; -fx-font-weight: bold;");
+            }
 
             PauseTransition pause = new PauseTransition(Duration.seconds(seconds));
             pause.setOnFinished(e -> {

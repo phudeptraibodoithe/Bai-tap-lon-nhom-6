@@ -26,7 +26,7 @@ public class ControllerStart extends BaseController {
 
     @FXML
     public void initialize() {
-        ipText.setText("192.168.0.100");
+        ipText.setText("192.168.1.251");
     }
 
     @FXML

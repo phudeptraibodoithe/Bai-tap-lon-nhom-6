@@ -131,26 +131,41 @@ public class AuctionController extends BaseController implements SocketListener 
                 String status = SocketHelper.getStatus(response);
                 String msg    = SocketHelper.getMessage(response);
 
-                boolean isBroadcast  = "NEW_BID".equals(status) || "AUCTION_STARTED".equals(status)
-                        || "AUCTION_FINISHED".equals(status) || "TIME_EXTENDED".equals(status)
-                        || "SERVER_READY".equals(status);
-                boolean isMyResponse = "JOIN".equals(type) || "BID".equals(type)
-                        || "GET_SESSION_BIDS".equals(type) || "CANCEL_AUCTION".equals(type);
-
-                if (!isBroadcast && !isMyResponse) return;
-
                 JsonObject json = JsonParser.parseString(response).getAsJsonObject();
+
+                // ── 1. ĐÓN ĐẦU CÁC SỰ KIỆN REAL-TIME BROADCAST (Kiểm tra cả type lẫn status để tránh sót) ──
+                if ("NEW_BID".equals(type) || "NEW_BID".equals(status)) {
+                    if (json.has("payload") && json.get("payload").isJsonObject()) {
+                        handleNewBid(json.getAsJsonObject("payload"));
+                    }
+                    return;
+                }
+                if ("AUCTION_STARTED".equals(type) || "AUCTION_STARTED".equals(status)) {
+                    handleAuctionStarted(msg);
+                    return;
+                }
+                if ("AUCTION_FINISHED".equals(type) || "AUCTION_FINISHED".equals(status)) {
+                    handleAuctionFinished(json, msg);
+                    return;
+                }
+                if ("TIME_EXTENDED".equals(type) || "TIME_EXTENDED".equals(status)) {
+                    AlertUtils.showAlert(Alert.AlertType.WARNING, "Đấu giá kịch tính!", msg);
+                    return;
+                }
+                if ("AUCTION_CANCELED".equals(type) || "AUCTION_CANCELED".equals(status)) {
+                    AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Thông báo", "Phiên đấu giá này đã bị hủy bởi người bán!");
+                    if (btnBid != null) btnBid.setDisable(true);
+                    return;
+                }
+
+                // ── 2. XỬ LÝ PHẢN HỒI ĐƠN LẺ CHO RIÊNG SỰ KIỆN CỦA CLIENT NÀY ──
                 switch (status) {
-                    case "AUCTION_STARTED"  -> handleAuctionStarted(msg);
-                    case "NEW_BID"          -> handleNewBid(json.getAsJsonObject("payload"));
-                    case "SUCCESS"          -> handleSuccess(json, msg);
-                    case "JOIN_SUCCESS"     -> handleJoinSuccess(json);
-                    case "TIME_EXTENDED"    -> AlertUtils.showAlert(Alert.AlertType.WARNING, "Đấu giá kịch tính!", msg);
-                    case "AUCTION_FINISHED" -> handleAuctionFinished(json, msg);
-                    case "FAILED"           -> handleFailed(json, msg);
-                    case "ERROR"            -> AlertUtils.showStatus(lblNotification, "⚠️ " + msg, STYLE_ERROR);
-                    case "SERVER_READY"     -> {}
-                    default -> log.warn("Không xử lý được status: {}", status);
+                    case "SUCCESS"       -> handleSuccess(json, msg);
+                    case "JOIN_SUCCESS"  -> handleJoinSuccess(json);
+                    case "FAILED"        -> handleFailed(json, msg);
+                    case "ERROR"         -> AlertUtils.showStatus(lblNotification, "⚠️ " + msg, STYLE_ERROR);
+                    case "SERVER_READY"  -> {}
+                    default -> log.warn("Không khớp bộ xử lý cho Type: {}, Status: {}", type, status);
                 }
             } catch (Exception e) {
                 log.error("Lỗi đọc dữ liệu từ server: {} | {}", response, e.getMessage());

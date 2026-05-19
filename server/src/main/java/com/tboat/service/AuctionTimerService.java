@@ -1,8 +1,8 @@
 package com.tboat.service;
 
 import com.tboat.dao.AuctionSessionDAO;
-import com.tboat.models.AuctionSession;
-import com.tboat.models.StatusOfAuction;
+import com.tboat.models.auction.AuctionSession;
+import com.tboat.models.auction.StatusOfAuction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,17 +1,16 @@
 package com.tboat.controllers;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
-import com.tboat.socket.SocketManager;
-import com.tboat.utils.GsonUtils;
+import com.tboat.utilsclient.AlertUtils;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+
 import java.util.logging.Logger;
 
 public class ControllerRegister extends BaseController implements SocketListener {
@@ -20,13 +19,16 @@ public class ControllerRegister extends BaseController implements SocketListener
     @FXML private PasswordField passText, repassText;
     @FXML private Label err;
 
-    private final Gson gson = GsonUtils.getInstance();
     private static final Logger logger = Logger.getLogger(ControllerRegister.class.getName());
+
+    // --- CONSTANTS ---
+    private static final String STYLE_ERROR = "#e74c3c";
+    private static final String STYLE_PROCESSING = "#3498db";
+    private static final String STYLE_SUCCESS = "#2ecc71";
 
     @FXML
     public void submit(ActionEvent event) {
-        err.setStyle("-fx-text-fill: red;");
-        err.setText("");
+        err.setText(""); // Reset thông báo cũ
 
         String accountName = accountNameText.getText().trim();
         String nickname = nicknameText.getText().trim();
@@ -35,23 +37,23 @@ public class ControllerRegister extends BaseController implements SocketListener
         String phone = phoneText.getText().trim();
 
         if (accountName.isEmpty() || password.isEmpty() || nickname.isEmpty() || email.isEmpty() || phone.isEmpty()) {
-            err.setText("Vui lòng điền đầy đủ thông tin!");
+            AlertUtils.showStatus(err, "Vui lòng điền đầy đủ thông tin!", STYLE_ERROR);
             return;
         }
 
         if (!email.endsWith("@gmail.com")) {
-            err.setText("Email phải có đuôi @gmail.com!");
+            AlertUtils.showStatus(err, "Email phải có đuôi @gmail.com!", STYLE_ERROR);
             return;
         }
 
         if (!password.equals(repassText.getText())) {
-            err.setText("Mật khẩu xác nhận không khớp!");
+            AlertUtils.showStatus(err, "Mật khẩu xác nhận không khớp!", STYLE_ERROR);
             return;
         }
 
-        JsonObject request = new JsonObject();
-        request.addProperty("action", "REGISTER");
+        AlertUtils.showStatus(err, "Đang gửi yêu cầu đăng ký...", STYLE_PROCESSING);
 
+        // 👉 Đóng gói payload và gửi qua SocketHelper siêu ngắn gọn
         JsonObject payload = new JsonObject();
         payload.addProperty("accountName", accountName);
         payload.addProperty("password", password);
@@ -59,33 +61,26 @@ public class ControllerRegister extends BaseController implements SocketListener
         payload.addProperty("email", email);
         payload.addProperty("phone", phone);
 
-        request.add("payload", payload);
-
-        SocketManager.getInstance().send(gson.toJson(request));
-
-        err.setStyle("-fx-text-fill: blue;");
-        err.setText("Đang gửi yêu cầu đăng ký...");
+        SocketHelper.sendRequest("REGISTER", payload);
     }
 
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                String status = jsonResponse.has("status") ? jsonResponse.get("status").getAsString() : "";
-                String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
+                if (!"REGISTER".equals(SocketHelper.getType(response))) return;
+
+                String status = SocketHelper.getStatus(response);
+                String message = SocketHelper.getMessage(response);
 
                 if ("SUCCESS".equals(status)) {
-                    err.setStyle("-fx-text-fill: green;");
-                    err.setText("Đăng ký thành công! Đang chuyển hướng...");
+                    AlertUtils.showStatus(err, "Đăng ký thành công! Đang chuyển hướng...", STYLE_SUCCESS);
                     changeScene(err, "login.fxml");
                 } else if ("FAILED".equals(status) || "ERROR".equals(status)) {
-                    err.setStyle("-fx-text-fill: red;");
-                    err.setText(message.isEmpty() ? "Đăng ký thất bại, vui lòng thử lại!" : message);
+                    AlertUtils.showStatus(err, message.isEmpty() ? "Đăng ký thất bại, vui lòng thử lại!" : message, STYLE_ERROR);
                 }
             } catch (Exception e) {
-                err.setStyle("-fx-text-fill: red;");
-                err.setText("Lỗi đọc dữ liệu từ Server!");
+                AlertUtils.showStatus(err, "Lỗi đọc dữ liệu từ Server!", STYLE_ERROR);
                 logger.severe("❌ KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
             }
         });

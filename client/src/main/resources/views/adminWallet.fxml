@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox maxHeight="Infinity" maxWidth="Infinity" prefHeight="700.0" prefWidth="1000.0" styleClass="admin-root" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.AdminWalletController">
+
+    <stylesheets>
+        <URL value="@../styles/application.css" />
+    </stylesheets>
+
+    <children>
+        <HBox alignment="CENTER_LEFT" prefHeight="60.0" spacing="20.0" styleClass="admin-header">
+            <padding>
+                <Insets left="20.0" right="20.0" />
+            </padding>
+            <children>
+                <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;">
+                    <graphic>
+                        <ImageView fitHeight="59.0" fitWidth="129.0" pickOnBounds="true" preserveRatio="true">
+                            <image>
+                                <Image url="@../images/logo.png" />
+                            </image>
+                        </ImageView>
+                    </graphic>
+                </Button>
+
+                <HBox alignment="CENTER_LEFT" minWidth="-Infinity" spacing="10.0">
+                    <children>
+                        <Button mnemonicParsing="false" onAction="#switchToAdmin" styleClass="btn-admin-nav" text="HỆ THỐNG QUẢN TRỊ" textFill="WHITE">
+                            <font><Font name="System Bold" size="14.0" /></font>
+                        </Button>
+                        <Button mnemonicParsing="false" styleClass="btn-admin-nav" text="QUẢN LÝ SỐ DƯ" textFill="WHITE">
+                            <font><Font name="System Bold" size="14.0" /></font>
+                        </Button>
+                    </children>
+                    <HBox.margin><Insets left="15.0" /></HBox.margin>
+                </HBox>
+
+                <Region HBox.hgrow="ALWAYS" />
+
+                <HBox alignment="CENTER_RIGHT" minWidth="-Infinity" spacing="15.0">
+                    <children>
+                        <Label text="Xin chào, Admin!" textFill="WHITE">
+                            <font><Font name="System Bold" size="14.0" /></font>
+                        </Label>
+                        <Button mnemonicParsing="false" onAction="#logout" styleClass="btn-logout" text="Đăng xuất" textFill="WHITE">
+                            <font><Font name="System Bold" size="12.0" /></font>
+                        </Button>
+                    </children>
+                </HBox>
+            </children>
+        </HBox>
+
+        <VBox alignment="CENTER" VBox.vgrow="ALWAYS" maxWidth="Infinity" maxHeight="Infinity">
+            <padding>
+                <Insets bottom="30.0" left="40.0" right="40.0" top="30.0" />
+            </padding>
+            <children>
+                <HBox spacing="40.0" styleClass="wallet-card" VBox.vgrow="ALWAYS" maxWidth="1000.0" maxHeight="500.0">
+                    <padding>
+                        <Insets bottom="40.0" left="50.0" right="50.0" top="40.0" />
+                    </padding>
+                    <children>
+
+                        <VBox spacing="20.0" HBox.hgrow="ALWAYS">
+                            <children>
+                                <Label text="SỐ DƯ">
+                                    <font><Font name="System Bold" size="22.0" /></font>
+                                </Label>
+
+                                <VBox alignment="CENTER" prefHeight="130.0" spacing="10.0" styleClass="balance-box" VBox.vgrow="ALWAYS">
+                                    <children>
+                                        <Label text="Số dư khả dụng" textFill="#2e7d32">
+                                            <font><Font size="15.0" /></font>
+                                        </Label>
+                                        <Label fx:id="lblBalance" text="0" textFill="#1b5e20">
+                                            <font><Font name="System Bold" size="32.0" /></font>
+                                        </Label>
+                                        <Label text="VNĐ" textFill="#2e7d32">
+                                            <font><Font name="System Bold" size="14.0" /></font>
+                                        </Label>
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+
+                        <Pane prefWidth="1.0" style="-fx-background-color: #eeeeee;" />
+
+                        <VBox spacing="18.0" HBox.hgrow="ALWAYS">
+                            <children>
+                                <Label text="Lệnh Giao Dịch">
+                                    <font><Font name="System Bold" size="22.0" /></font>
+                                </Label>
+
+                                <HBox spacing="10.0">
+                                    <children>
+                                        <Button fx:id="btnTabDeposit" mnemonicParsing="false" prefHeight="45.0" styleClass="tab-btn-active-deposit" text="Nạp Tiền" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                                            <font><Font name="System Bold" size="15.0" /></font>
+                                        </Button>
+                                        <Button fx:id="btnTabWithdraw" mnemonicParsing="false" prefHeight="45.0" styleClass="tab-btn-inactive" text="Rút Tiền" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                                            <font><Font name="System Bold" size="15.0" /></font>
+                                        </Button>
+                                    </children>
+                                </HBox>
+
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label text="Số tiền (VNĐ):" textFill="#555555" />
+                                        <TextField fx:id="txtAmount" prefHeight="45.0" promptText="Nhập số tiền..." style="-fx-background-radius: 5; -fx-font-size: 15px;" />
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label text="Mật khẩu xác thực:" textFill="#555555" />
+                                        <TextField fx:id="txtPin" prefHeight="45.0" promptText="Nhập mật khẩu Admin..." style="-fx-background-radius: 5; -fx-font-size: 15px;" />
+                                    </children>
+                                </VBox>
+
+                                <Region VBox.vgrow="ALWAYS" />
+
+                                <Button fx:id="btnSubmit" mnemonicParsing="false" prefHeight="50.0" styleClass="btn-submit-deposit" text="XÁC NHẬN NẠP TIỀN" maxWidth="Infinity">
+                                    <font><Font name="System Bold" size="16.0" /></font>
+                                </Button>
+                            </children>
+                        </VBox>
+
+                    </children>
+                </HBox>
+            </children>
+        </VBox>
+    </children>
+</VBox>

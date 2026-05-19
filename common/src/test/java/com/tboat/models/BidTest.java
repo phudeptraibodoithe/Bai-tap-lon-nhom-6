@@ -1,5 +1,6 @@
 package com.tboat.models;
 
+import com.tboat.models.core.Bid;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

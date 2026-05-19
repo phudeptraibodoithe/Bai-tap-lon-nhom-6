@@ -5,15 +5,15 @@ import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.dao.HistoryDAO;
 import com.tboat.dao.UserDAO;
 import com.tboat.database.DatabaseConnection;
-import com.tboat.models.AuctionSession;
-import com.tboat.models.History;
-import com.tboat.models.StatusOfAuction;
+import com.tboat.models.auction.AuctionSession;
+import com.tboat.models.auction.History;
+import com.tboat.models.auction.StatusOfAuction;
 import com.tboat.socket.ClientContext;
-import com.tboat.socket.ClientHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -29,41 +29,34 @@ public class AuctionRoom {
     private String lastBidder;
     private boolean isFinished = false;
 
-    private final List<ClientContext> subscribers = new CopyOnWriteArrayList<>();
-    private final AuctionSessionDAO sessionDAO = new AuctionSessionDAO();
-    private final UserDAO userDAO = new UserDAO();
-    private final HistoryDAO historyDAO = new HistoryDAO();
-    private final BiddingService biddingService = new BiddingService(); // Khởi tạo một lần dùng mãi mãi
+    private final List<ClientContext> subscribers   = new CopyOnWriteArrayList<>();
+    private final AuctionSessionDAO   sessionDAO    = new AuctionSessionDAO();
+    private final UserDAO             userDAO       = new UserDAO();
+    private final HistoryDAO          historyDAO    = new HistoryDAO();
+    private final BiddingService      biddingService = new BiddingService();
 
     public AuctionRoom(int sessionId, double startingPrice) {
-        this.sessionId = sessionId;
+        this.sessionId    = sessionId;
         this.currentPrice = startingPrice;
     }
 
-    /**
-     * Xử lý đặt giá mới (Kết hợp logic Transaction updateBidLeader)
-     */
     public synchronized boolean placeBid(double newPrice, String bidderAccount) {
         if (isFinished) return false;
 
-        // Gọi service đã khởi tạo sẵn
         boolean success = biddingService.placeBid(bidderAccount, this.sessionId, newPrice);
 
         if (success) {
             this.currentPrice = newPrice;
-            this.lastBidder = bidderAccount;
+            this.lastBidder   = bidderAccount;
 
-            // Kiểm tra Sniper Protection
+            // Sniper Protection — chỉ xử lý tại đây, không xử lý thêm ở AuctionHandler
             AuctionSession session = sessionDAO.getAuctionById(sessionId);
             if (session != null && session.getEndTime() != null) {
                 long secondsLeft = java.time.Duration.between(
-                        LocalDateTime.now(),
-                        session.getEndTime()
-                ).getSeconds();
-
+                        LocalDateTime.now(), session.getEndTime()).getSeconds();
                 if (secondsLeft < 15) {
                     AuctionTimerService.getInstance().extendAuction(sessionId, 30);
-                    broadcast("TIME_EXTENDED", "Phiên được gia hạn thêm 30 giây!", 30);
+                    broadcast("TIME_EXTENDED", "Có bid mới trong 15 giây cuối! Phiên gia hạn thêm 30 giây.", 30);
                 }
             }
             return true;
@@ -71,101 +64,92 @@ public class AuctionRoom {
         return false;
     }
 
-    /**
-     * Chốt phiên đấu giá
-     */
     public synchronized void finishAuction() {
         if (isFinished) return;
         isFinished = true;
 
         AuctionSession session = sessionDAO.getAuctionById(sessionId);
-        if (session != null) {
-            if (lastBidder != null) {
-                String seller = session.getSellerAccountName();
+        if (session == null) {
+            logger.error("[CRITICAL]: Không tìm thấy phiên {} trong DB!", sessionId);
+            AuctionManager.getInstance().removeRoom(sessionId);
+            return;
+        }
 
-                try {
-                    // 1. Cập nhật trạng thái phiên thành ENDED
-                    boolean statusOk = sessionDAO.updateSessionStatus(sessionId, StatusOfAuction.ENDED);
+        if (lastBidder != null) {
+            String seller = session.getSellerAccountName();
 
-                    // 2. Thêm vào bảng lịch sử
-                    History history = new History(sessionId, lastBidder, currentPrice, LocalDateTime.now());
-                    boolean historyOk = historyDAO.addHistory(history);
+            // Lấy nickname người thắng để broadcast cho client hiển thị
+            String winnerNickname = userDAO.getUser(lastBidder).getNickname();
+            if (winnerNickname == null || winnerNickname.isBlank()) winnerNickname = lastBidder;
 
-                    // 3. Gọi hàm chia tiền
-                    boolean paymentOk = divideMoney(seller, currentPrice);
+            try (Connection conn = DatabaseConnection.getConnection()) {
+                conn.setAutoCommit(false);
 
-                    // 4. Kiểm tra
-                    if (statusOk && historyOk && paymentOk) {
-                        Map<String, Object> payload = new HashMap<>();
-                        payload.put("winner", lastBidder);
-                        payload.put("finalPrice", currentPrice);
-                        broadcast("AUCTION_FINISHED", "Phiên đấu giá kết thúc thành công!", payload);
-                        logger.info("[Server]: ✅ Đã chốt phiên {} thành công!", sessionId);
-                    } else {
-                        logger.error("[CRITICAL]: Lỗi chốt phiên {} (DB thất bại)", sessionId);
-                    }
-                } catch (Exception e) {
-                    logger.error("[CRITICAL]: Ngoại lệ khi chốt phiên {}", sessionId, e);
+                boolean statusOk  = sessionDAO.updateSessionStatus(
+                        conn, sessionId, StatusOfAuction.ENDED);
+                boolean historyOk = historyDAO.addHistory(
+                        conn, new History(sessionId, lastBidder, currentPrice, LocalDateTime.now()));
+                boolean paymentOk = divideMoney(conn, seller, currentPrice);
+
+                if (statusOk && historyOk && paymentOk) {
+                    conn.commit();
+
+                    Map<String, Object> payload = new HashMap<>();
+                    payload.put("winner",          lastBidder);      // account — để client logic
+                    payload.put("winnerNickname",  winnerNickname);  // nickname — để client hiển thị
+                    payload.put("finalPrice",      currentPrice);
+                    broadcast("AUCTION_FINISHED", "Phiên đấu giá kết thúc thành công!", payload);
+                    logger.info("[Server]: Đã chốt phiên {} — người thắng: {} ({})",
+                            sessionId, winnerNickname, lastBidder);
+                } else {
+                    conn.rollback();
+                    logger.error("[CRITICAL]: Lỗi chốt phiên {}, đã Rollback toàn bộ!", sessionId);
                 }
 
-            } else {
-                // Trường hợp không ai mua
-                sessionDAO.updateSessionStatus(sessionId, StatusOfAuction.ENDED);
-                broadcast("AUCTION_FINISHED", "Kết thúc, không có người thắng", null);
+            } catch (Exception e) {
+                logger.error("[CRITICAL]: Ngoại lệ khi chốt phiên {}", sessionId, e);
             }
+
+        } else {
+            // Không có ai bid — chỉ đổi trạng thái
+            sessionDAO.updateSessionStatus(sessionId, StatusOfAuction.ENDED);
+            broadcast("AUCTION_FINISHED", "Kết thúc, không có người thắng", null);
         }
+
         AuctionManager.getInstance().removeRoom(sessionId);
     }
 
-    /**
-     * Xử lý chia tiền: 10% cho Admin, 90% cho người bán
-     * Trả về true nếu giao dịch an toàn và thành công
-     */
-    private boolean divideMoney(String sellerAccount, double totalAmount) {
-        double adminFee = totalAmount * 0.10;
+    private boolean divideMoney(Connection conn, String sellerAccount, double totalAmount) throws SQLException {
+        double adminFee      = totalAmount * 0.10;
         double sellerRevenue = totalAmount - adminFee;
 
-        try (Connection conn = DatabaseConnection.getConnection()) {
-            conn.setAutoCommit(false);
+        boolean adminOk  = userDAO.updateBalance(conn, "admin",         adminFee);
+        boolean sellerOk = userDAO.updateBalance(conn, sellerAccount, sellerRevenue);
 
-            boolean adminOk = userDAO.updateBalance(conn, "admin", adminFee);
-            boolean sellerOk = userDAO.updateBalance(conn, sellerAccount, sellerRevenue);
-
-            if (adminOk && sellerOk) {
-                conn.commit();
-                logger.info("[Payment]: Đã chia tiền -> Admin: {}, Seller: {}", adminFee, sellerRevenue);
-                return true;
-            } else {
-                conn.rollback(); // Lỗi 1 trong 2 thì hoàn tiền
-                logger.error("[Payment]: Lỗi khi cập nhật số dư, đã Rollback!");
-                return false;
-            }
-        } catch (Exception e) {
-            logger.error("[Payment]: Lỗi ngoại lệ khi chia tiền", e);
-            return false;
+        if (adminOk && sellerOk) {
+            logger.info("[Payment]: Admin: +{} | Seller: +{}", adminFee, sellerRevenue);
+            return true;
         }
+        return false;
     }
 
-    /**
-     * Gửi thông báo JSON tới tất cả người dùng trong phòng
-     */
     public void broadcast(String action, String message, Object payload) {
-        if (subscribers.isEmpty()) return; // Tối ưu: Nếu phòng trống thì khỏi tốn công chạy đa luồng
+        if (subscribers.isEmpty()) return;
         for (ClientContext client : subscribers) {
             CompletableFuture.runAsync(() -> {
                 try {
                     client.sendSystemMessage(action, message, payload);
                 } catch (Exception e) {
-                    logger.error("Lỗi gửi thông tin cho client!");
+                    logger.error("Lỗi broadcast tới client trong phiên {}", sessionId);
                 }
             }, ServerMain.broadcastExecutor);
         }
     }
 
-    public void addSubscriber(ClientContext client) { subscribers.add(client); }
+    public void addSubscriber(ClientContext client)    { subscribers.add(client); }
     public void removeSubscriber(ClientContext client) { subscribers.remove(client); }
-    public double getCurrentPrice() { return currentPrice; }
-    public String getLastBidder() { return lastBidder; }
-    public int getSessionId() { return sessionId; }
-    public boolean isFinished() { return isFinished; }
+    public double getCurrentPrice()  { return currentPrice; }
+    public String getLastBidder()    { return lastBidder; }
+    public int getSessionId()        { return sessionId; }
+    public boolean isFinished()      { return isFinished; }
 }

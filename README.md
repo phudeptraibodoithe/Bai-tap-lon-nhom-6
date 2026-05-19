@@ -52,28 +52,35 @@ classDiagram
 
     class Admin {
         +censorSession(AuctionSession session) void
-        +ban(User user) void
     }
 
     Person <|-- User
     Person <|-- Admin
 
+    %% --- PHẦN ITEM (BẢNG MỚI ĐƯỢC TÁCH RA) ---
+    class Item {
+        -int id
+        -String sellerAccountName
+        -String type
+        -String name
+        -String description
+        -String imageURL
+    }
+
+    %% --- PHẦN SESSION ---
     class AuctionSession {
         <<abstract>>
         -int id
+        -int itemId
         -LocalDateTime startTime
         -LocalDateTime endTime
         -double currentPrice
         -double bidIncrease
         -StatusOfAuction statusOfAuction
-        -String sellerAccount
-        -String name
-        -String description
-        -String imageURL
         -String highestBidderAccount
     }
 
-    %% Các Class con của AuctionSession (Bạn hãy đổi tên theo đúng ảnh của bạn)
+    %% Các Class con của AuctionSession
     class ElectronicSession {
     }
     class FashionSession {
@@ -90,6 +97,7 @@ classDiagram
 
     AuctionSession --> StatusOfAuction : has status
 
+    %% --- PHẦN LỊCH SỬ & BID ---
     class Bid {
         -int id
         -int auctionSessionId
@@ -105,12 +113,6 @@ classDiagram
         -LocalDateTime completedAt
     }
 
-    User "1" -- "*" AuctionSession : creates/owns
-    User "1" --> "*" Bid : places
-    AuctionSession "1" --> "*" Bid : receives
-    User "1" --> "*" History : wins
-    AuctionSession "1" --> "1" History : results in
-
     %% --- PHẦN PARTICIPATION ---
     class Participation {
         -String accountName
@@ -118,7 +120,19 @@ classDiagram
         -String roleType
     }
 
-    %% Mối quan hệ của Participation
+    %% --- MỐI QUAN HỆ CỦA CÁC THỰC THỂ (RELATIONSHIPS) ---
+    
+    %% User tạo ra Item, Item được đấu giá trong Session
+    User "1" --> "*" Item : creates / owns
+    Item "1" -- "1" AuctionSession : is auctioned in
+    
+    %% User và Bid, History
+    User "1" --> "*" Bid : places
+    AuctionSession "1" --> "*" Bid : receives
+    User "1" --> "*" History : wins
+    AuctionSession "1" --> "1" History : results in
+    
+    %% Participation
     User "1" --> "*" Participation : joins
     AuctionSession "1" --> "*" Participation : has
 ```
@@ -247,15 +261,16 @@ sequenceDiagram
 
  Thành viên | Nội dung nhiệm vụ |  tiến độ |
 | :--- | :--- | :--- |
-|  | Ghép nối code của cả nhóm |80% |
+|  | Ghép nối code của cả nhóm |100% |
+|  | thêm tính năng: thông báo, biểu đồ bid, auto-bidding, ucb để load nhanh,... |50% |
 | **Phúc** | Thiết kế giao diện trang chủ, trang nạp rút, admin, trang đấu giá | 100%|
 | **Phúc** | Xử lý cập nhật UI realtime và đọc dữ liệu để hiện thị  | 100%|
 | **Tâm** | Thiết kế các unit test  |60% |
 | **Tâm** | Xử lý Logic Broadcast (Gửi dữ liệu thời gian thực tới tất cả Client trong phòng) |100% |
 | **Tâm** | Xây dựng Giao thức truyền tin | 100% |
-| **Tâm** | Xử lý Đa luồng | 70% |
+| **Tâm** | Xử lý Đa luồng | 100% |
 | **Thái** | Thiết kế các lớp Java thuần (User, Item,...) | 100% |
-| **Thái** | Xử lý Validation dữ liệu & Bắt lỗi Ngoại lệ (Exception) | 70%|
+| **Thái** | Xử lý Validation dữ liệu & Bắt lỗi Ngoại lệ (Exception) | 100%|
 | **Phú** | Thiết kế giao diện login, register, trang Profile, History, UploadItem | 100%|
 | **Phú** | Lập trình tầng DAO (Data Access Object) & Thiết kế CSDL |100% |
 | **Phú và Tâm** | Thiết kế kiến trúc Socket (Server/Client) & Vẽ sơ đồ UML |100% |

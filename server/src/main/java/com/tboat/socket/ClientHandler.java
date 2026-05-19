@@ -1,7 +1,6 @@
 package com.tboat.socket;
 
-import com.google.gson.*;
-import com.tboat.models.Response;
+import com.tboat.models.network.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,8 +40,8 @@ public class ClientHandler implements Runnable {
             // Gắn output vào context để các handler có thể gửi response
             context.setOut(out);
 
-            sendResponse(new Response<>("SERVER_READY",
-                "Chào mừng bạn đến với hệ thống đấu giá TBoat!", null));
+            context.sendResponse(new Response<>("SERVER_READY", "SUCCESS",
+                    "Chào mừng bạn đến với hệ thống đấu giá TBoat!", null));
 
             String line;
             while ((line = in.readLine()) != null) {
@@ -56,10 +55,6 @@ public class ClientHandler implements Runnable {
         } finally {
             cleanUp();
         }
-    }
-
-    public synchronized void sendResponse(Response<?> response) {
-        context.sendResponse(response);
     }
 
     private void cleanUp() {

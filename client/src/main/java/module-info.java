@@ -14,4 +14,6 @@ module com.tboat.client {
     exports com.tboat;
     exports com.tboat.ucb;
     exports com.tboat.controllers;
+    exports com.tboat.controllers.helper;
+    opens com.tboat.controllers.helper to javafx.fxml;
 }

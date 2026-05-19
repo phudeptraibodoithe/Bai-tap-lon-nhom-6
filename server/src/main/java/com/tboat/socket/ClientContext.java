@@ -1,7 +1,7 @@
 package com.tboat.socket;
 
 import com.google.gson.*;
-import com.tboat.models.Response;
+import com.tboat.models.network.Response;
 import com.tboat.service.AuctionRoom;
 import com.tboat.service.UserManager;
 import org.slf4j.Logger;
@@ -23,11 +23,11 @@ public class ClientContext {
     private static final Logger log = LoggerFactory.getLogger(ClientContext.class);
 
     private static final Gson GSON = new GsonBuilder()
-        .registerTypeAdapter(LocalDateTime.class,
-            (JsonSerializer<LocalDateTime>) (src, t, ctx) -> new JsonPrimitive(src.toString()))
-        .registerTypeAdapter(LocalDateTime.class,
-            (JsonDeserializer<LocalDateTime>) (json, t, ctx) -> LocalDateTime.parse(json.getAsString()))
-        .create();
+            .registerTypeAdapter(LocalDateTime.class,
+                    (JsonSerializer<LocalDateTime>) (src, t, ctx) -> new JsonPrimitive(src.toString()))
+            .registerTypeAdapter(LocalDateTime.class,
+                    (JsonDeserializer<LocalDateTime>) (json, t, ctx) -> LocalDateTime.parse(json.getAsString()))
+            .create();
 
     private String clientId = "Guest";
     private AuctionRoom currentRoom;
@@ -56,7 +56,7 @@ public class ClientContext {
     }
 
     public synchronized void sendSystemMessage(String action, String message, Object payload) {
-        sendResponse(new Response<>(action, message, payload));
+        sendResponse(new Response<>(action, "SYSTEM", message, payload));
     }
 
     /** Tiện ích parse JSON — dùng chung trong tất cả Handler */
@@ -70,7 +70,8 @@ public class ClientContext {
             log.info("[Server] Đã giải phóng tài nguyên cho user: {}", clientId);
         }
         if (currentRoom != null) {
-            currentRoom.removeSubscriber(null); // handler tự truyền 'this' phù hợp
+            currentRoom.removeSubscriber(this); //truyền chính object này
+            currentRoom = null;                 //tránh gọi lại lần 2
         }
     }
 }

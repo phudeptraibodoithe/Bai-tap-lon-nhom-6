@@ -21,12 +21,14 @@ public class PrefetchManager {
     private static final Map<String, List<String>> SCREEN_ACTIONS = Map.of(
             "adminFxml",       List.of("GET_PENDING_ITEMS"),
             "adminWalletFxml", List.of("PROFILE"),
-            "TrangChuFxml",    List.of("LIST_AVAILABLE"),    // ← SỬA
+            "TrangChuFxml",    List.of("LIST_AVAILABLE"),
             "managerFxml",     List.of("GET_MY_AUCTIONS"),
             "historyFxml",     List.of("GET_HISTORY"),
             "profileFxml",     List.of("PROFILE"),
             "NapRutFxml",      List.of("PROFILE"),
-            "auctionFxml",     List.of()                     // ← THÊM: Real-time, không prefetch
+            "editItemFxml", List.of(),
+            "postItemFxml", List.of(),
+            "auctionFxml",     List.of()
     );
 
     private PrefetchManager() {}

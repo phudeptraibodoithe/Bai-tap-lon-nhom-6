@@ -1,13 +1,23 @@
 package com.tboat.socket.handler;
 
-import com.google.gson.*;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.tboat.dao.AuctionSessionDAO;
+import com.tboat.dao.ItemDAO;
 import com.tboat.dao.ParticipationDAO;
-import com.tboat.models.*;
-import com.tboat.service.*;
+import com.tboat.models.auction.AuctionSession;
+import com.tboat.models.auction.Participation;
+import com.tboat.models.auction.StatusOfAuction;
+import com.tboat.models.item.Item;
+import com.tboat.models.item.factory.ItemFactory;
+import com.tboat.models.item.factory.ItemFactoryProducer;
+import com.tboat.models.network.Response;
+import com.tboat.service.AuctionTimerService;
+import com.tboat.service.SellerService;
 import com.tboat.socket.ClientContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 
@@ -15,21 +25,23 @@ public class ItemHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ItemHandler.class);
 
-    private final ClientContext    context;
+    private final ClientContext     context;
     private final AuctionSessionDAO auctionDAO       = new AuctionSessionDAO();
+    private final ItemDAO           itemDAO          = new ItemDAO();
     private final ParticipationDAO  participationDAO = new ParticipationDAO();
     private final SellerService     sellerService    = new SellerService();
 
     public ItemHandler(ClientContext context) { this.context = context; }
 
-    public void getPendingItems() {
+    public void getAllItems() {
         try {
-            var list = auctionDAO.getPendingAuctions();
-            context.sendResponse(new Response<>("SUCCESS", "Danh sách chờ duyệt",
-                    list != null ? list : new ArrayList<>()));
+            var list = auctionDAO.getAllAuctions(); // ← cần thêm method này trong AuctionSessionDAO
+            context.sendResponse(new Response<>("GET_ALL_ITEMS", "SUCCESS",
+                    "Danh sách tất cả phiên", list != null ? list : new ArrayList<>()));
         } catch (Exception e) {
-            log.error("Lỗi GET_PENDING_ITEMS: {}", e.getMessage(), e);
-            context.sendResponse(new Response<>("ERROR", "Lỗi lấy danh sách: " + e.getMessage(), null));
+            log.error("Lỗi GET_ALL_ITEMS: {}", e.getMessage(), e);
+            context.sendResponse(new Response<>("GET_ALL_ITEMS", "ERROR",
+                    "Lỗi lấy danh sách: " + e.getMessage(), null));
         }
     }
 
@@ -38,21 +50,33 @@ public class ItemHandler {
             JsonObject payload = JsonParser.parseString(raw)
                     .getAsJsonObject().getAsJsonObject("payload");
 
-            AuctionSession session = buildSessionFromPayload(payload, context.getClientId());
+            Item item = buildItemFromPayload(payload, context.getClientId());
+
+            int itemId = itemDAO.addItem(item);
+            if (itemId == -1) {
+                context.sendResponse(new Response<>("POST_ITEM", "ERROR",
+                        "Lỗi lưu item vào Database", null));
+                return;
+            }
+
+            AuctionSession session = buildSessionFromPayload(payload, item);
+            session.setItemId(itemId);
             session.setStatusOfAuction(StatusOfAuction.PENDING);
 
-            int id = auctionDAO.addAuctionSession(session);
-            if (id > 0) {
+            int sessionId = auctionDAO.addAuctionSession(session);
+            if (sessionId > 0) {
                 participationDAO.addParticipation(
-                        new Participation(context.getClientId(), id, "SELLER"));
-                context.sendResponse(new Response<>("SUCCESS",
-                        "Đăng sản phẩm thành công, đang chờ duyệt", id));
+                        new Participation(context.getClientId(), sessionId, "SELLER"));
+                context.sendResponse(new Response<>("POST_ITEM", "SUCCESS",
+                        "Đăng sản phẩm thành công, đang chờ duyệt", sessionId));
             } else {
-                context.sendResponse(new Response<>("ERROR", "Lỗi lưu dữ liệu vào Database", null));
+                context.sendResponse(new Response<>("POST_ITEM", "ERROR",
+                        "Lỗi lưu phiên đấu giá vào Database", null));
             }
         } catch (Exception e) {
             log.error("Lỗi POST_ITEM [{}]: {}", context.getClientId(), e.getMessage(), e);
-            context.sendResponse(new Response<>("ERROR", "Dữ liệu gửi lên không hợp lệ!", null));
+            context.sendResponse(new Response<>("POST_ITEM", "ERROR",
+                    "Dữ liệu gửi lên không hợp lệ!", null));
         }
     }
 
@@ -61,20 +85,39 @@ public class ItemHandler {
             JsonObject payload = JsonParser.parseString(raw)
                     .getAsJsonObject().getAsJsonObject("payload");
 
-            AuctionSession updated = buildSessionFromPayload(payload, context.getClientId());
-            updated.setId(payload.get("id").getAsInt());
+            int sessionId = payload.get("id").getAsInt();
+
+            AuctionSession existing = auctionDAO.getAuctionById(sessionId);
+            if (existing == null) {
+                context.sendResponse(new Response<>("EDIT_ITEM", "ERROR",
+                        "Không tìm thấy phiên đấu giá", null));
+                return;
+            }
+
+            Item updatedItem = buildItemFromPayload(payload, context.getClientId());
+            boolean itemOk = itemDAO.updateItem(updatedItem, existing.getItemId());
+            if (!itemOk) {
+                context.sendResponse(new Response<>("EDIT_ITEM", "ERROR",
+                        "Lỗi cập nhật item", null));
+                return;
+            }
+
+            AuctionSession updated = buildSessionFromPayload(payload, updatedItem);
+            updated.setId(sessionId);
+            updated.setItemId(existing.getItemId());
 
             boolean ok = sellerService.editAuction(context.getClientId(), updated);
             if (ok) {
-                context.sendResponse(new Response<>("SUCCESS",
-                        "Cập nhật thông tin sản phẩm thành công!", updated.getId()));
+                context.sendResponse(new Response<>("EDIT_ITEM", "SUCCESS",
+                        "Cập nhật thông tin sản phẩm thành công!", sessionId));
             } else {
-                context.sendResponse(new Response<>("ERROR",
+                context.sendResponse(new Response<>("EDIT_ITEM", "ERROR",
                         "Không thể cập nhật: Phiên đã bắt đầu, đã có người bid hoặc lỗi quyền sở hữu.", null));
             }
         } catch (Exception e) {
             log.error("Lỗi EDIT_ITEM [{}]: {}", context.getClientId(), e.getMessage(), e);
-            context.sendResponse(new Response<>("ERROR", "Dữ liệu gửi lên không hợp lệ!", null));
+            context.sendResponse(new Response<>("EDIT_ITEM", "ERROR",
+                    "Dữ liệu gửi lên không hợp lệ!", null));
         }
     }
 
@@ -82,20 +125,26 @@ public class ItemHandler {
         try {
             int sessionId = JsonParser.parseString(raw)
                     .getAsJsonObject().get("payload").getAsInt();
+
+            // Update DB trước
+            auctionDAO.updateSessionStatus(sessionId, StatusOfAuction.NOT_STARTED);
+
+            // Load lại session SAU KHI đã update — tránh truyền session cũ còn PENDING
             AuctionSession session = auctionDAO.getAuctionById(sessionId);
 
             if (session != null) {
                 AuctionTimerService.getInstance().scheduleAuction(session);
-                context.sendResponse(new Response<>("SUCCESS",
-                        "Đã duyệt! Hệ thống sẽ tự động canh giờ.", sessionId));
+                context.sendResponse(new Response<>("APPROVE_ITEM", "SUCCESS",
+                        "Đã duyệt và bắt đầu đấu giá", sessionId));
                 log.info("[Server] Admin duyệt phiên ID: {}", sessionId);
             } else {
-                context.sendResponse(new Response<>("ERROR",
+                context.sendResponse(new Response<>("APPROVE_ITEM", "ERROR",
                         "Không tìm thấy sản phẩm cần duyệt", null));
             }
         } catch (Exception e) {
             log.error("Lỗi APPROVE_ITEM: {}", e.getMessage(), e);
-            context.sendResponse(new Response<>("ERROR", "Lỗi xử lý duyệt: " + e.getMessage(), null));
+            context.sendResponse(new Response<>("APPROVE_ITEM", "ERROR",
+                    "Lỗi xử lý duyệt: " + e.getMessage(), null));
         }
     }
 
@@ -106,31 +155,39 @@ public class ItemHandler {
             boolean ok = auctionDAO.updateSessionStatus(sessionId, StatusOfAuction.CANCELED);
 
             if (ok) {
-                context.sendResponse(new Response<>("SUCCESS", "Đã từ chối sản phẩm", sessionId));
+                context.sendResponse(new Response<>("REJECT_ITEM", "SUCCESS",
+                        "Đã từ chối sản phẩm", sessionId));
                 log.info("[Server] Admin từ chối phiên ID: {}", sessionId);
             } else {
-                context.sendResponse(new Response<>("ERROR",
+                context.sendResponse(new Response<>("REJECT_ITEM", "ERROR",
                         "Không thể thực hiện từ chối (Lỗi Database)", null));
             }
         } catch (Exception e) {
             log.error("Lỗi REJECT_ITEM: {}", e.getMessage(), e);
-            context.sendResponse(new Response<>("ERROR", "Lỗi xử lý từ chối: " + e.getMessage(), null));
+            context.sendResponse(new Response<>("REJECT_ITEM", "ERROR",
+                    "Lỗi xử lý từ chối: " + e.getMessage(), null));
         }
     }
 
-    // ── Helper dùng chung cho postItem và editItem ───────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private AuctionSession buildSessionFromPayload(JsonObject p, String seller) {
-        AuctionFactory factory = AuctionFactoryProducer.getFactory(p.get("type").getAsString());
-        return factory.createAuctionSession(
-                LocalDateTime.parse(p.get("startTime").getAsString()),
-                LocalDateTime.parse(p.get("endTime").getAsString()),
-                p.get("currentPrice").getAsDouble(),
-                p.get("bidIncrease").getAsDouble(),
+    private Item buildItemFromPayload(JsonObject p, String seller) {
+        ItemFactory factory = ItemFactoryProducer.getFactory(p.get("type").getAsString());
+        return factory.createItem(
                 seller,
                 p.get("name").getAsString(),
                 p.get("description").getAsString(),
                 p.get("imageURL").getAsString()
+        );
+    }
+
+    private AuctionSession buildSessionFromPayload(JsonObject p, Item item) {
+        return new AuctionSession(
+                LocalDateTime.parse(p.get("startTime").getAsString()),
+                LocalDateTime.parse(p.get("endTime").getAsString()),
+                p.get("currentPrice").getAsDouble(),
+                p.get("bidIncrease").getAsDouble(),
+                item
         );
     }
 }

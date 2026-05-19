@@ -1,104 +1,218 @@
-//package com.tboat.service;
-//
-//import com.tboat.models.AuctionSession;
-//import com.tboat.models.User;
-//import org.junit.jupiter.api.BeforeEach;
-//import org.junit.jupiter.api.Test;
-//import org.junit.jupiter.api.DisplayName;
-//
-//import static org.junit.jupiter.api.Assertions.*;
-//
-///**
-// * Unit Test cho ParticipationContext (Strategy Pattern).
-// *
-// * Sử dụng stub/mock thủ công (không dùng Mockito) để kiểm tra
-// * logic điều phối của Context mà không cần DB.
-// */
-//class ParticipationContextTest {
-//
-//    private User dummyUser;
-//    private AuctionSession dummySession;
-//
-//    @BeforeEach
-//    void setUp() {
-//        dummyUser = new User("testAccount", "pass", "TestNick", 999999.0, "", "");
-//
-//        // AuctionSession là abstract class -> dùng anonymous subclass
-//        dummySession = new AuctionSession() {};
-//    }
-//
-//    // ===================== STRATEGY PATTERN =====================
-//
-//    @Test
-//    @DisplayName("executeAction với role trả về true -> Context phải trả về true")
-//    void testExecuteAction_WithAlwaysTrueRole_ShouldReturnTrue() {
-//        TransactionRole alwaysTrueRole = (user, session, amount, userDAO, sessionDAO, bidDAO) -> true;
-//
-//        ParticipationContext context = new ParticipationContext(alwaysTrueRole);
-//        boolean result = context.executeAction(dummyUser, dummySession, 1000.0, null, null, null);
-//
-//        assertTrue(result, "Context phải trả về true khi role trả về true.");
-//    }
-//
-//    @Test
-//    @DisplayName("executeAction với role trả về false -> Context phải trả về false")
-//    void testExecuteAction_WithAlwaysFalseRole_ShouldReturnFalse() {
-//        TransactionRole alwaysFalseRole = (user, session, amount, userDAO, sessionDAO, bidDAO) -> false;
-//
-//        ParticipationContext context = new ParticipationContext(alwaysFalseRole);
-//        boolean result = context.executeAction(dummyUser, dummySession, 1000.0, null, null, null);
-//
-//        assertFalse(result, "Context phải trả về false khi role trả về false.");
-//    }
-//
-//    @Test
-//    @DisplayName("executeAction với roleBehavior = null -> phải trả về false ngay")
-//    void testExecuteAction_NullRole_ShouldReturnFalse() {
-//        ParticipationContext context = new ParticipationContext(null);
-//        boolean result = context.executeAction(dummyUser, dummySession, 1000.0, null, null, null);
-//
-//        assertFalse(result, "Context với role null phải trả về false mà không throw Exception.");
-//    }
-//
-//    @Test
-//    @DisplayName("executeAction không throw Exception khi tham số null (trừ role)")
-//    void testExecuteAction_NullParams_ShouldNotThrow() {
-//        TransactionRole safeRole = (user, session, amount, userDAO, sessionDAO, bidDAO) -> true;
-//        ParticipationContext context = new ParticipationContext(safeRole);
-//
-//        assertDoesNotThrow(
-//                () -> context.executeAction(null, null, 0, null, null, null),
-//                "Context không được throw Exception khi nhận tham số null."
-//        );
-//    }
-//
-//    // ===================== KIỂM TRA ROLE THAY THẾ ĐƯỢC (Strategy) =====================
-//
-//    @Test
-//    @DisplayName("Có thể đổi role khác nhau trên cùng 1 context - Strategy pattern hoạt động")
-//    void testStrategyPattern_RolesAreInterchangeable() {
-//        TransactionRole roleA = (u, s, a, ud, sd, bd) -> true;
-//        TransactionRole roleB = (u, s, a, ud, sd, bd) -> false;
-//
-//        ParticipationContext contextA = new ParticipationContext(roleA);
-//        ParticipationContext contextB = new ParticipationContext(roleB);
-//
-//        assertTrue(contextA.executeAction(dummyUser, dummySession, 100, null, null, null));
-//        assertFalse(contextB.executeAction(dummyUser, dummySession, 100, null, null, null));
-//    }
-//
-//    @Test
-//    @DisplayName("executeAction với amount = 0: role nhận đúng giá trị 0")
-//    void testExecuteAction_ZeroAmount_RoleReceivesCorrectValue() {
-//        double[] capturedAmount = {-1};
-//        TransactionRole capturingRole = (user, session, amount, userDAO, sessionDAO, bidDAO) -> {
-//            capturedAmount[0] = amount;
-//            return true;
-//        };
-//
-//        ParticipationContext context = new ParticipationContext(capturingRole);
-//        context.executeAction(dummyUser, dummySession, 0.0, null, null, null);
-//
-//        assertEquals(0.0, capturedAmount[0], "Role phải nhận đúng giá trị amount = 0.");
-//    }
-//}
+package com.tboat.service;
+
+import com.tboat.dao.AuctionSessionDAO;
+import com.tboat.dao.BidDAO;
+import com.tboat.dao.HistoryDAO;
+import com.tboat.dao.UserDAO;
+import com.tboat.models.auction.AuctionSession;
+import com.tboat.models.core.User;
+import org.junit.jupiter.api.*;
+
+import java.time.LocalDateTime;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Unit Test cho ParticipationContext (Strategy Pattern).
+ *
+ * Dùng lambda thủ công làm TransactionRole stub — không cần DB, không cần Mockito.
+ * Signature đúng: (User, AuctionSession, double, UserDAO, AuctionSessionDAO, HistoryDAO, BidDAO)
+ */
+class ParticipationContextTest {
+
+    private User          dummyUser;
+    private AuctionSession dummySession;
+
+    @BeforeEach
+    void setUp() {
+        dummyUser    = new User("testAccount", "pass", "TestNick", 999_999.0, "", "");
+        dummySession = new AuctionSession(
+                LocalDateTime.now(),
+                LocalDateTime.now().plusHours(1),
+                1_000.0,
+                100.0,
+                null
+        );
+        dummySession.setId(1);
+    }
+
+    // ===================== STRATEGY — ROLE LUÔN TRUE =====================
+
+    @Test
+    @DisplayName("Role trả về true → Context trả về true")
+    void testExecuteAction_AlwaysTrueRole_ReturnsTrue() {
+        TransactionRole alwaysTrue =
+                (user, session, amount, userDAO, sessionDAO, historyDAO, bidDAO) -> true;
+
+        ParticipationContext ctx = new ParticipationContext(alwaysTrue);
+        assertTrue(ctx.executeAction(dummyUser, dummySession, 1_000.0,
+                null, null, null, null));
+    }
+
+    // ===================== STRATEGY — ROLE LUÔN FALSE =====================
+
+    @Test
+    @DisplayName("Role trả về false → Context trả về false")
+    void testExecuteAction_AlwaysFalseRole_ReturnsFalse() {
+        TransactionRole alwaysFalse =
+                (user, session, amount, userDAO, sessionDAO, historyDAO, bidDAO) -> false;
+
+        ParticipationContext ctx = new ParticipationContext(alwaysFalse);
+        assertFalse(ctx.executeAction(dummyUser, dummySession, 1_000.0,
+                null, null, null, null));
+    }
+
+    // ===================== ROLE NULL =====================
+
+    @Test
+    @DisplayName("roleBehavior = null → trả về false ngay, không throw")
+    void testExecuteAction_NullRole_ReturnsFalse() {
+        ParticipationContext ctx = new ParticipationContext(null);
+        assertFalse(ctx.executeAction(dummyUser, dummySession, 1_000.0,
+                null, null, null, null));
+    }
+
+    // ===================== THAM SỐ TRUYỀN VÀO ROLE =====================
+
+    @Test
+    @DisplayName("Role nhận đúng User được truyền vào")
+    void testExecuteAction_RoleReceivesCorrectUser() {
+        User[] captured = {null};
+        TransactionRole capturingRole =
+                (user, session, amount, userDAO, sessionDAO, historyDAO, bidDAO) -> {
+                    captured[0] = user;
+                    return true;
+                };
+
+        new ParticipationContext(capturingRole)
+                .executeAction(dummyUser, dummySession, 500.0, null, null, null, null);
+
+        assertSame(dummyUser, captured[0], "Role phải nhận đúng User.");
+    }
+
+    @Test
+    @DisplayName("Role nhận đúng AuctionSession được truyền vào")
+    void testExecuteAction_RoleReceivesCorrectSession() {
+        AuctionSession[] captured = {null};
+        TransactionRole capturingRole =
+                (user, session, amount, userDAO, sessionDAO, historyDAO, bidDAO) -> {
+                    captured[0] = session;
+                    return true;
+                };
+
+        new ParticipationContext(capturingRole)
+                .executeAction(dummyUser, dummySession, 500.0, null, null, null, null);
+
+        assertSame(dummySession, captured[0], "Role phải nhận đúng AuctionSession.");
+    }
+
+    @Test
+    @DisplayName("Role nhận đúng amount = 0.0")
+    void testExecuteAction_RoleReceivesZeroAmount() {
+        double[] captured = {-1};
+        TransactionRole capturingRole =
+                (user, session, amount, userDAO, sessionDAO, historyDAO, bidDAO) -> {
+                    captured[0] = amount;
+                    return true;
+                };
+
+        new ParticipationContext(capturingRole)
+                .executeAction(dummyUser, dummySession, 0.0, null, null, null, null);
+
+        assertEquals(0.0, captured[0], "Role phải nhận đúng amount = 0.");
+    }
+
+    @Test
+    @DisplayName("Role nhận đúng amount lớn (1 tỷ)")
+    void testExecuteAction_RoleReceivesLargeAmount() {
+        double[] captured = {-1};
+        TransactionRole capturingRole =
+                (user, session, amount, userDAO, sessionDAO, historyDAO, bidDAO) -> {
+                    captured[0] = amount;
+                    return true;
+                };
+
+        new ParticipationContext(capturingRole)
+                .executeAction(dummyUser, dummySession, 1_000_000_000.0, null, null, null, null);
+
+        assertEquals(1_000_000_000.0, captured[0]);
+    }
+
+    @Test
+    @DisplayName("Role nhận đúng UserDAO được truyền vào")
+    void testExecuteAction_RoleReceivesCorrectUserDAO() {
+        UserDAO fakeDAO = new UserDAO();
+        UserDAO[] captured = {null};
+        TransactionRole capturingRole =
+                (user, session, amount, userDAO, sessionDAO, historyDAO, bidDAO) -> {
+                    captured[0] = userDAO;
+                    return true;
+                };
+
+        new ParticipationContext(capturingRole)
+                .executeAction(dummyUser, dummySession, 1_000.0, fakeDAO, null, null, null);
+
+        assertSame(fakeDAO, captured[0]);
+    }
+
+    // ===================== TẤT CẢ THAM SỐ NULL =====================
+
+    @Test
+    @DisplayName("executeAction với tất cả tham số null (trừ role): không throw")
+    void testExecuteAction_AllNullParams_NoThrow() {
+        TransactionRole safeRole =
+                (user, session, amount, userDAO, sessionDAO, historyDAO, bidDAO) -> true;
+
+        assertDoesNotThrow(() ->
+                new ParticipationContext(safeRole)
+                        .executeAction(null, null, 0, null, null, null, null)
+        );
+    }
+
+    // ===================== STRATEGY — TÍNH HOÁN ĐỔI =====================
+
+    @Test
+    @DisplayName("2 context với 2 role khác nhau: kết quả độc lập")
+    void testStrategy_TwoContexts_IndependentResults() {
+        TransactionRole roleTrue  =
+                (u, s, a, ud, sd, hd, bd) -> true;
+        TransactionRole roleFalse =
+                (u, s, a, ud, sd, hd, bd) -> false;
+
+        assertTrue(
+                new ParticipationContext(roleTrue)
+                        .executeAction(dummyUser, dummySession, 100, null, null, null, null)
+        );
+        assertFalse(
+                new ParticipationContext(roleFalse)
+                        .executeAction(dummyUser, dummySession, 100, null, null, null, null)
+        );
+    }
+
+    @Test
+    @DisplayName("Role có thể throw RuntimeException: Context phải propagate exception")
+    void testExecuteAction_RoleThrowsException_Propagates() {
+        TransactionRole throwingRole =
+                (u, s, a, ud, sd, hd, bd) -> { throw new RuntimeException("test error"); };
+
+        ParticipationContext ctx = new ParticipationContext(throwingRole);
+        assertThrows(RuntimeException.class,
+                () -> ctx.executeAction(dummyUser, dummySession, 1_000.0,
+                        null, null, null, null)
+        );
+    }
+
+    @Test
+    @DisplayName("Cùng 1 context gọi executeAction nhiều lần: kết quả nhất quán")
+    void testExecuteAction_CalledMultipleTimes_ConsistentResult() {
+        TransactionRole alwaysTrue =
+                (u, s, a, ud, sd, hd, bd) -> true;
+
+        ParticipationContext ctx = new ParticipationContext(alwaysTrue);
+        for (int i = 0; i < 5; i++) {
+            assertTrue(ctx.executeAction(dummyUser, dummySession, 1_000.0,
+                            null, null, null, null),
+                    "Lần gọi thứ " + (i + 1) + " phải trả về true.");
+        }
+    }
+}

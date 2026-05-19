@@ -2,7 +2,7 @@ package com.tboat.socket;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.tboat.models.Response;
+import com.tboat.models.network.Response;
 import com.tboat.socket.handler.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,9 +19,12 @@ public class CommandDispatcher {
 
     private static final Logger log = LoggerFactory.getLogger(CommandDispatcher.class);
 
+    private static final List<String> ADMIN_ACTIONS =
+            Arrays.asList("GET_ALL_ITEMS", "APPROVE_ITEM", "REJECT_ITEM");
+
+    // Các action Guest chưa đăng nhập vẫn được gọi
     private static final List<String> PUBLIC_ACTIONS =
-        Arrays.asList("LOGIN", "REGISTER", "LIST_AVAILABLE", "GET_PENDING_ITEMS",
-                       "APPROVE_ITEM", "REJECT_ITEM");
+            Arrays.asList("LOGIN", "REGISTER", "LIST_AVAILABLE");
 
     private final ClientContext context;
 
@@ -51,9 +54,15 @@ public class CommandDispatcher {
             JsonObject json = JsonParser.parseString(rawInput).getAsJsonObject();
             action = json.get("action").getAsString().toUpperCase();
 
-            // Kiểm tra auth trước khi xử lý
+            // Kiểm tra: Guest không được gọi các action cần đăng nhập
             if (!PUBLIC_ACTIONS.contains(action) && context.isGuest()) {
-                context.sendResponse(new Response<>("ERROR", "Vui lòng đăng nhập", null));
+                context.sendResponse(new Response<>("AUTH_ERROR", "ERROR",
+                        "Vui lòng đăng nhập trước khi thực hiện thao tác này", null));
+                return action;
+            }
+
+            if (ADMIN_ACTIONS.contains(action) && !context.getClientId().equals("admin")) {
+                context.sendResponse(new Response<>("AUTH_ERROR", "ERROR", "Chỉ Admin mới thực hiện được!", null));
                 return action;
             }
 
@@ -61,7 +70,7 @@ public class CommandDispatcher {
 
         } catch (Exception e) {
             log.error("Lỗi dispatch cho client {}: {}", context.getClientId(), e.getMessage(), e);
-            context.sendResponse(new Response<>("ERROR", "Lỗi xử lý yêu cầu", null));
+            context.sendResponse(new Response<>("ERROR_DISPATCH", "ERROR", "Lỗi xử lý yêu cầu", null));
         }
         return action;
     }
@@ -82,7 +91,7 @@ public class CommandDispatcher {
             // Item management
             case "POST_ITEM"       -> itemHandler.postItem(raw);
             case "EDIT_ITEM"       -> itemHandler.editItem(raw);
-            case "GET_PENDING_ITEMS" -> itemHandler.getPendingItems();
+            case "GET_ALL_ITEMS" -> itemHandler.getAllItems();
             case "APPROVE_ITEM"    -> itemHandler.approveItem(raw);
             case "REJECT_ITEM"     -> itemHandler.rejectItem(raw);
 
@@ -96,8 +105,8 @@ public class CommandDispatcher {
             case "GET_MY_AUCTIONS" -> historyHandler.getMyAuctions();
             case "GET_SESSION_BIDS"-> historyHandler.getSessionBids(raw);
 
-            default -> context.sendResponse(
-                new Response<>("ERROR", "Lệnh không xác định: " + action, null));
+            default -> context.sendResponse(new Response<>("UNKNOWN", "ERROR", "Lệnh không xác định: " + action, null));
+
         }
     }
 }

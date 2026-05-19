@@ -1,12 +1,14 @@
-
 package com.tboat.socket.handler;
 
 import com.google.gson.reflect.TypeToken;
 import com.tboat.dao.UserDAO;
-import com.tboat.models.*;
+import com.tboat.models.network.Request;
+import com.tboat.models.network.Response;
+import com.tboat.models.core.User;
 import com.tboat.service.UserManager;
 import com.tboat.socket.ClientContext;
 import com.tboat.utils.ResponseCode;
+
 import java.lang.reflect.Type;
 
 public class AuthHandler {
@@ -27,9 +29,9 @@ public class AuthHandler {
         if (res == ResponseCode.SUCCESS) {
             context.setClientId(creds.getAccountName());
             User fullUser = userDAO.getUser(context.getClientId());
-            context.sendResponse(new Response<>("SUCCESS", "Đăng nhập thành công", fullUser));
+            context.sendResponse(new Response<>("LOGIN", "SUCCESS", "Đăng nhập thành công", fullUser));
         } else {
-            context.sendResponse(new Response<>("FAILED", res.name(), null));
+            context.sendResponse(new Response<>("LOGIN", "FAILED", res.name(), null));
         }
     }
 
@@ -38,11 +40,15 @@ public class AuthHandler {
         Request<User> req = ClientContext.gson().fromJson(raw, type);
         User user = req.getPayload();
 
-        ResponseCode res = userManager.register(
-            user.getAccountName(), user.getPassword(), user.getNickname());
+        ResponseCode res = userDAO.addUser(
+                user.getAccountName(), user.getPassword(), user.getNickname(),
+                user.getEmail(), user.getPhone());
 
         context.sendResponse(new Response<>(
-            res == ResponseCode.SUCCESS ? "SUCCESS" : "FAILED", res.name(), null));
+                "REGISTER",
+                res == ResponseCode.SUCCESS ? "SUCCESS" : "FAILED",
+                res == ResponseCode.EXISTED ? "Tài khoản đã tồn tại!" : res.name(),
+                null));
     }
 
     public void logout() {
@@ -51,6 +57,6 @@ public class AuthHandler {
         if (context.getCurrentRoom() != null)
             context.getCurrentRoom().removeSubscriber(context);
         context.setCurrentRoom(null);
-        context.sendResponse(new Response<>("SUCCESS", "Đã đăng xuất", null));
+        context.sendResponse(new Response<>("LOGOUT", "SUCCESS", "Đã đăng xuất", null));
     }
 }

@@ -1,30 +1,32 @@
 package com.tboat.controllers;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.tboat.models.User;
+import com.tboat.models.core.User;
+import com.tboat.session.UserSession;
+import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
-import com.tboat.socket.SocketManager;
-import com.tboat.utils.GsonUtils;
-import com.tboat.utilsclient.UserSession;
+import com.tboat.utilsclient.AlertUtils;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+
 import java.util.logging.Logger;
 
 public class ControllerLogin extends BaseController implements SocketListener {
-
 
     @FXML private TextField signText;
     @FXML private PasswordField passText;
     @FXML private Label err;
 
-    private final Gson gson = GsonUtils.getInstance();
     private static final Logger log = Logger.getLogger(ControllerLogin.class.getName());
+
+    // --- CONSTANTS ---
+    private static final String STYLE_ERROR = "#e74c3c";
+    private static final String STYLE_PROCESSING = "#3498db";
 
     @FXML
     public void submit(ActionEvent event) {
@@ -32,90 +34,61 @@ public class ControllerLogin extends BaseController implements SocketListener {
         String password = passText.getText().trim();
 
         if (username.isEmpty() || password.isEmpty()) {
-            err.setStyle("-fx-text-fill: red;");
-            err.setText("Vui lòng điền đầy đủ thông tin!");
+            AlertUtils.showStatus(err, "Vui lòng điền đầy đủ thông tin!", STYLE_ERROR);
             return;
         }
 
-        err.setStyle("-fx-text-fill: blue;");
-        err.setText("Đang đăng nhập...");
+        AlertUtils.showStatus(err, "Đang đăng nhập...", STYLE_PROCESSING);
 
-        new Thread(() -> {
-            try {
-                JsonObject request = new JsonObject();
-                request.addProperty("action", "LOGIN");
+        // 👉 Đóng gói payload và gửi qua SocketHelper siêu ngắn gọn
+        JsonObject payload = new JsonObject();
+        payload.addProperty("accountName", username);
+        payload.addProperty("password", password);
 
-                JsonObject payload = new JsonObject();
-                payload.addProperty("accountName", username);
-                payload.addProperty("password", password);
-                request.add("payload", payload);
-
-                SocketManager.getInstance().send(gson.toJson(request));
-
-            } catch (Exception e) {
-                Platform.runLater(() -> {
-                    err.setStyle("-fx-text-fill: red;");
-                    err.setText("Lỗi kết nối: " + e.getMessage());
-                });
-            }
-        }).start();
+        SocketHelper.sendRequest("LOGIN", payload);
     }
 
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                String status = jsonResponse.get("status").getAsString();
-                String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
+                if (!"LOGIN".equals(SocketHelper.getType(response))) return;
 
-                switch (status) {
-                    case "SUCCESS":
-                        if ("Đăng nhập thành công".equals(message)) {
-                            JsonObject payload = jsonResponse.getAsJsonObject("payload");
+                String status = SocketHelper.getStatus(response);
+                String message = SocketHelper.getMessage(response);
 
-                            String nickname = payload.has("nickname") ? payload.get("nickname").getAsString() : "";
-                            double balance = payload.has("balance") ? payload.get("balance").getAsDouble() : 0.0;
-                            String avatarURL = payload.has("avatarURL") ? payload.get("avatarURL").getAsString() : "null";
-                            String description = payload.has("description") ? payload.get("description").getAsString() : "";
+                if ("SUCCESS".equals(status)) {
+                    JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+                    if (jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull()) {
+                        JsonObject payload = jsonResponse.getAsJsonObject("payload");
 
-                            User loggedUser = new User(signText.getText(), null, nickname, balance, description, avatarURL);
-                            UserSession.getInstance().createUserSession(loggedUser);
-                            String role = payload.has("role") ? payload.get("role").getAsString() : "";
-                            if ("admin".equalsIgnoreCase(signText.getText().trim()) || "ADMIN".equalsIgnoreCase(role)) {
-                                changeScene(err, "admin.fxml");
-                                break;
-                            }
-                            changeScene(err, "TrangChu.fxml");
+                        String nickname = payload.has("nickname") ? payload.get("nickname").getAsString() : "";
+                        double balance = payload.has("balance") ? payload.get("balance").getAsDouble() : 0.0;
+                        String avatarURL = payload.has("avatarURL") ? payload.get("avatarURL").getAsString() : "null";
+                        String description = payload.has("description") ? payload.get("description").getAsString() : "";
+                        String role = payload.has("role") ? payload.get("role").getAsString() : "";
+
+                        User loggedUser = new User(signText.getText(), null, nickname, balance, description, avatarURL);
+                        UserSession.getInstance().createUserSession(loggedUser);
+                        if ("admin".equalsIgnoreCase(signText.getText().trim()) || "ADMIN".equalsIgnoreCase(role)) {
+                            changeScene(signText, "admin.fxml");
+                        } else {
+                            changeScene(signText, "TrangChu.fxml");
                         }
-                        break;
-
-                    case "FAILED":
-                    case "ERROR":
-                        err.setStyle("-fx-text-fill: red;");
-                        switch (message) {
-                            case "USER_NOT_FOUND":
-                                err.setText("Tài khoản không tồn tại!");
-                                break;
-                            case "WRONG_PASSWORD":
-                                err.setText("Sai mật khẩu, vui lòng thử lại.");
-                                break;
-                            case "ALREADY_LOGGED_IN":
-                                err.setText("Tài khoản đang online ở nơi khác.");
-                                break;
-                            case "DATABASE_ERROR":
-                                err.setText("Lỗi cơ sở dữ liệu.");
-                                break;
-                            default:
-                                err.setText("Đăng nhập thất bại: " + message);
-                        }
-                        break;
+                    }
+                } else if ("FAILED".equals(status) || "ERROR".equals(status)) {
+                    // 👉 Sử dụng Switch Expression của Java hiện đại để map lỗi
+                    String displayMsg = switch (message) {
+                        case "USER_NOT_FOUND" -> "Tài khoản không tồn tại!";
+                        case "WRONG_PASSWORD" -> "Sai mật khẩu, vui lòng thử lại.";
+                        case "ALREADY_LOGGED_IN" -> "Tài khoản đang online ở nơi khác.";
+                        case "DATABASE_ERROR" -> "Lỗi cơ sở dữ liệu.";
+                        default -> "Đăng nhập thất bại: " + message;
+                    };
+                    AlertUtils.showStatus(err, displayMsg, STYLE_ERROR);
                 }
             } catch (Exception e) {
-                Platform.runLater(() -> {
-                    err.setStyle("-fx-text-fill: red;");
-                    err.setText("Lỗi đọc dữ liệu từ Server!");
-                });
+                AlertUtils.showStatus(err, "Lỗi đọc dữ liệu từ Server!", STYLE_ERROR);
                 log.severe("KHÔNG THỂ ĐỌC JSON ĐĂNG NHẬP: " + response);
             }
         });

@@ -35,15 +35,17 @@ public class UserHandler {
         JsonObject payload = JsonParser.parseString(raw)
                 .getAsJsonObject().getAsJsonObject("payload");
 
-        String desc   = payload.has("description") ? payload.get("description").getAsString() : "";
-        String avatar = payload.has("avatarURL")   ? payload.get("avatarURL").getAsString()   : "";
+        String account     = context.getClientId();
+        String nickname    = payload.has("nickname")    ? payload.get("nickname").getAsString()    : "";
+        String description = payload.has("description") ? payload.get("description").getAsString() : "";
+        String avatarURL   = payload.has("avatarURL")   ? payload.get("avatarURL").getAsString()   : "";
+        String email       = payload.has("email")       ? payload.get("email").getAsString()       : "";
+        String phone       = payload.has("phone")       ? payload.get("phone").getAsString()       : "";
 
-        boolean ok = userDAO.updateProfile(context.getClientId(), desc, avatar);
-        context.sendResponse(new Response<>(
-                "UPDATE_PROFILE",
+        boolean ok = userDAO.updateProfile(account, nickname, description, avatarURL, email, phone);
+        context.sendResponse(new Response<>("UPDATE_PROFILE",
                 ok ? "SUCCESS" : "ERROR",
-                ok ? "Cập nhật thành công" : "Lỗi cập nhật",
-                null));
+                ok ? "Cập nhật thành công" : "Lỗi cập nhật", null));
     }
 
     public void transaction(String raw) {

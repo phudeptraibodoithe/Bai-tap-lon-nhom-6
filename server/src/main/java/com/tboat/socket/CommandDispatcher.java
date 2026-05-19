@@ -20,7 +20,7 @@ public class CommandDispatcher {
     private static final Logger log = LoggerFactory.getLogger(CommandDispatcher.class);
 
     private static final List<String> ADMIN_ACTIONS =
-            Arrays.asList("GET_PENDING_ITEMS", "APPROVE_ITEM", "REJECT_ITEM");
+            Arrays.asList("GET_ALL_ITEMS", "APPROVE_ITEM", "REJECT_ITEM");
 
     // Các action Guest chưa đăng nhập vẫn được gọi
     private static final List<String> PUBLIC_ACTIONS =
@@ -91,7 +91,7 @@ public class CommandDispatcher {
             // Item management
             case "POST_ITEM"       -> itemHandler.postItem(raw);
             case "EDIT_ITEM"       -> itemHandler.editItem(raw);
-            case "GET_PENDING_ITEMS" -> itemHandler.getPendingItems();
+            case "GET_ALL_ITEMS" -> itemHandler.getAllItems();
             case "APPROVE_ITEM"    -> itemHandler.approveItem(raw);
             case "REJECT_ITEM"     -> itemHandler.rejectItem(raw);
 

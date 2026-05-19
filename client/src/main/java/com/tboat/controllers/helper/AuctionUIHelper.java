@@ -16,10 +16,6 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import java.time.format.DateTimeFormatter;
 
-/**
- * Tách toàn bộ logic cập nhật UI và timer khỏi AuctionController.
- * AuctionController chỉ cần gọi các method ở đây.
- */
 public class AuctionUIHelper {
 
     private static final String STYLE_SUCCESS = "-fx-text-fill: #2ecc71; -fx-font-weight: bold; -fx-font-size: 17px;";
@@ -28,7 +24,6 @@ public class AuctionUIHelper {
 
     public static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    // ── FXML refs (được inject từ controller) ─────────────────────────────────
     private final ImageView itemImage;
     private final Label timeRemaining, nameItem, idItem, sellerName;
     private final Label description, currentPrice, highestBidder, lblNotification;
@@ -40,8 +35,9 @@ public class AuctionUIHelper {
     private final XYChart.Series<String, Number> priceSeries;
     private final ObservableList<BidEntry> listBids;
 
-    // ── State ─────────────────────────────────────────────────────────────────
     private AuctionTimer auctionTimer;
+    private Image    cachedImage    = null;
+    private String   cachedImageUrl = null;
 
     public AuctionUIHelper(
             ImageView itemImage, Label timeRemaining, Label nameItem, Label idItem,
@@ -70,15 +66,15 @@ public class AuctionUIHelper {
 
         this.priceSeries = new XYChart.Series<>();
         this.priceSeries.setName("Diễn biến giá (VNĐ)");
+        // Tắt animation — tránh giật khi append điểm mới realtime
+        bidLineChart.setAnimated(false);
         bidLineChart.getData().add(priceSeries);
-        bidLineChart.setAnimated(true);
     }
 
     // ── Setup ─────────────────────────────────────────────────────────────────
 
     public void setupBidHistoryTable() {
         if (colBidTime == null) return;
-
         colBidTime.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getTime()));
         colBidUser.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getUser()));
         colBidPrice.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().getPrice()));
@@ -86,71 +82,73 @@ public class AuctionUIHelper {
             @Override
             protected void updateItem(Double price, boolean empty) {
                 super.updateItem(price, empty);
-                if (empty || price == null) {
-                    setText(null);
-                } else {
-                    setText(CurrencyFormatter.formatDisplay(price));
-                    setStyle("-fx-alignment: CENTER-RIGHT; -fx-text-fill: #2ecc71; -fx-font-weight: bold;");
-                }
+                if (empty || price == null) { setText(null); return; }
+                setText(CurrencyFormatter.formatDisplay(price));
+                setStyle("-fx-alignment: CENTER-RIGHT; -fx-text-fill: #2ecc71; -fx-font-weight: bold;");
             }
         });
         tableBidHistory.setItems(listBids);
     }
 
-    // ── Cập nhật UI ──────────────────────────────────────────────────────────
-
-    public void updateUI(AuctionSession session) {
-        nameItem.setText(session.getName());
-        idItem.setText("ID : " + session.getId());
-
-        if (sellerName != null)
-            sellerName.setText("Người bán: " + session.getSellerAccountName());
-
-        description.setText(session.getDescription() != null
-                ? "Mô tả: " + session.getDescription() : "Mô tả: Không có.");
-
-        currentPrice.setText(CurrencyFormatter.formatDisplay(session.getCurrentPrice()));
-        updateHighestBidderLabel(session);
-        loadItemImage(session);
-    }
+    // ── Cập nhật UI ───────────────────────────────────────────────────────────
 
     private void loadItemImage(AuctionSession session) {
         if (itemImage == null) return;
         String url = session.getImageURL();
-        if (url != null && !url.isEmpty()) {
-            Image img = ImageUtils.base64ToImage(url);
-            if (img != null) itemImage.setImage(img);
+        if (url == null || url.isEmpty()) return;
+
+        // Chỉ decode lại nếu URL/base64 thay đổi — cùng 1 phiên thì ảnh không đổi
+        if (!url.equals(cachedImageUrl)) {
+            cachedImage    = ImageUtils.base64ToImage(url);
+            cachedImageUrl = url;
         }
+        if (cachedImage != null) itemImage.setImage(cachedImage);
+    }
+
+    public void updateUI(AuctionSession session) {
+        nameItem.setText(session.getName());
+        idItem.setText("ID : " + session.getId());
+        if (sellerName != null)
+            sellerName.setText("Người bán: " + session.getSellerAccountName());
+        description.setText(session.getDescription() != null
+                ? "Mô tả: " + session.getDescription() : "Mô tả: Không có.");
+        currentPrice.setText(CurrencyFormatter.formatDisplay(session.getCurrentPrice()));
+        updateHighestBidderLabel(session);
+        loadItemImage(session);
     }
 
     public void updateHighestBidderLabel(AuctionSession session) {
         String status = session.getStatusOfAuction() != null
                 ? session.getStatusOfAuction().name() : "ONGOING";
         StringBuilder sb = new StringBuilder("🏆 Trạng thái: ").append(status);
-
         String top = session.getHighestBidderAccount();
         if (top != null && !top.isEmpty() && !top.equals("N/A"))
             sb.append(" | Đang dẫn đầu: ").append(top);
-
         highestBidder.setText(sb.toString());
     }
 
+    // Gọi khi AUCTION_FINISHED — hiển thị người chiến thắng thay vì "đang dẫn đầu"
     public void setAuctionEndedLabel(AuctionSession session) {
-        highestBidder.setText("🏆 KẾT THÚC | Người chiến thắng: "
-                + session.getHighestBidderAccount());
+        if (highestBidder == null) return;
+        String winner = session.getHighestBidderAccount();
+        if (winner == null || winner.isBlank()) {
+            highestBidder.setText("Kết thúc — Không có người chiến thắng");
+            highestBidder.setStyle("-fx-text-fill: #7f8c8d; -fx-font-weight: bold;");
+        } else {
+            highestBidder.setText("🏆 Người chiến thắng: " + winner);
+            highestBidder.setStyle("-fx-text-fill: #f39c12; -fx-font-weight: bold; -fx-font-size: 17px;");
+        }
     }
 
-    // ── Input state ──────────────────────────────────────────────────────────
+    // ── Input & Timer ─────────────────────────────────────────────────────────
 
     public void setupInputState(StatusOfAuction status, boolean isUserSeller) {
         boolean disable = isUserSeller
                 || status == StatusOfAuction.ENDED
                 || status == StatusOfAuction.CANCELED
                 || status == StatusOfAuction.NOT_STARTED;
-
         btnBid.setDisable(disable);
         bidAmount.setDisable(disable);
-
         if (isUserSeller) {
             bidAmount.setPromptText("Bạn là người bán sản phẩm này...");
         } else if (status == StatusOfAuction.ENDED || status == StatusOfAuction.CANCELED) {
@@ -161,8 +159,6 @@ public class AuctionUIHelper {
             bidAmount.setPromptText("Nhập giá đặt tại đây...");
         }
     }
-
-    // ── Timer ────────────────────────────────────────────────────────────────
 
     public void setupTimerState(StatusOfAuction status, AuctionSession session) {
         stopTimer();
@@ -187,7 +183,6 @@ public class AuctionUIHelper {
 
     private void startTimer(AuctionSession session) {
         if (session.getEndTime() == null) return;
-
         auctionTimer = new AuctionTimer(
                 session.getEndTime(),
                 timeStr -> Platform.runLater(() -> {
@@ -213,15 +208,12 @@ public class AuctionUIHelper {
         if (auctionTimer != null) auctionTimer.stop();
     }
 
-    // ── Bids & Chart ─────────────────────────────────────────────────────────
+    // ── Bids & Chart ──────────────────────────────────────────────────────────
 
+    // Dùng khi load lịch sử lần đầu (GET_SESSION_BIDS) — redraw toàn bộ
     public void refreshBidsAndChart() {
         if (listBids.isEmpty()) return;
-
-        // Bảng: mới nhất lên đầu
         listBids.sort((a, b) -> b.getTime().compareTo(a.getTime()));
-
-        // Chart: cũ → mới
         Platform.runLater(() -> {
             priceSeries.getData().clear();
             ObservableList<BidEntry> chrono = FXCollections.observableArrayList(listBids);
@@ -234,7 +226,15 @@ public class AuctionUIHelper {
         });
     }
 
-    // ── Getters ──────────────────────────────────────────────────────────────
+    // Dùng khi có NEW_BID realtime — chỉ append 1 điểm, không redraw, không giật
+    public void appendBidToChart(BidEntry entry) {
+        if (priceSeries == null) return;
+        String label = entry.getTime().length() > 11
+                ? entry.getTime().substring(11) : entry.getTime();
+        Platform.runLater(() ->
+                priceSeries.getData().add(new XYChart.Data<>(label, entry.getPrice()))
+        );
+    }
 
     public ObservableList<BidEntry> getListBids()  { return listBids; }
     public Label getLblNotification()              { return lblNotification; }

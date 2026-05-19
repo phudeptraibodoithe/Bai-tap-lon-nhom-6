@@ -33,14 +33,14 @@ public class ItemHandler {
 
     public ItemHandler(ClientContext context) { this.context = context; }
 
-    public void getPendingItems() {
+    public void getAllItems() {
         try {
-            var list = auctionDAO.getPendingAuctions();
-            context.sendResponse(new Response<>("GET_PENDING_ITEMS", "SUCCESS",
-                    "Danh sách chờ duyệt", list != null ? list : new ArrayList<>()));
+            var list = auctionDAO.getAllAuctions(); // ← cần thêm method này trong AuctionSessionDAO
+            context.sendResponse(new Response<>("GET_ALL_ITEMS", "SUCCESS",
+                    "Danh sách tất cả phiên", list != null ? list : new ArrayList<>()));
         } catch (Exception e) {
-            log.error("Lỗi GET_PENDING_ITEMS: {}", e.getMessage(), e);
-            context.sendResponse(new Response<>("GET_PENDING_ITEMS", "ERROR",
+            log.error("Lỗi GET_ALL_ITEMS: {}", e.getMessage(), e);
+            context.sendResponse(new Response<>("GET_ALL_ITEMS", "ERROR",
                     "Lỗi lấy danh sách: " + e.getMessage(), null));
         }
     }
@@ -125,12 +125,17 @@ public class ItemHandler {
         try {
             int sessionId = JsonParser.parseString(raw)
                     .getAsJsonObject().get("payload").getAsInt();
+
+            // Update DB trước
+            auctionDAO.updateSessionStatus(sessionId, StatusOfAuction.NOT_STARTED);
+
+            // Load lại session SAU KHI đã update — tránh truyền session cũ còn PENDING
             AuctionSession session = auctionDAO.getAuctionById(sessionId);
 
             if (session != null) {
                 AuctionTimerService.getInstance().scheduleAuction(session);
                 context.sendResponse(new Response<>("APPROVE_ITEM", "SUCCESS",
-                        "Đã duyệt! Hệ thống sẽ tự động canh giờ.", sessionId));
+                        "Đã duyệt và bắt đầu đấu giá", sessionId));
                 log.info("[Server] Admin duyệt phiên ID: {}", sessionId);
             } else {
                 context.sendResponse(new Response<>("APPROVE_ITEM", "ERROR",

@@ -27,6 +27,7 @@ public class PrefetchManager {
             "profileFxml",     List.of("PROFILE"),
             "NapRutFxml",      List.of("PROFILE"),
             "editItemFxml", List.of(),
+            "postItemFxml", List.of(),
             "auctionFxml",     List.of()
     );
 

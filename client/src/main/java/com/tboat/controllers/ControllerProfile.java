@@ -15,8 +15,7 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Node;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextArea;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
@@ -31,13 +30,16 @@ public class ControllerProfile extends BaseController implements Initializable, 
 
     private User user;
     private File selectedFile;
+    private boolean isEditing = false;
 
     private static final double CIRCLE_RADIUS = 110.0;
     private static final Logger log = Logger.getLogger(ControllerProfile.class.getName());
 
     @FXML private ImageView myImageView;
     @FXML private Label nickname, balance, err;
+    @FXML private TextField tfNickname, tfEmail, tfPhone;
     @FXML private TextArea desc;
+    @FXML private Button btnEdit, btnSave, btnCancel;
 
     private static final String STYLE_SUCCESS    = "#2ecc71";
     private static final String STYLE_ERROR      = "#e74c3c";
@@ -46,17 +48,14 @@ public class ControllerProfile extends BaseController implements Initializable, 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         if (err != null) err.setText("");
+        setEditMode(false); // Mặc định: chỉ xem
+
+        user = UserSession.getInstance().getUser();
+        if (user != null) updateUI(user);
 
         String screenKey = BaseController.toScreenKey("profile.fxml");
         String cached    = DataCache.getInstance().get("PROFILE");
-
-        user = UserSession.getInstance().getUser();
-        if (user != null) {
-            updateUI(user.getNickname(), user.getBalance(), user.getAvatarURL(), user.getDescription());
-        }
-
         if (cached != null) {
-            log.info("[Profile] Cache HIT → dùng cache + refresh ngầm");
             NavigationContext.getInstance().reportCacheHit(screenKey, true);
             handleServerResponse(cached);
         } else {
@@ -65,58 +64,126 @@ public class ControllerProfile extends BaseController implements Initializable, 
         SocketHelper.sendRequest("PROFILE");
     }
 
-    private void updateUI(String nick, double bal, String avt, String description) {
-        nickname.setText(nick);
-        balance.setText(CurrencyFormatter.formatDisplay(bal));
-        desc.setText(description == null ? "" : description);
-        loadUserAvatar(avt);
+    // ── Edit mode toggle ──────────────────────────────────────────────────────
+
+    @FXML
+    public void onEdit(ActionEvent e) {
+        setEditMode(true);
     }
 
-    public void updateProfile(ActionEvent e) {
-        String mota      = desc.getText() == null ? "" : desc.getText().trim();
+    @FXML
+    public void onSave(ActionEvent e) {
+        if (!validateInputs()) return;
+
         String imageData = (selectedFile != null)
                 ? ImageUtils.fileToBase64(selectedFile)
-                : (user.getAvatarURL() != null && !user.getAvatarURL().isEmpty() ? user.getAvatarURL() : "null");
+                : (user.getAvatarURL() != null && !user.getAvatarURL().isEmpty()
+                ? user.getAvatarURL() : "null");
 
-        AlertUtils.showStatus(err, "Đang xử lý, vui lòng đợi...", STYLE_PROCESSING);
+        AlertUtils.showStatus(err, "Đang xử lý...", STYLE_PROCESSING);
 
         JsonObject payload = new JsonObject();
-        payload.addProperty("description", mota);
-        payload.addProperty("avatarURL", imageData);
+        payload.addProperty("nickname",    tfNickname.getText().trim());
+        payload.addProperty("description", desc.getText() == null ? "" : desc.getText().trim());
+        payload.addProperty("avatarURL",   imageData);
+        payload.addProperty("email",       tfEmail.getText().trim());
+        payload.addProperty("phone",       tfPhone.getText().trim());
         SocketHelper.sendRequest("UPDATE_PROFILE", payload);
+    }
+
+    @FXML
+    public void onCancelEdit(ActionEvent e) {
+        // Hoàn tác về giá trị cũ
+        if (user != null) updateUI(user);
+        selectedFile = null;
+        setEditMode(false);
+        err.setText("");
+    }
+
+    private boolean validateInputs() {
+        String nick  = tfNickname.getText().trim();
+        String email = tfEmail.getText().trim();
+        String phone = tfPhone.getText().trim();
+        if (nick.isEmpty()) {
+            AlertUtils.showStatus(err, "Nickname không được để trống!", STYLE_ERROR); return false;
+        }
+        if (!email.isEmpty() && !email.endsWith("@gmail.com")) {
+            AlertUtils.showStatus(err, "Email phải có đuôi @gmail.com!", STYLE_ERROR); return false;
+        }
+        if (!phone.isEmpty() && !phone.matches("\\d{9,11}")) {
+            AlertUtils.showStatus(err, "Số điện thoại không hợp lệ!", STYLE_ERROR); return false;
+        }
+        return true;
+    }
+
+    private void setEditMode(boolean editing) {
+        isEditing = editing;
+        // Fields chỉ chỉnh được khi đang edit
+        tfNickname.setEditable(editing);
+        tfEmail.setEditable(editing);
+        tfPhone.setEditable(editing);
+        desc.setEditable(editing);
+        // Ảnh chỉ click được khi đang edit
+        myImageView.setOnMouseClicked(editing ? this::uploadImage : null);
+        myImageView.setStyle(editing ? "-fx-cursor: hand; -fx-opacity: 1.0;"
+                : "-fx-cursor: default; -fx-opacity: 0.85;");
+        // Nút
+        btnEdit.setVisible(!editing);
+        btnSave.setVisible(editing);
+        btnCancel.setVisible(editing);
+        // Style field khi view mode: xám nhạt
+        String fieldStyle = editing
+                ? "-fx-background-color: white; -fx-border-color: #cbd5e1; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10 14;"
+                : "-fx-background-color: #F4F5F7; -fx-border-color: transparent; -fx-background-radius: 10; -fx-padding: 12 15;";
+        tfNickname.setStyle(fieldStyle);
+        tfEmail.setStyle(fieldStyle);
+        tfPhone.setStyle(fieldStyle);
+    }
+
+    // ── UI update ─────────────────────────────────────────────────────────────
+
+    private void updateUI(User u) {
+        nickname.setText(u.getNickname());
+        balance.setText(CurrencyFormatter.formatDisplay(u.getBalance()));
+        desc.setText(u.getDescription() == null ? "" : u.getDescription());
+        tfNickname.setText(u.getNickname() == null ? "" : u.getNickname());
+        tfEmail.setText(u.getEmail() == null ? "" : u.getEmail());
+        tfPhone.setText(u.getPhone() == null ? "" : u.getPhone());
+        loadUserAvatar(u.getAvatarURL());
+    }
+
+    public void uploadImage(MouseEvent event) {
+        if (!isEditing) return;
+        selectedFile = ImageUtils.chooseImageFile(myImageView.getScene().getWindow(), "Chọn ảnh đại diện");
+        if (selectedFile != null) setCircularImage(new Image(selectedFile.toURI().toString()));
     }
 
     public void loadUserAvatar(String pathOrBase64) {
         try {
             if (pathOrBase64 == null || pathOrBase64.isEmpty() || pathOrBase64.equals("null")) {
-                loadDefaultAvatar();
-                return;
+                loadDefaultAvatar(); return;
             }
-            Image image;
-            if (!pathOrBase64.startsWith("file:/") && !pathOrBase64.startsWith("http")) {
-                image = ImageUtils.base64ToImage(pathOrBase64);
-            } else {
-                image = new Image(pathOrBase64, true);
-            }
+            Image image = (!pathOrBase64.startsWith("file:/") && !pathOrBase64.startsWith("http"))
+                    ? ImageUtils.base64ToImage(pathOrBase64)
+                    : new Image(pathOrBase64, true);
             if (image != null) setCircularImage(image);
             else loadDefaultAvatar();
         } catch (Exception e) {
-            log.warning("[Avatar Error]: " + e.getMessage());
             loadDefaultAvatar();
         }
     }
 
     private void loadDefaultAvatar() {
-        String defaultPath = getClass().getResource("/images/avtDefault.jpg").toExternalForm();
-        setCircularImage(new Image(defaultPath));
+        setCircularImage(new Image(getClass().getResource("/images/avtDefault.jpg").toExternalForm()));
     }
 
-    public void uploadImage(MouseEvent event) {
-        selectedFile = ImageUtils.chooseImageFile(myImageView.getScene().getWindow(), "Chọn ảnh đại diện");
-        if (selectedFile != null) {
-            Image image = new Image(selectedFile.toURI().toString());
-            setCircularImage(image);
-        }
+    private void setCircularImage(Image image) {
+        myImageView.setImage(image);
+        myImageView.setFitWidth(CIRCLE_RADIUS * 2);
+        myImageView.setFitHeight(CIRCLE_RADIUS * 2);
+        myImageView.setPreserveRatio(false);
+        myImageView.setSmooth(true);
+        myImageView.setClip(new Circle(CIRCLE_RADIUS, CIRCLE_RADIUS, CIRCLE_RADIUS));
     }
 
     public void logout(ActionEvent e) {
@@ -127,28 +194,15 @@ public class ControllerProfile extends BaseController implements Initializable, 
         }
     }
 
-    public void canclePost(ActionEvent e) {
-        if (AlertUtils.showConfirmation("Xác nhận hủy thay đổi", "Toàn bộ thông tin bạn vừa nhập sẽ không được lưu lại.\nBạn có chắc chắn muốn hủy thay đổi không?")) {
-            changeScene((Node) e.getSource(), "profile.fxml");
-        }
-    }
-
-    private void setCircularImage(Image image) {
-        myImageView.setImage(image);
-        myImageView.setFitWidth(CIRCLE_RADIUS * 2);
-        myImageView.setFitHeight(CIRCLE_RADIUS * 2);
-        myImageView.setPreserveRatio(false);
-        myImageView.setSmooth(true);
-        Circle clipCircle = new Circle(CIRCLE_RADIUS, CIRCLE_RADIUS, CIRCLE_RADIUS);
-        myImageView.setClip(clipCircle);
-    }
+    // ── Server response ───────────────────────────────────────────────────────
 
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
                 String type = SocketHelper.getType(response);
-                if (!"GET_PROFILE".equals(type) && !"UPDATE_PROFILE".equals(type) && !"LOGOUT".equals(type)) return;
+                if (!"GET_PROFILE".equals(type) && !"UPDATE_PROFILE".equals(type)
+                        && !"LOGOUT".equals(type)) return;
 
                 String status  = SocketHelper.getStatus(response);
                 String message = SocketHelper.getMessage(response);
@@ -157,30 +211,31 @@ public class ControllerProfile extends BaseController implements Initializable, 
                     if ("GET_PROFILE".equals(type)) {
                         JsonObject data = SocketHelper.getPayloadObject(response);
                         if (data != null) {
-                            String nick        = data.has("nickname")    ? data.get("nickname").getAsString()    : "";
-                            double bal         = data.has("balance")     ? data.get("balance").getAsDouble()     : 0.0;
-                            String avt         = data.has("avatarURL")   ? data.get("avatarURL").getAsString()   : "";
-                            String description = data.has("description") ? data.get("description").getAsString() : "";
-
-                            updateUI(nick, bal, avt, description);
-                            user.setNickname(nick);
-                            user.setBalance(bal);
-                            user.setAvatar(avt);
-                            user.setDescription(description);
+                            user.setNickname(   data.has("nickname")    ? data.get("nickname").getAsString()    : "");
+                            user.setBalance(    data.has("balance")     ? data.get("balance").getAsDouble()     : 0.0);
+                            user.setAvatar(     data.has("avatarURL")   ? data.get("avatarURL").getAsString()   : "");
+                            user.setDescription(data.has("description") ? data.get("description").getAsString() : "");
+                            user.setEmail(      data.has("email")       ? data.get("email").getAsString()       : "");
+                            user.setPhone(      data.has("phone")       ? data.get("phone").getAsString()       : "");
+                            updateUI(user);
                         }
                     } else if ("UPDATE_PROFILE".equals(type)) {
+                        // Cập nhật local session
+                        user.setNickname(tfNickname.getText().trim());
                         user.setDescription(desc.getText());
+                        user.setEmail(tfEmail.getText().trim());
+                        user.setPhone(tfPhone.getText().trim());
                         if (selectedFile != null) user.setAvatar(ImageUtils.fileToBase64(selectedFile));
-                        AlertUtils.showStatus(err, "Cập nhật hồ sơ thành công!!", STYLE_SUCCESS);
-                    } else if ("LOGOUT".equals(type)) {
-                        log.info("Đăng xuất hoàn tất.");
+                        nickname.setText(user.getNickname()); // cập nhật label tên
+                        selectedFile = null;
+                        setEditMode(false);
+                        AlertUtils.showStatus(err, "Cập nhật hồ sơ thành công!", STYLE_SUCCESS);
                     }
-                } else if ("ERROR".equals(status) || "FAILED".equals(status)) {
+                } else {
                     AlertUtils.showStatus(err, "Lỗi: " + message, STYLE_ERROR);
                 }
             } catch (Exception e) {
                 AlertUtils.showStatus(err, "Lỗi kết nối với server.", STYLE_ERROR);
-                log.severe("KHÔNG THỂ ĐỌC JSON TỪ SERVER: " + response);
             }
         });
     }

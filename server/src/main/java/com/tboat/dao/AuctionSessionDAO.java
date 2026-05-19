@@ -117,15 +117,15 @@ public class AuctionSessionDAO {
         return list;
     }
 
-    public List<AuctionSession> getPendingAuctions() {
+    public List<AuctionSession> getAllAuctions() {
         List<AuctionSession> list = new ArrayList<>();
-        String sql = SELECT_WITH_ITEM + "WHERE s.status = 'PENDING'";
+        String sql = SELECT_WITH_ITEM + "ORDER BY id DESC";
         try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) list.add(mapResultSetToAuctionSession(rs));
         } catch (Exception e) {
-            logger.error("Lỗi khi lấy Pending Auctions: ", e);
+            logger.error("Lỗi khi lấy Auctions: ", e);
         }
         return list;
     }

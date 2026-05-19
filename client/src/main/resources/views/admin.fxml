@@ -89,6 +89,7 @@
                         <TableColumn fx:id="colStartPrice" minWidth="100.0" prefWidth="120.0" text="Giá Khởi Điểm" />
                         <TableColumn fx:id="colJump" minWidth="100.0" prefWidth="120.0" text="Bước nhảy" />
                         <TableColumn fx:id="colSeller" minWidth="100.0" prefWidth="120.0" text="Seller" />
+                        <TableColumn fx:id="colStatus" minWidth="110.0" prefWidth="130.0" text="Trạng thái" />
                         <TableColumn fx:id="colApprove" minWidth="80.0" prefWidth="80.0" styleClass="col-center" text="Xác nhận" />
                         <TableColumn fx:id="colReject" minWidth="80.0" prefWidth="80.0" styleClass="col-center" text="Từ chối" />
                     </columns>

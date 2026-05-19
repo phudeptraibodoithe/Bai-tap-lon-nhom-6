@@ -6,6 +6,8 @@ public abstract class Person {
     protected String password;
     protected String nickname;
     protected double balance;
+    private String email;
+    private String phone;
 
     // Constructor
     public Person(String accountName, String password, String nickname) {
@@ -31,6 +33,12 @@ public abstract class Person {
     public void setBalance(double balance) {
         this.balance = balance;
     }
+    public void setEmail(String email) {
+        this.email = email;
+    }
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
 
     // Getters
     public String getAccountName() {
@@ -44,5 +52,11 @@ public abstract class Person {
     }
     public String getPassword() {
         return password;
+    }
+    public String getEmail() {
+        return email;
+    }
+    public String getPhone() {
+        return phone;
     }
 }

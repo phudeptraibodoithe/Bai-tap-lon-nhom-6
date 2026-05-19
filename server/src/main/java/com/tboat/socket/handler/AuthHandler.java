@@ -40,13 +40,15 @@ public class AuthHandler {
         Request<User> req = ClientContext.gson().fromJson(raw, type);
         User user = req.getPayload();
 
-        ResponseCode res = userManager.register(
-                user.getAccountName(), user.getPassword(), user.getNickname());
+        ResponseCode res = userDAO.addUser(
+                user.getAccountName(), user.getPassword(), user.getNickname(),
+                user.getEmail(), user.getPhone());
 
         context.sendResponse(new Response<>(
                 "REGISTER",
                 res == ResponseCode.SUCCESS ? "SUCCESS" : "FAILED",
-                res.name(), null));
+                res == ResponseCode.EXISTED ? "Tài khoản đã tồn tại!" : res.name(),
+                null));
     }
 
     public void logout() {

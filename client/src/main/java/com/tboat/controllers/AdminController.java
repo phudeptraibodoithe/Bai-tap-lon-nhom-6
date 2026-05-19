@@ -41,6 +41,7 @@ public class AdminController extends BaseController implements Initializable, So
     @FXML private TableColumn<AuctionSession, Double> colStartPrice;
     @FXML private TableColumn<AuctionSession, Double> colJump;
     @FXML private TableColumn<AuctionSession, String> colSeller;
+    @FXML private TableColumn<AuctionSession, StatusOfAuction> colStatus; // ← thêm
     @FXML private TableColumn<AuctionSession, Void> colApprove;
     @FXML private TableColumn<AuctionSession, Void> colReject;
     @FXML private Label err;
@@ -51,36 +52,36 @@ public class AdminController extends BaseController implements Initializable, So
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        this.colId.setCellValueFactory(new PropertyValueFactory<>("id"));
-        this.colName.setCellValueFactory(new PropertyValueFactory<>("name"));
-        this.colSeller.setCellValueFactory(new PropertyValueFactory<>("sellerAccountName"));
-        setupCurrencyColumn(this.colStartPrice, "currentPrice");
-        setupCurrencyColumn(this.colJump, "bidIncrease");
-        this.setupActionColumn(this.colApprove, "APPROVE_ITEM");
-        this.setupActionColumn(this.colReject, "REJECT_ITEM");
-        this.sessionList = FXCollections.observableArrayList();
-        this.tableSessions.setItems(this.sessionList);
+        colId.setCellValueFactory(new PropertyValueFactory<>("id"));
+        colName.setCellValueFactory(new PropertyValueFactory<>("name"));
+        colSeller.setCellValueFactory(new PropertyValueFactory<>("sellerAccountName"));
+        setupCurrencyColumn(colStartPrice, "currentPrice");
+        setupCurrencyColumn(colJump, "bidIncrease");
+        setupStatusColumn();       // ← thêm
+        setupApproveColumn();      // ← tách riêng, có disable logic
+        setupRejectColumn();       // ← tách riêng, có disable logic
+        sessionList = FXCollections.observableArrayList();
+        tableSessions.setItems(sessionList);
 
-        // ── UCB: Cache-then-Network ──────────────────────────────────────────
         String screenKey = BaseController.toScreenKey("admin.fxml");
-        String cached    = DataCache.getInstance().get("GET_PENDING_ITEMS");
+        String cached    = DataCache.getInstance().get("GET_ALL_ITEMS"); // ← đổi key
 
         if (cached != null) {
             log.info("[Admin] Cache HIT → render ngay");
             NavigationContext.getInstance().reportCacheHit(screenKey, true);
-            renderPendingItems(cached);
-            loadPendingItems(); // refresh ngầm
+            renderAllItems(cached);
+            loadAllItems();
         } else {
             log.info("[Admin] Cache MISS → fetch server");
             NavigationContext.getInstance().reportCacheHit(screenKey, false);
-            loadPendingItems();
+            loadAllItems();
         }
     }
 
-    private void renderPendingItems(String response) {
+    private void renderAllItems(String response) {
         try {
             JsonObject json = JsonParser.parseString(response).getAsJsonObject();
-            if (!"GET_PENDING_ITEMS".equals(json.has("type") ? json.get("type").getAsString() : "")) return;
+            if (!"GET_ALL_ITEMS".equals(json.has("type") ? json.get("type").getAsString() : "")) return;
             if (!json.has("payload") || !json.get("payload").isJsonArray()) return;
 
             sessionList.clear();
@@ -116,7 +117,8 @@ public class AdminController extends BaseController implements Initializable, So
         session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
 
         try {
-            session.setStatusOfAuction(StatusOfAuction.valueOf(getStringJson(dataObj, "statusOfAuction", "ONGOING")));
+            session.setStatusOfAuction(StatusOfAuction.valueOf(
+                    getStringJson(dataObj, "statusOfAuction", "ONGOING")));
         } catch (Exception ignored) {
             session.setStatusOfAuction(StatusOfAuction.ONGOING);
         }
@@ -130,16 +132,17 @@ public class AdminController extends BaseController implements Initializable, So
         return json.has(key) && !json.get(key).isJsonNull() ? json.get(key).getAsDouble() : def;
     }
 
-    private void loadPendingItems() {
-        SocketHelper.sendRequest("GET_PENDING_ITEMS", null);
+    private void loadAllItems() {
+        SocketHelper.sendRequest("GET_ALL_ITEMS", null);
     }
 
     @Override
     public void onReload() {
-        // Hàm này giữ lại phòng trường hợp BaseController gọi đến khi mất kết nối rồi có lại
-        loadPendingItems();
+        loadAllItems();
         AlertUtils.showStatus(err, "Đang làm mới dữ liệu hệ thống...", "#3498db");
     }
+
+    // ── Cell factories ───────────────────────────────────────────────────────
 
     private void setupCurrencyColumn(TableColumn<AuctionSession, Double> column, String propertyName) {
         column.setCellValueFactory(new PropertyValueFactory<>(propertyName));
@@ -147,39 +150,85 @@ public class AdminController extends BaseController implements Initializable, So
             @Override
             protected void updateItem(Double price, boolean empty) {
                 super.updateItem(price, empty);
-                if (empty || price == null) {
+                setText(empty || price == null ? null : CurrencyFormatter.formatDisplay(price));
+            }
+        });
+    }
+
+    private void setupStatusColumn() {
+        colStatus.setCellValueFactory(new PropertyValueFactory<>("statusOfAuction"));
+        colStatus.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(StatusOfAuction status, boolean empty) {
+                super.updateItem(status, empty);
+                if (empty || status == null) {
                     setText(null);
-                } else {
-                    setText(CurrencyFormatter.formatDisplay(price));
+                    setStyle("");
+                    return;
+                }
+                switch (status) {
+                    case PENDING     -> { setText("Chờ duyệt");  setStyle("-fx-text-fill: #e67e22; -fx-font-weight: bold;"); }
+                    case NOT_STARTED -> { setText("Sắp diễn ra"); setStyle("-fx-text-fill: #2980b9; -fx-font-weight: bold;"); }
+                    case ONGOING     -> { setText("Đang diễn ra"); setStyle("-fx-text-fill: #27ae60; -fx-font-weight: bold;"); }
+                    case ENDED       -> { setText("Đã kết thúc"); setStyle("-fx-text-fill: #7f8c8d; -fx-font-weight: bold;"); }
+                    case CANCELED    -> { setText("Từ chối");    setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;"); }
+                    default          -> { setText(status.name()); setStyle(""); }
                 }
             }
         });
     }
 
-    private void setupActionColumn(TableColumn<AuctionSession, Void> column, String actionType) {
-        column.setCellFactory(param -> new TableCell<>() {
-            private final CheckBox checkBox = new CheckBox();
+    private void setupApproveColumn() {
+        colApprove.setCellFactory(param -> new TableCell<>() {
+            private final Button btn = new Button("Duyệt");
             {
-                this.checkBox.setOnAction(event -> {
-                    if (this.checkBox.isSelected()) {
-                        AuctionSession session = getTableView().getItems().get(getIndex());
-                        SocketHelper.sendRequest(actionType, session.getId());
-                        // Tạm thời xóa khỏi bảng ngay lập tức cho mượt UI, kết quả thật tính sau
-                        getTableView().getItems().remove(session);
-                    }
+                btn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+                btn.setOnAction(e -> {
+                    AuctionSession session = getTableView().getItems().get(getIndex());
+                    SocketHelper.sendRequest("APPROVE_ITEM", session.getId());
+                    // Cập nhật status local ngay để UI phản hồi nhanh
+                    session.setStatusOfAuction(StatusOfAuction.NOT_STARTED);
+                    getTableView().refresh();
                 });
             }
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : this.checkBox);
-                if (!empty) this.checkBox.setSelected(false);
+                if (empty) { setGraphic(null); return; }
+                AuctionSession session = getTableView().getItems().get(getIndex());
+                btn.setDisable(!StatusOfAuction.PENDING.equals(session.getStatusOfAuction()));
+                setGraphic(btn);
             }
         });
     }
+
+    private void setupRejectColumn() {
+        colReject.setCellFactory(param -> new TableCell<>() {
+            private final Button btn = new Button("Từ chối");
+            {
+                btn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+                btn.setOnAction(e -> {
+                    AuctionSession session = getTableView().getItems().get(getIndex());
+                    SocketHelper.sendRequest("REJECT_ITEM", session.getId());
+                    session.setStatusOfAuction(StatusOfAuction.CANCELED);
+                    getTableView().refresh();
+                });
+            }
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) { setGraphic(null); return; }
+                AuctionSession session = getTableView().getItems().get(getIndex());
+                btn.setDisable(!StatusOfAuction.PENDING.equals(session.getStatusOfAuction()));
+                setGraphic(btn);
+            }
+        });
+    }
+
     public void switchToAdminNapRut(ActionEvent event) {
         changeScene((Node) event.getSource(), "adminWallet.fxml");
     }
+
     public void logout(ActionEvent e) {
         if (AlertUtils.showConfirmation("Xác nhận đăng xuất", "Bạn có chắc chắn muốn đăng xuất không?")) {
             SocketHelper.sendRequest("LOGOUT", null);
@@ -197,7 +246,7 @@ public class AdminController extends BaseController implements Initializable, So
                 String message = SocketHelper.getMessage(response);
 
                 boolean isBroadcast  = "NEW_PENDING_ITEM".equals(status) || "NEW_ITEM".equals(status);
-                boolean isMyResponse = "GET_PENDING_ITEMS".equals(type) || "APPROVE_ITEM".equals(type)
+                boolean isMyResponse = "GET_ALL_ITEMS".equals(type) || "APPROVE_ITEM".equals(type) // ← đổi key
                         || "REJECT_ITEM".equals(type) || "LOGOUT".equals(type);
 
                 if (!isBroadcast && !isMyResponse) return;
@@ -205,7 +254,7 @@ public class AdminController extends BaseController implements Initializable, So
                 switch (status) {
                     case "SUCCESS" -> handleSuccessCase(JsonParser.parseString(response).getAsJsonObject(), message);
                     case "NEW_PENDING_ITEM", "NEW_ITEM" -> {
-                        loadPendingItems();
+                        loadAllItems(); // ← đổi
                         AlertUtils.showStatus(err, "Có người dùng vừa đăng sản phẩm mới! Đã tự động cập nhật.", "#9b59b6");
                     }
                     case "ERROR" -> AlertUtils.showStatus(err, "Lỗi: " + message, "red");
@@ -217,12 +266,10 @@ public class AdminController extends BaseController implements Initializable, So
     }
 
     private void handleSuccessCase(JsonObject jsonResponse, String message) {
-        if ("Danh sách chờ duyệt".equals(message)) {
-            renderPendingItems(jsonResponse.toString()); // ← dùng method mới
-        } else if ("Đã duyệt và bắt đầu đấu giá".equals(message)) {
-            AlertUtils.showStatus(err, "Đã DUYỆT sản phẩm!", "green");
-        } else if ("Đã từ chối sản phẩm".equals(message)) {
-            AlertUtils.showStatus(err, "Đã TỪ CHỐI sản phẩm!", "#cc7a00");
+        switch (message) {
+            case "Danh sách tất cả phiên"       -> renderAllItems(jsonResponse.toString());
+            case "Đã duyệt và bắt đầu đấu giá" -> AlertUtils.showStatus(err, "Đã DUYỆT sản phẩm!", "green");
+            case "Đã từ chối sản phẩm"          -> AlertUtils.showStatus(err, "Đã TỪ CHỐI sản phẩm!", "#cc7a00");
         }
     }
 }

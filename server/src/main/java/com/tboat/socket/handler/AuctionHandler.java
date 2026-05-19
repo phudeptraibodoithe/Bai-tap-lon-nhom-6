@@ -63,10 +63,18 @@ public class AuctionHandler {
             context.setCurrentRoom(room);
             room.addSubscriber(context);
 
+            String sellerNickname = userDAO.getNickname(session.getSellerAccountName());
+            String leaderNickname = null;
+            String highestBidder = session.getHighestBidderAccount();
+            if (highestBidder != null && !highestBidder.isBlank())
+                leaderNickname = userDAO.getNickname(highestBidder);
+
             JsonObject joinData = new JsonObject();
-            joinData.addProperty("currentPrice", room.getCurrentPrice());
-            joinData.addProperty("isSeller",
-                    session.getSellerAccountName().equals(context.getClientId()));
+            joinData.addProperty("currentPrice",   room.getCurrentPrice());
+            joinData.addProperty("isSeller",       session.getSellerAccountName().equals(context.getClientId()));
+            joinData.addProperty("sellerNickname", sellerNickname);
+            if (leaderNickname != null)
+                joinData.addProperty("leaderNickname", leaderNickname);
 
             context.sendResponse(new Response<>("JOIN", "JOIN_SUCCESS", "Vào phòng thành công", joinData));
 
@@ -95,7 +103,6 @@ public class AuctionHandler {
         double price = JsonParser.parseString(raw)
                 .getAsJsonObject().get("payload").getAsDouble();
 
-//Không cần pre-check — BidderRole xử lý trong transaction nguyên tử
         boolean accepted = room.placeBid(price, clientId);
 
         if (accepted) {
@@ -105,10 +112,12 @@ public class AuctionHandler {
             }
             context.sendResponse(new Response<>("BID", "SUCCESS", "Bạn đang dẫn đầu", price));
 
+            String leaderNickname = userDAO.getNickname(clientId);
             JsonObject bidData = new JsonObject();
-            bidData.addProperty("newPrice", price);
-            bidData.addProperty("newLeader", clientId);
-            room.broadcast("NEW_BID", clientId + " vừa đặt giá mới", bidData);
+            bidData.addProperty("newPrice",          price);
+            bidData.addProperty("newLeader",         clientId);       // account — cho logic
+            bidData.addProperty("newLeaderNickname", leaderNickname); // nickname — cho UI
+            room.broadcast("NEW_BID", leaderNickname + " vừa đặt giá mới", bidData);
         } else {
             context.sendResponse(new Response<>("BID", "FAILED",
                     "Giá đặt phải cao hơn giá hiện tại", room.getCurrentPrice()));
@@ -123,21 +132,15 @@ public class AuctionHandler {
             boolean ok = sellerService.cancelAuction(context.getClientId(), sessionId);
 
             if (ok) {
-                //Lấy phòng TRƯỚC KHI xóa để còn broadcast được
                 AuctionRoom room = AuctionManager.getInstance().getRoom(sessionId);
                 if (room != null) {
                     room.broadcast("AUCTION_CANCELED",
                             "Phiên " + sessionId + " đã bị người bán hủy", sessionId);
                 }
 
-                //Xóa phòng SAU KHI đã broadcast
                 AuctionManager.getInstance().removeRoom(sessionId);
-
-                //Gửi phản hồi cho chính người gọi lệnh
                 context.sendResponse(new Response<>("CANCEL_AUCTION", "SUCCESS",
                         "Đã hủy phiên đấu giá thành công", sessionId));
-
-                //Xóa client này ra khỏi phòng
                 if (context.getCurrentRoom() != null) {
                     context.getCurrentRoom().removeSubscriber(context);
                     context.setCurrentRoom(null);

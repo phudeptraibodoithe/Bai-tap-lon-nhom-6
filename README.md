@@ -43,6 +43,8 @@ classDiagram
         -String nickname
         -String password
         -double balance
+        -String email
+        -String phone
     }
 
     class User {
@@ -57,8 +59,9 @@ classDiagram
     Person <|-- User
     Person <|-- Admin
 
-    %% --- PHẦN ITEM (BẢNG MỚI ĐƯỢC TÁCH RA) ---
+    %% --- PHẦN ITEM (ABSTRACT CLASS & SUBCLASSES) ---
     class Item {
+        <<abstract>>
         -int id
         -String sellerAccountName
         -String type
@@ -67,9 +70,22 @@ classDiagram
         -String imageURL
     }
 
-    %% --- PHẦN SESSION ---
+    class ElectronicItem {
+    }
+    class FashionItem {
+    }
+    class JewelryItem {
+    }
+    class OtherItem {
+    }
+
+    Item <|-- ElectronicItem
+    Item <|-- FashionItem
+    Item <|-- JewelryItem
+    Item <|-- OtherItem
+
+    %% --- PHẦN SESSION (CONCRETE CLASS) ---
     class AuctionSession {
-        <<abstract>>
         -int id
         -int itemId
         -LocalDateTime startTime
@@ -79,21 +95,6 @@ classDiagram
         -StatusOfAuction statusOfAuction
         -String highestBidderAccount
     }
-
-    %% Các Class con của AuctionSession
-    class ElectronicSession {
-    }
-    class FashionSession {
-    }
-    class JewelrySession {
-    }
-    class OtherSession {
-    }
-
-    AuctionSession <|-- ElectronicSession
-    AuctionSession <|-- FashionSession
-    AuctionSession <|-- JewelrySession
-    AuctionSession <|-- OtherSession
 
     AuctionSession --> StatusOfAuction : has status
 

@@ -126,7 +126,7 @@ public class ControllerProfile extends BaseController implements Initializable, 
         // Ảnh chỉ click được khi đang edit
         myImageView.setOnMouseClicked(editing ? this::uploadImage : null);
         myImageView.setStyle(editing ? "-fx-cursor: hand; -fx-opacity: 1.0;"
-                : "-fx-cursor: default; -fx-opacity: 0.85;");
+                : "-fx-cursor: default; -fx-opacity: 1.0;");
         // Nút
         btnEdit.setVisible(!editing);
         btnSave.setVisible(editing);

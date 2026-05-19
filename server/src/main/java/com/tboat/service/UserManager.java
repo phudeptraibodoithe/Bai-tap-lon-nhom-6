@@ -25,8 +25,8 @@ public class UserManager {
         return instance;
     }
 
-    public ResponseCode register(String account, String password, String nickname) {
-        return userDAO.addUser(account, password, nickname);
+    public ResponseCode register(String account, String password, String nickname, String email, String phone) {
+        return userDAO.addUser(account, password, nickname,email,phone);
     }
 
     public ResponseCode login(String account, String password, ClientContext handler) {

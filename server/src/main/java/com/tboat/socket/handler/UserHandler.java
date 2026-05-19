@@ -25,7 +25,7 @@ public class UserHandler {
     public void getProfile() {
         User user = userDAO.getUser(context.getClientId());
         if (user != null) {
-            context.sendResponse(new Response<>("GET_PROFILE", "PROFILE_INFO", "Thông tin hồ sơ", user));
+            context.sendResponse(new Response<>("GET_PROFILE", "SUCCESS", "Thông tin hồ sơ", user));
         } else {
             context.sendResponse(new Response<>("GET_PROFILE", "ERROR", "Không tìm thấy người dùng", null));
         }

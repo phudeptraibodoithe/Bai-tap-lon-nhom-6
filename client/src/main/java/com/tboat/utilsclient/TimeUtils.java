@@ -1,6 +1,7 @@
 package com.tboat.utilsclient;
 
 import com.google.gson.JsonElement;
+import com.tboat.controllers.TrangChuController;
 import javafx.scene.control.DateCell;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Spinner;
@@ -12,10 +13,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.logging.Logger;
 
 public class TimeUtils {
 
     private static final DateTimeFormatter STANDARD_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final Logger logger = Logger.getLogger(TimeUtils.class.getName());
 
     // Ép kiểu thời gian từ Server (timestamp hoặc chuỗi ISO) về chuẩn hiển thị
     // Ép kiểu thời gian từ Server (timestamp hoặc chuỗi) về chuẩn LocalDateTime của Java
@@ -45,8 +48,8 @@ public class TimeUtils {
                 return LocalDateTime.parse(timeStr);
             }
         } catch (Exception e) {
-            System.err.println("Lỗi parse thời gian từ Server: " + e.getMessage() + " - Dữ liệu gốc: " + timeElement.toString());
-            return null; // Trả về null để Controller tự dùng fallback (như LocalDateTime.now())
+            logger.severe("Lỗi parse thời gian từ Server: " + e.getMessage() + " - Dữ liệu gốc: " + timeElement.toString());
+            return null;
         }
     }
 

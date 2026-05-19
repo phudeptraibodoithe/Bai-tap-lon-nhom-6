@@ -3,6 +3,7 @@ package com.tboat.controllers;
 import com.tboat.models.auction.AuctionSession;
 import com.tboat.utilsclient.CurrencyFormatter;
 import com.tboat.utilsclient.ImageUtils;
+import com.tboat.utilsclient.TimeUtils;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -10,6 +11,8 @@ import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.shape.Rectangle;
+
+import java.util.logging.Logger;
 
 public class ProductCardController extends BaseController {
 
@@ -20,6 +23,7 @@ public class ProductCardController extends BaseController {
     @FXML private Button btnBid;
 
     private AuctionSession session;
+    private static final Logger logger = Logger.getLogger(ProductCardController.class.getName());
 
     // Nạp dữ liệu vào thẻ
     public void setData(AuctionSession session) {
@@ -51,7 +55,7 @@ public class ProductCardController extends BaseController {
                 controller.setItemData(session);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.severe("Lỗi xử lý khi lấy dữ liệu từ server: " + e.getMessage());
         }
     }
 }

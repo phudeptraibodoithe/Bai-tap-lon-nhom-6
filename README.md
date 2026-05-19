@@ -1,279 +1,177 @@
-# Hệ Thống Đấu Giá Trực Tuyến (Real-time Auction System) - Nhóm 6
-Đây là dự án Bài tập lớn của Nhóm 6. Hệ thống mô phỏng một sàn đấu giá trực tuyến theo thời gian thực (Real-time), cho phép người dùng tạo phiên đấu giá, tham gia trả giá, và cập nhật kết quả đồng bộ ngay lập tức thông qua giao thức Socket.
+# 🏷️ Hệ Thống Đấu Giá Trực Tuyến — Nhóm 6
 
-🚀 Công nghệ sử dụng
-Ngôn ngữ: Java (Core/JavaFX)
+> Hệ thống mô phỏng sàn đấu giá trực tuyến theo thời gian thực (Real-time Auction System), cho phép người dùng tạo phiên đấu giá, tham gia trả giá và nhận cập nhật đồng bộ ngay lập tức thông qua giao thức TCP Socket.
 
-Kiến trúc mạng: Java Socket (Mô hình Client-Server, TCP/IP)
+---
 
-Cơ sở dữ liệu: MySQL
+## 📋 Mục lục
 
-Design Pattern: Strategy Pattern, Observer Pattern, Singleton Pattern, Factory Method Pattern
+1. [Mô tả bài toán](#1-mô-tả-bài-toán)
+2. [Công nghệ & Môi trường](#2-công-nghệ--môi-trường)
+3. [Cấu trúc thư mục](#3-cấu-trúc-thư-mục)
+4. [Vị trí file JAR](#4-vị-trí-file-jar)
+5. [Hướng dẫn chạy](#5-hướng-dẫn-chạy)
+6. [Danh sách chức năng đã hoàn thành](#6-danh-sách-chức-năng-đã-hoàn-thành)
+7. [Tài liệu & Demo](#7-tài-liệu--demo)
 
-🌟 Tính năng chính
-Đăng nhập/Đăng ký và quản lý hồ sơ người dùng, lịch sử giao dịch.
+---
 
-Real-time Bidding: Trả giá theo thời gian thực, tự động broadcast giá mới nhất đến tất cả người trong phòng.
+## 1. Mô tả bài toán
+**Bài toán đặt ra:** Khắc phục độ trễ dữ liệu và xung đột tranh chấp tài nguyên (Race Condition) khi có nhiều người dùng cùng tham gia đặt giá tại một thời điểm trong các hệ thống đấu giá truyền thống.
 
-Transaction Safety: Đảm bảo tính toàn vẹn dữ liệu khi nhiều người cùng trả giá một lúc (Xử lý đa luồng & Database Transaction).
+**Phạm vi hệ thống:** Xây dựng ứng dụng Client-Server cho phép nhiều người dùng tham gia đấu giá trực tuyến đồng thời. Hệ thống đảm bảo tính nhất quán dữ liệu khi nhiều người trả giá cùng một lúc, tự động chốt phiên khi hết thời gian, và cập nhật giá theo thời gian thực đến toàn bộ người trong phòng.
+- **Client (JavaFX MVC):** Tiếp nhận tương tác, xử lý luồng hiển thị mượt mà và cập nhật trạng thái phòng đấu giá trực tiếp theo thời gian thực (Event-driven UI).
+- **Server (Java Socket Multi-threading):** Đóng vai trò bộ xử lý trung tâm, điều phối các kết nối luồng, kiểm soát an toàn giao dịch tài chính (Trừ/Hoàn tiền tự động) và quản lý bộ đếm ngược tự động khóa phiên.
 
-Auto-close Session: Tự động đếm ngược và chốt phiên đấu giá khi hết giờ.
+**Các Actor & Cây kế thừa hệ thống (Domain Entities):**
+Hệ thống tuân thủ chặt chẽ nguyên lý hướng đối tượng (OOP) thông qua việc phân cấp các lớp thực thể rõ ràng, tối ưu hóa khả năng tái sử dụng mã nguồn và thể hiện tính đa hình:
 
-Quản lý hệ thống dành cho Admin (Duyệt phiên).
+* **Phân cấp Người dùng (User Hierarchy):**
+  * `Person` (Abstract Class): Lớp trừu tượng cơ sở quản lý thông tin định danh cốt lõi (ID, tên, tài khoản, mật khẩu).
+  * `User` (Kế thừa từ `Person`): Đại diện cho thành viên hệ thống, đóng vai trò kép linh hoạt trong quy trình nghiệp vụ: vừa là **Bidder** (tham gia phòng, đặt giá) vừa là **Seller** (đăng tải, quản lý sản phẩm).
+  * `Admin` (Kế thừa từ `Person`): Người điều hành hệ thống có toàn quyền phê duyệt hoặc hủy các phiên đấu giá.
 
+* **Phân cấp Sản phẩm đấu giá (Item Hierarchy):**
+  * `Item` (Abstract Class): Định nghĩa các thuộc tính và hành vi chung của một tài sản đấu giá (tên, mô tả, giá khởi điểm, thời gian).
+  * `Electronics` / `Fashion` / `Jewelry` / `Other` (Kế thừa từ `Item`): Các danh mục sản phẩm cụ thể. 
+---
 
-### Sơ đồ 1: Cấu trúc hệ thống (UML Class Diagram)
+## 2. Công nghệ & Môi trường
 
-```mermaid
-classDiagram
-    %% --- PHẦN ENUM ---
-    class StatusOfAuction {
-        <<enumeration>>
-        NOT_STARTED
-        ONGOING
-        ENDED
-        PENDING
-        CANCELED
-    }
+| Thành phần | Chi tiết |
+|---|---|
+| Ngôn ngữ | Java 21 |
+| Giao diện | JavaFX 21.0.1 |
+| Kiến trúc mạng | Java Socket (TCP/IP, Client-Server) |
+| Định dạng dữ liệu | JSON (thư viện Gson 2.10.1) |
+| Cơ sở dữ liệu | MySQL 8.0 |
+| Build tool | Apache Maven (Multi-module) |
+| Chất lượng code | Checkstyle (Google Checks) + SpotBugs |
+| Logging | SLF4J + Logback Classic 1.4.12 |
+| Design Pattern | Strategy, Observer, Singleton, Factory Method |
 
-    %% --- PHẦN CLASS KẾ THỪA CƠ BẢN ---
-    class Person {
-        <<abstract>>
-        -String accountName
-        -String nickname
-        -String password
-        -double balance
-        -String email
-        -String phone
-    }
+### Yêu cầu cài đặt
 
-    class User {
-        -String description
-        -String avatarURL
-    }
+- **Java Development Kit (JDK)**: Phiên bản 21 trở lên ([Tải tại đây](https://www.oracle.com/java/technologies/downloads/))
+- **Cơ sở dữ liệu**: MySQL Server phiên bản 8.0 trở lên ([Tải tại đây](https://dev.mysql.com/downloads/mysql/))
+- **Công cụ quản lý mã nguồn**: Apache Maven 3.9 trở lên (nếu muốn build từ source)
 
-    class Admin {
-        +censorSession(AuctionSession session) void
-    }
+### Thiết lập Database
 
-    Person <|-- User
-    Person <|-- Admin
+1. Đăng nhập vào môi trường quản trị MySQL của bạn.
+2. Thực thi tệp script nằm tại đường dẫn server/src/main/resources/auction_database.sql để thiết lập hệ thống cơ sở dữ liệu.
+3. Đồng bộ lại thông tin cấu hình tài khoản kết nối của bạn trong dự án (Mật khẩu cấu hình kết nối mặc định: 123456789).
 
-    %% --- PHẦN ITEM (ABSTRACT CLASS & SUBCLASSES) ---
-    class Item {
-        <<abstract>>
-        -int id
-        -String sellerAccountName
-        -String type
-        -String name
-        -String description
-        -String imageURL
-    }
+---
 
-    class ElectronicItem {
-    }
-    class FashionItem {
-    }
-    class JewelryItem {
-    }
-    class OtherItem {
-    }
+## 3. Cấu trúc thư mục
 
-    Item <|-- ElectronicItem
-    Item <|-- FashionItem
-    Item <|-- JewelryItem
-    Item <|-- OtherItem
+```
+tboat-project/ (Root POM)
+├── .github/workflows/
+│   └── ci.yml                  # Cấu hình CI/CD (Khởi tạo DB ảo, Verify)
+├── common/                       # Module dùng chung cho cả Server và Client
+│   └── src/main/java/com/tboat/
+│       ├── logging/              # Cấu hình nhật ký hệ thống
+│       └── models/               # Tầng Domain Models (Thực thể hệ thống)
+├── server/                       # Module xử lý trung tâm (Backend)
+│   ├── src/main/java/com/tboat/
+│   │   ├── dao/                  # Tầng DAO (Data Access Object) - Thao tác MySQL
+│   │   ├── database/             # Quản lý Connection Pool kết nối DB
+│   │   ├── service/              # Tầng Business Logic nghiệp vụ chính
+│   │   ├── socket/               # Quản lý kết nối mạng, định tuyến ActionRouter
+│   │   └── ServerMain.java       # Entry point khởi động Server
+│   └── src/main/resources/
+│       └── auction_database.sql  # Script cấu trúc khởi tạo CSDL
+└── client/                       # Module giao diện người dùng (Frontend)
+    ├── src/main/java/com/tboat/
+    │   ├── controllers/          # Tầng Presentation - Điều khiển UI JavaFX
+    │   ├── socket/               # SocketManager - Duy trì cổng kết nối duy nhất
+    │   ├── ucb/                  # Thuật toán tăng tốc tải tài nguyên
+    │   ├── ClientApp.java        # Lớp cấu hình giao diện chính
+    │   └── Launcher.java         # Lớp kích hoạt ứng dụng (Giải quyết xung đột môi trường)
+    └── src/main/resources/
+        ├── images                # Kho tài nguyên hình ảnh hệ thống
+        ├── styles                # Các tệp cấu hình CSS làm đẹp giao diện
+        └── views                 # Các tệp thiết kế giao diện độc lập định dạng .fxml
 
-    %% --- PHẦN SESSION (CONCRETE CLASS) ---
-    class AuctionSession {
-        -int id
-        -int itemId
-        -LocalDateTime startTime
-        -LocalDateTime endTime
-        -double currentPrice
-        -double bidIncrease
-        -StatusOfAuction statusOfAuction
-        -String highestBidderAccount
-    }
+```
+---
 
-    AuctionSession --> StatusOfAuction : has status
+## 4. Vị trí file JAR
 
-    %% --- PHẦN LỊCH SỬ & BID ---
-    class Bid {
-        -int id
-        -int auctionSessionId
-        -String bidderAccount
-        -double bidAmount
-        -LocalDateTime bidTime
-    }
+Sau khi build bằng lệnh `mvn package` tại thư mục gốc, các file JAR sẽ được tạo tại:
 
-    class History {
-        -int auctionSessionId
-        -String winnerAccount
-        -double finalPrice
-        -LocalDateTime completedAt
-    }
+| File | Đường dẫn |
+|---|---|
+| Server JAR | `server/target/server-1.0-SNAPSHOT.jar` |
+| Client JAR | `client/target/client-1.0-SNAPSHOT.jar` |
 
-    %% --- PHẦN PARTICIPATION ---
-    class Participation {
-        -String accountName
-        -int auctionSessionId
-        -String roleType
-    }
+> Cả hai đều là **fat JAR** (đã đóng gói toàn bộ dependency bên trong), chạy trực tiếp bằng `java -jar`.
 
-    %% --- MỐI QUAN HỆ CỦA CÁC THỰC THỂ (RELATIONSHIPS) ---
-    
-    %% User tạo ra Item, Item được đấu giá trong Session
-    User "1" --> "*" Item : creates / owns
-    Item "1" -- "1" AuctionSession : is auctioned in
-    
-    %% User và Bid, History
-    User "1" --> "*" Bid : places
-    AuctionSession "1" --> "*" Bid : receives
-    User "1" --> "*" History : wins
-    AuctionSession "1" --> "1" History : results in
-    
-    %% Participation
-    User "1" --> "*" Participation : joins
-    AuctionSession "1" --> "*" Participation : has
+---
+
+## 5. Hướng dẫn chạy
+
+> ⚠️ **Bắt buộc chạy Server trước, Client sau.**
+
+### Bước 1 — Biên dịch và đóng gói toàn bộ mã nguồn dự án
+Mở Terminal tại thư mục gốc tboat-project/ và thực thi lệnh:
+```bash
+mvn clean package
 ```
 
-### Sơ đồ 2: Luồng Hệ Thống & Xử lý Kỹ Thuật (System Sequence Diagram)
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Client as Client (JavaFX UI)
-    participant Socket as Client SocketManager
-    participant Router as Server ActionRouter (Socket Thread)
-    participant BS as BiddingService
-    participant Context as ParticipationContext
-    participant DB as Database Connection
-    participant DAOs as Tầng DAO (User, Session, Bid)
-    participant Broadcaster as BroadcastService
+### Bước 2 — Khởi động Server
 
-    %% Giai đoạn 1: Client gửi Request qua Socket
-    Client->>Socket: Nhấn nút Trả giá (UI)
-    Note over Client, Socket: Parse request thành JSON (Gson)
-    Socket->>Router: Gửi JSON: {action: "PLACE_BID", payload: {...}}
-
-    %% Giai đoạn 2: Xử lý Đồng bộ & Logic
-    Router->>BS: handleAction(jsonPayload)
-    
-    Note over BS: Mở Block Synchronized theo SessionId<br/>để chống nhiều người trả giá cùng mili-giây
-    rect rgb(200, 220, 240)
-        BS->>DAOs: Lấy thông tin Session & kiểm tra giá
-        DAOs-->>BS: Trả về Session object
-        
-        %% Strategy & Transaction
-        BS->>Context: executeAction(user, session, newPrice)
-        Context->>DB: getConnection() & setAutoCommit(false)
-        
-        Context->>DAOs: 1. updateBalance() (Trừ tiền người mới)
-        Context->>DAOs: 2. updateSession() (Cập nhật phiên)
-        
-        alt Có người giữ giá cũ (Bị vượt mặt)
-            Context->>DAOs: 3. updateBalance() (Hoàn tiền người cũ)
-        end
-        
-        Context->>DAOs: 4. addBid() (Lưu lịch sử)
-        
-        alt Transaction Thành công
-            Context->>DB: commit()
-            Context-->>BS: return true
-        else Lỗi / Thất bại
-            Context->>DB: rollback()
-            Context-->>BS: return false
-        end
-    end
-
-    %% Giai đoạn 3: Phản hồi & Real-time Broadcast
-    alt Kết quả = true
-        BS->>Router: return Success Response
-        Router->>Socket: Gửi JSON: {status: "SUCCESS", ...}
-        Socket-->>Client: Platform.runLater() -> Cập nhật UI cá nhân
-        
-        %% Bước quyết định của Real-time
-        BS->>Broadcaster: broadcastNewPrice(sessionId, newPrice)
-        Note over Broadcaster: Tìm tất cả Socket kết nối<br/>thuộc Session này
-        Broadcaster->>Socket: Gửi JSON: {action: "UPDATE_PRICE", payload: {...}} cho TẤT CẢ clients
-    else Kết quả = false
-        BS->>Router: return Error Response
-        Router->>Socket: Gửi JSON: {status: "ERROR", message: "..."}
-        Socket-->>Client: Platform.runLater() -> Hiển thị lỗi (Cảnh báo)
-    end
-```
-### Sơ đồ 3: Luồng Nghiệp Vụ Database (Business Logic & Data Flow)
-```mermaid
-sequenceDiagram
-    autonumber
-    actor A as User A (Seller)
-    actor B as User B (Bidder)
-    participant Server as Tboat Server
-    participant DB_Session as Bảng auction_session
-    participant DB_Part as Bảng participation
-    participant DB_Bid as Bảng bid
-    participant DB_User as Bảng user
-    participant DB_History as Bảng history
-
-    %% 1. A Tạo phòng
-    Note over A, DB_Part: 1. A TẠO PHÒNG ĐẤU GIÁ
-    A->>Server: Request Tạo Phiên
-    Server->>DB_Session: INSERT 1 dòng (Tạo phiên mới)
-    Server->>DB_Part: INSERT 1 dòng (accountName: A, role: SELLER)
-
-    %% 2. B Join phòng lần 1
-    Note over B, DB_Part: 2. B BẤM JOIN PHÒNG (LẦN ĐẦU)
-    B->>Server: Request Tham gia (JOIN)
-    Server->>DB_Part: SELECT kiểm tra B đã tồn tại trong phiên chưa?
-    DB_Part-->>Server: Trả về: Chưa tồn tại
-    Server->>DB_Part: INSERT 1 dòng (accountName: B, role: BIDDER)
-
-    %% 3. B Join phòng lần 2
-    Note over B, DB_Part: 3. B THOÁT RA, RỒI JOIN LẠI
-    B->>Server: Request Tham gia (JOIN)
-    Server->>DB_Part: SELECT kiểm tra B đã tồn tại trong phiên chưa?
-    DB_Part-->>Server: Trả về: Đã tồn tại
-    Server-->>Server: Bỏ qua (Không INSERT thêm)
-
-    %% 4. B Đặt giá 500k
-    Note over B, DB_Bid: 4. B BẤM ĐẶT GIÁ 500K (Lần 1)
-    B->>Server: Request Đặt giá 500k
-    Server->>DB_User: UPDATE trừ tiền 500k của B
-    Server->>DB_Session: UPDATE current_price = 500k & highest_bidder = B
-    Server->>DB_Bid: INSERT 1 dòng (bidder: B, amount: 500k)
-
-    %% 5. B Đặt giá 600k
-    Note over B, DB_Bid: 5. B BẤM ĐẶT GIÁ 600K (Lần 2)
-    B->>Server: Request Đặt giá 600k
-    Server->>DB_User: UPDATE hoàn 500k cũ, trừ 600k mới của B
-    Server->>DB_Session: UPDATE current_price = 600k & highest_bidder = B
-    Server->>DB_Bid: INSERT 1 dòng nữa (bidder: B, amount: 600k)
-
-    %% 6. Kết thúc phiên
-    Note over Server, DB_History: 6. ĐỒNG HỒ ĐẾM NGƯỢC KẾT THÚC
-    Server->>Server: Timer Trigger: AUCTION_FINISHED
-    Server->>DB_Session: Lấy thông tin người dẫn đầu (HighestBidder = B)
-    Server->>DB_History: INSERT 1 dòng duy nhất (winner: B, final_price: 600k)
-    Server->>DB_Session: UPDATE status = ENDED
+```bash
+java -jar server/target/server-1.0-SNAPSHOT.jar
 ```
 
+Khi xuất hiện thông tin nhật ký hệ thống ghi nhận trạng thái kết nối thành công, Server đã sẵn sàng điều hướng các gói tin.
+### Bước 3 — Khởi động Client
 
-### Bảng chia việc chi tiết cho từng thành viên
+```bash
+java -jar client/target/client-1.0-SNAPSHOT.jar
+```
 
- Thành viên | Nội dung nhiệm vụ |  tiến độ |
-| :--- | :--- | :--- |
-|  | Ghép nối code của cả nhóm |100% |
-|  | thêm tính năng: thông báo, biểu đồ bid, auto-bidding, ucb để load nhanh,... |50% |
-| **Phúc** | Thiết kế giao diện trang chủ, trang nạp rút, admin, trang đấu giá | 100%|
-| **Phúc** | Xử lý cập nhật UI realtime và đọc dữ liệu để hiện thị  | 100%|
-| **Tâm** | Thiết kế các unit test  |60% |
-| **Tâm** | Xử lý Logic Broadcast (Gửi dữ liệu thời gian thực tới tất cả Client trong phòng) |100% |
-| **Tâm** | Xây dựng Giao thức truyền tin | 100% |
-| **Tâm** | Xử lý Đa luồng | 100% |
-| **Thái** | Thiết kế các lớp Java thuần (User, Item,...) | 100% |
-| **Thái** | Xử lý Validation dữ liệu & Bắt lỗi Ngoại lệ (Exception) | 100%|
-| **Phú** | Thiết kế giao diện login, register, trang Profile, History, UploadItem | 100%|
-| **Phú** | Lập trình tầng DAO (Data Access Object) & Thiết kế CSDL |100% |
-| **Phú và Tâm** | Thiết kế kiến trúc Socket (Server/Client) & Vẽ sơ đồ UML |100% |
-| **Tâm, Thái, Phú**| Code logic Bộ đếm thời gian (Timer) & Tự động chốt phiên đấu giá |100%|
-| **Thái, Phú, Tâm** | Code logic Trả giá & Xử lý đồng bộ (Synchronized chống trùng lặp) |80%|
+Có thể mở nhiều cửa sổ Client cùng lúc để mô phỏng nhiều người dùng.
+---
+
+## 6. Danh sách chức năng đã hoàn thành
+
+### ✅ Chức năng cốt lõi (Hoàn thành)
+
+| # | Chức năng | Mô tả |
+|---|---|---|
+| 1 | Tài khoản & Hồ sơ |Đăng nhập, đăng ký, cập nhật thông tin cá nhân bổ sung, quản lý số dư ví nạp/rút trực tuyến |
+| 2 | Tạo phiên đấu giá & Quản lý sản phẩm | Đăng tải sản phẩm lên sàn đấu giá, cho phép người bán xem, chỉnh sửa và hủy phiên đấu giá |
+| 3| Duyệt phiên (Admin) | Admin xem xét và phê duyệt / huỷ phiên |
+| 4 | Tham gia phòng đấu giá | Join phòng, xem thông tin phiên theo thời gian thực |
+| 5 | **Real-time Bidding** | Trả giá tức thì, broadcast đến toàn bộ người trong phòng |
+| 6 | **Transaction Safety** | Synchronized + DB Transaction đảm bảo toàn vẹn khi nhiều người trả giá đồng thời |
+| 7 | Auto-close & Hoàn tiền | Hệ thống tự động kích hoạt bộ đếm ngược, tự động hoàn trả số dư cho người bị vượt giá và chốt phiên lập lịch sử |
+| 8 | Lịch sử giao dịch | Xem lại các phiên đã tham gia, đã thắng |
+| 9 | Biểu đồ Bid | Trực quan hóa dữ liệu lịch sử tăng giá bằng biểu đồ dạng đường theo trục thời gian |
+| 10 | Unit Test | Xây dựng hệ thống kịch bản kiểm thử đơn vị tự động hóa bảo vệ an toàn cho các hàm xử lý lõi |
+| 11 | Thông báo | Gửi thông báo cho seller khi phiên được duyệt, bắt đầu và kết thúc đồng bộ xuyên suốt ứng dụng dạng Push Notification. gửi thông báo cho bidder khi mua thành công, khi bị người khác vượt bid |
+| 12 | Xử lý lỗi & Ngoại lệ nghiệp vụ |Tự động chặn đặt giá thấp hơn giá hiện tại + bước giá, từ chối bid khi phiên đấu giá đã đóng hoặc kết thúc, Xử lý ngoại lệ kết nối mạng: Tự động dọn dẹp tài nguyên khi Client ngắt kết nối đột ngột |
+| 13 | Anti-sniping | Nếu có bất kỳ lệnh đặt giá hợp lệ nào xuất hiện trong 15 giây cuối cùng trước khi phiên đóng, hệ thống tự động gia hạn thời gian kết thúc của phiên thêm 30 giây để đảm bảo tính cạnh tranh công bằng|
+
+
+### 🔄 Chức năng đang phát triển
+
+| # | Chức năng | Tiến độ |
+|---|---|---|
+| 14 | Auto-bidding (đặt giá tự động) | ~50% |
+---
+
+## 7. Tài liệu & Demo
+
+| Tài nguyên | Link |
+|---|---|
+| 📄 Báo cáo PDF | *(Cập nhật sau)* |
+| 🎬 Video Demo | *(Cập nhật sau)* |
+
+---
+
+> **Nhóm 6** — Môn Lập Trình Nâng Cao| Khoa Công nghệ Thông tin

@@ -5,7 +5,7 @@ import com.tboat.service.AuctionTimerService;
 import com.tboat.socket.ClientHandler;
 import com.tboat.service.AuctionManager;
 import com.tboat.dao.AuctionSessionDAO;
-import com.tboat.models.AuctionSession;
+import com.tboat.models.auction.AuctionSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
@@ -17,7 +17,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ServerMain {
-    private static final ExecutorService threadPool = Executors.newFixedThreadPool(100);
+    private static final ExecutorService threadPool = Executors.newFixedThreadPool(30);
     public static final ExecutorService broadcastExecutor = Executors.newFixedThreadPool(10);
     private static final Logger logger = LoggerFactory.getLogger(ServerMain.class);
 

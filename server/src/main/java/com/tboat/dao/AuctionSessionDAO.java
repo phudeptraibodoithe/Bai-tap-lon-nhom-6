@@ -3,7 +3,12 @@ package com.tboat.dao;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import com.tboat.models.*;
+
+import com.tboat.models.auction.AuctionSession;
+import com.tboat.models.auction.StatusOfAuction;
+import com.tboat.models.item.Item;
+import com.tboat.models.item.factory.ItemFactory;
+import com.tboat.models.item.factory.ItemFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,18 +117,30 @@ public class AuctionSessionDAO {
         return list;
     }
 
-    public List<AuctionSession> getPendingAuctions() {
+    public List<AuctionSession> getAllAuctions() {
         List<AuctionSession> list = new ArrayList<>();
-        String sql = SELECT_WITH_ITEM + "WHERE s.status = 'PENDING'";
+        String sql = SELECT_WITH_ITEM + "ORDER BY id DESC";
         try (Connection c = getConnection();
              PreparedStatement ps = c.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) list.add(mapResultSetToAuctionSession(rs));
         } catch (Exception e) {
-            logger.error("Lỗi khi lấy Pending Auctions: ", e);
+            logger.error("Lỗi khi lấy Auctions: ", e);
         }
         return list;
     }
+
+    // Overload mới — nhận conn từ ngoài để dùng chung transaction
+// Logic y hệt method cũ, chỉ khác là không tự getConnection()
+    public boolean updateSessionStatus(Connection conn, int sessionId, StatusOfAuction status) throws SQLException {
+        String sql = "UPDATE auction_session SET status = ? WHERE id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, status.name());
+            ps.setInt(2, sessionId);
+            return ps.executeUpdate() > 0;
+        }
+    }
+// Giữ nguyên method cũ bên dưới — không xóa, code chỗ khác vẫn dùng
 
     public boolean updateSessionStatus(int sessionId, StatusOfAuction status) {
         String sql = "UPDATE auction_session SET status = ? WHERE id = ?";

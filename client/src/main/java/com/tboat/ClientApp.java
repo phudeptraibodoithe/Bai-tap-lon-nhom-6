@@ -24,16 +24,15 @@ public class ClientApp extends Application {
         log.info("[UCB] CacheInterceptor đã đăng ký.");
         // ─────────────────────────────────────────────────────────
 
-        Parent root = FXMLLoader.load(getClass().getResource("/views/start.fxml"));
+        Parent root = FXMLLoader.load(ClientApp.class.getResource("/views/start.fxml"));
+        String cssPath = ClientApp.class.getResource("/styles/Button.css").toExternalForm();
+        Image icon = new Image(ClientApp.class.getResourceAsStream("/images/logo.png"));
         Scene scene = new Scene(root);
-
-        String cssPath = getClass().getResource("/styles/Button.css").toExternalForm();
         scene.getStylesheets().add(cssPath);
 
         stage.setScene(scene);
         stage.setTitle("TBOAT - Đấu giá trực tuyến");
 
-        Image icon = new Image(getClass().getResourceAsStream("/images/logo.png"));
         stage.getIcons().add(icon);
         stage.show();
     }

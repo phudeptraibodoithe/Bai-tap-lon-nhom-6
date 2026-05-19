@@ -1,7 +1,7 @@
 package com.tboat.dao;
 
 import com.tboat.database.DatabaseConnection;
-import com.tboat.models.Participation;
+import com.tboat.models.auction.Participation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +39,7 @@ public class ParticipationDAO {
             ps.setString(1, p.getAccountName());
             ps.setInt(2, p.getAuctionSessionId());
             ps.setString(3, p.getRoleType());
+            ps.executeUpdate();
         } catch (SQLException e) {
             logger.error("Lỗi khi thêm Participation: ", e);
         }

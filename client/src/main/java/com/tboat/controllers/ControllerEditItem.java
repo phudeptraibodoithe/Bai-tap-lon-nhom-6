@@ -1,7 +1,8 @@
 package com.tboat.controllers;
 
 import com.google.gson.JsonObject;
-import com.tboat.models.AuctionSession;
+import com.tboat.models.auction.AuctionSession;
+import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
 import com.tboat.ucb.DataCache;
 import com.tboat.utilsclient.*;
@@ -181,21 +182,21 @@ public class ControllerEditItem extends BaseController implements Initializable,
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                String status = SocketHelper.getStatus(response);
+                String type = SocketHelper.getType(response);
+                if (!"EDIT_ITEM".equals(type) && !"CANCEL_AUCTION".equals(type)) return;
+
+                String status  = SocketHelper.getStatus(response);
                 String message = SocketHelper.getMessage(response);
 
                 if ("SUCCESS".equals(status)) {
-                    DataCache.getInstance().invalidate("LIST_AVAILABLE");   // ← THÊM
-                    DataCache.getInstance().invalidate("GET_MY_AUCTIONS"); // ← THÊM
-                    if (message.contains("Cập nhật thông tin")) {
-                        DataCache.getInstance().invalidate("GET_MY_AUCTIONS"); // ← THÊM
+                    DataCache.getInstance().invalidate("LIST_AVAILABLE");
+                    DataCache.getInstance().invalidate("GET_MY_AUCTIONS");
+
+                    if ("EDIT_ITEM".equals(type)) {
                         AlertUtils.showStatus(thongbao, "Cập nhật thành công!", STYLE_SUCCESS);
                         AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Cập nhật thành công", "Đã cập nhật sản phẩm thành công!");
                         changeScene(thongbao, "manager.fxml");
-
-                    } else if (message.contains("Đã hủy phiên")) {
-                        DataCache.getInstance().invalidate("GET_MY_AUCTIONS"); // ← THÊM
-                        DataCache.getInstance().invalidate("LIST_AVAILABLE");  // ← THÊM: xóa khỏi TrangChu luôn
+                    } else {
                         AlertUtils.showStatus(thongbao, "Xóa thành công!", STYLE_SUCCESS);
                         AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Xóa thành công", "Đã xóa sản phẩm thành công!");
                         changeScene(thongbao, "manager.fxml");

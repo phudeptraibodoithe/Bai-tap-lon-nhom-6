@@ -2,16 +2,19 @@ package com.tboat.controllers;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.tboat.session.UserSession;
+import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
 import com.tboat.utilsclient.AlertUtils;
 import com.tboat.utilsclient.CurrencyFormatter;
-import com.tboat.utilsclient.SocketHelper;
-import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,32 +119,30 @@ public class AdminWalletController extends BaseController implements Initializab
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             btnSubmit.setDisable(false);
-
             try {
-                String status = SocketHelper.getStatus(response);
+                if (!"TRANSACTION".equals(SocketHelper.getType(response))) return;
+
+                String status  = SocketHelper.getStatus(response);
                 String message = SocketHelper.getMessage(response);
 
                 if ("SUCCESS".equals(status)) {
-                    JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                    if (jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull()) {
-                        double changedAmount = jsonResponse.get("payload").getAsDouble();
+                    JsonObject json = JsonParser.parseString(response).getAsJsonObject();
+                    if (json.has("payload") && !json.get("payload").isJsonNull()) {
+                        double changedAmount = json.get("payload").getAsDouble();
                         double newBalance = UserSession.getInstance().getUser().getBalance() + changedAmount;
-
                         UserSession.getInstance().getUser().setBalance(newBalance);
                         currentBalance = newBalance;
                         updateBalanceLabel();
-
-                        String successMsg = message.isEmpty() ? "Giao dịch đã được xử lý thành công!" : message;
-                        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Thành công", successMsg);
+                        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Thành công",
+                                message.isEmpty() ? "Giao dịch đã được xử lý thành công!" : message);
                     }
                 } else if ("FAILED".equals(status) || "ERROR".equals(status)) {
-                    String errorMsg = message.isEmpty() ? "Giao dịch bị từ chối." : message;
-                    AlertUtils.showAlert(Alert.AlertType.ERROR, "Thất bại", errorMsg);
+                    AlertUtils.showAlert(Alert.AlertType.ERROR, "Thất bại",
+                            message.isEmpty() ? "Giao dịch bị từ chối." : message);
                 }
-
             } catch (Exception e) {
                 AlertUtils.showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Lỗi đọc dữ liệu từ Server.");
-                log.error("Không thể đọc JSON nạp/rút từ server: {} | Exception: {}", response, e.getMessage(), e);
+                log.error("Không thể đọc JSON nạp/rút: {} | {}", response, e.getMessage(), e);
             }
         });
     }

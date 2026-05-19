@@ -1,6 +1,6 @@
 package com.tboat.dao;
 
-import com.tboat.models.Item;
+import com.tboat.models.item.Item;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,13 +31,14 @@ public class ItemDAO {
     }
 
     public boolean updateItem(Item item, int itemId) {
-        String sql = "UPDATE item SET name = ?, description = ?, imageURL = ? WHERE id = ?";
+        String sql = "UPDATE item SET name = ?, description = ?, imageURL = ?, type = ? WHERE id = ?";
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, item.getName());
             ps.setString(2, item.getDescription());
             ps.setString(3, item.getImageURL());
-            ps.setInt(4, itemId);
+            ps.setString(4, item.getType()); // ← THÊM
+            ps.setInt(5, itemId);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             logger.error("Lỗi khi cập nhật Item: ", e);

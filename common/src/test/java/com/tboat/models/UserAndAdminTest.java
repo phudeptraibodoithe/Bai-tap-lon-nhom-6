@@ -1,5 +1,8 @@
 package com.tboat.models;
 
+import com.tboat.models.core.Admin;
+import com.tboat.models.core.Person;
+import com.tboat.models.core.User;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

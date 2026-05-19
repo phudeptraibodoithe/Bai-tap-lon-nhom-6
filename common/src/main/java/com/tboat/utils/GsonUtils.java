@@ -1,7 +1,11 @@
 package com.tboat.utils;
 
 import com.google.gson.*;
-import com.tboat.models.*;
+import com.tboat.models.auction.AuctionSession;
+import com.tboat.models.item.ElectronicsItem;
+import com.tboat.models.item.FashionItem;
+import com.tboat.models.item.JewelryItem;
+import com.tboat.models.item.OtherItem;
 
 import java.lang.reflect.Type;
 import java.time.LocalDateTime;

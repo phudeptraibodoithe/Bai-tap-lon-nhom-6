@@ -2,17 +2,18 @@ package com.tboat.controllers;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.tboat.models.User;
+import com.tboat.models.core.User;
+import com.tboat.session.UserSession;
+import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
 import com.tboat.utilsclient.AlertUtils;
-import com.tboat.utilsclient.SocketHelper;
-import com.tboat.utilsclient.UserSession;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+
 import java.util.logging.Logger;
 
 public class ControllerLogin extends BaseController implements SocketListener {
@@ -51,6 +52,8 @@ public class ControllerLogin extends BaseController implements SocketListener {
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
+                if (!"LOGIN".equals(SocketHelper.getType(response))) return;
+
                 String status = SocketHelper.getStatus(response);
                 String message = SocketHelper.getMessage(response);
 
@@ -68,9 +71,9 @@ public class ControllerLogin extends BaseController implements SocketListener {
                         User loggedUser = new User(signText.getText(), null, nickname, balance, description, avatarURL);
                         UserSession.getInstance().createUserSession(loggedUser);
                         if ("admin".equalsIgnoreCase(signText.getText().trim()) || "ADMIN".equalsIgnoreCase(role)) {
-                            changeScene(err, "admin.fxml");
+                            changeScene(signText, "admin.fxml");
                         } else {
-                            changeScene(err, "TrangChu.fxml");
+                            changeScene(signText, "TrangChu.fxml");
                         }
                     }
                 } else if ("FAILED".equals(status) || "ERROR".equals(status)) {

@@ -1,7 +1,7 @@
 //package com.tboat.service;
 //
-//import com.tboat.models.AuctionSession;
-//import com.tboat.models.User;
+//import com.tboat.models.auction.AuctionSession;
+//import com.tboat.models.core.User;
 //import org.junit.jupiter.api.BeforeEach;
 //import org.junit.jupiter.api.Test;
 //import org.junit.jupiter.api.DisplayName;

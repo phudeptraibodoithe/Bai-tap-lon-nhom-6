@@ -12,16 +12,18 @@ public class AuctionSession {
     private double bidIncrease;
     private StatusOfAuction statusOfAuction;
     private Item item;
+    private double buyNowPrice;
     private String highestBidderAccount;
     private int itemId;
     public AuctionSession(int id, LocalDateTime startTime, LocalDateTime endTime, double currentPrice,
                           double bidIncrease, StatusOfAuction statusOfAuction, Item item,
-                          String highestBidderAccount) {
+                          String highestBidderAccount, double buyNowPrice) {
         this.id = id;
         this.startTime = startTime;
         this.endTime = endTime;
         this.currentPrice = currentPrice;
         this.bidIncrease = bidIncrease;
+        this.buyNowPrice = 0.0;
         this.statusOfAuction = statusOfAuction;
         this.item = item;
         this.highestBidderAccount = highestBidderAccount;
@@ -41,6 +43,7 @@ public class AuctionSession {
         this.endTime = endTime;
         this.currentPrice = currentPrice;
         this.bidIncrease = bidIncrease;
+        this.buyNowPrice = 0.0;
         this.item = item;
         // Tự động đồng bộ itemId từ object Item sang trường itemId của session
         this.itemId = (item != null) ? item.getId() : 0;
@@ -59,6 +62,7 @@ public class AuctionSession {
     public String getName(){return this.item.getName();}
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
+    public double getBuyNowPrice() { return buyNowPrice; }
     public int getItemId() { return itemId; }
     public void setItemId(int itemId) { this.itemId = itemId; }
     public LocalDateTime getStartTime() { return startTime; }
@@ -81,7 +85,9 @@ public class AuctionSession {
     public void setItem(Item item) {
         this.item = item;
     }
-
+    public void setBuyNowPrice(double buyNowPrice) {
+        this.buyNowPrice = buyNowPrice;
+    }
     public void updateStatusBasedOnTime() {
         if (this.startTime == null || this.endTime == null) return;
         LocalDateTime now = LocalDateTime.now();

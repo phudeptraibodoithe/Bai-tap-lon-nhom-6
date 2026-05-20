@@ -150,6 +150,15 @@
                                             </children>
                                         </HBox>
 
+                                        <VBox spacing="8.0">
+                                            <children>
+                                                <Label style="-fx-text-fill: #0A1128;" text="Giá bán ngay (VNĐ)">
+                                                    <font><Font name="System Bold" size="13.0" /></font>
+                                                </Label>
+                                                <Spinner fx:id="buyNowSpinner" editable="true" maxWidth="Infinity" prefHeight="40.0" styleClass="input-field" />
+                                            </children>
+                                        </VBox>
+
                                         <Region VBox.vgrow="ALWAYS" />
 
                                         <HBox alignment="CENTER_RIGHT" spacing="15.0" maxWidth="Infinity">

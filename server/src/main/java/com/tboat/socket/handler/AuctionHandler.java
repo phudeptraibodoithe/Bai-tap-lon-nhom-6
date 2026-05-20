@@ -6,13 +6,11 @@ import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.dao.ParticipationDAO;
 import com.tboat.dao.UserDAO;
 import com.tboat.models.auction.AuctionSession;
+import com.tboat.models.auction.BidResult;
 import com.tboat.models.auction.Participation;
 import com.tboat.models.network.Response;
 import com.tboat.models.auction.StatusOfAuction;
-import com.tboat.service.AuctionManager;
-import com.tboat.service.AuctionRoom;
-import com.tboat.service.NotificationService;
-import com.tboat.service.SellerService;
+import com.tboat.service.*;
 import com.tboat.socket.ClientContext;
 import com.tboat.socket.GlobalBroadcaster;
 import org.slf4j.Logger;
@@ -73,6 +71,7 @@ public class AuctionHandler {
 
             JsonObject joinData = new JsonObject();
             joinData.addProperty("currentPrice",   room.getCurrentPrice());
+            joinData.addProperty("buyNowPrice",    session.getBuyNowPrice());
             joinData.addProperty("isSeller",       session.getSellerAccountName().equals(context.getClientId()));
             joinData.addProperty("sellerNickname", sellerNickname);
             if (leaderNickname != null)
@@ -102,50 +101,116 @@ public class AuctionHandler {
             return;
         }
 
-        double price = JsonParser.parseString(raw)
-                .getAsJsonObject().get("payload").getAsDouble();
-
-        // FIX: Lấy previousLeader từ room thay vì query DB lần đầu — tránh double query
-        //      room.getLastBidder() đã được cập nhật sau mỗi lần bid thành công
-        String previousLeader = room.getLastBidder();
-
-        boolean accepted = room.placeBid(price, clientId);
-
-        if (accepted) {
-            if (role == null) {
-                participationDAO.addParticipation(
-                        new Participation(clientId, room.getSessionId(), "BIDDER"));
-            }
-            context.sendResponse(new Response<>("BID", "SUCCESS", "Bạn đang dẫn đầu", price));
-
-            String leaderNickname = userDAO.getNickname(clientId);
-            JsonObject bidData = new JsonObject();
-            bidData.addProperty("newPrice",          price);
-            bidData.addProperty("newLeader",         clientId);
-            bidData.addProperty("newLeaderNickname", leaderNickname);
-            room.broadcast("NEW_BID", leaderNickname + " vừa đặt giá mới", bidData);
-
-            // Query DB một lần duy nhất sau bid — dùng cho cả notification và reload
-            AuctionSession sessionAfterBid = auctionDAO.getAuctionById(room.getSessionId());
-            if (sessionAfterBid != null) {
-                NotificationService.getInstance().onNewBid(sessionAfterBid, clientId, price);
-
-                if (previousLeader != null
-                        && !previousLeader.isBlank()
-                        && !previousLeader.equals(clientId)) {
-                    NotificationService.getInstance().onOutbid(sessionAfterBid, previousLeader, price);
-                }
-            }
-
-            // FIX: Broadcast cho admin và history biết có bid mới để reload dữ liệu
-            GlobalBroadcaster.getInstance().broadcastToAdmins(
-                    new Response<>("RELOAD_ALL_ITEMS", "NOTIFY",
-                            "Có bid mới trong phiên " + room.getSessionId(), room.getSessionId()));
-
-        } else {
-            context.sendResponse(new Response<>("BID", "FAILED",
-                    "Giá đặt phải cao hơn giá hiện tại", room.getCurrentPrice()));
+        double price;
+        try {
+            price = JsonParser.parseString(raw).getAsJsonObject().get("payload").getAsDouble();
+        } catch (Exception e) {
+            context.sendResponse(new Response<>("BID", "ERROR", "Dữ liệu bid không hợp lệ", null));
+            return;
         }
+
+        String previousLeader = room.getLastBidder();
+        BidResult result = room.placeBid(price, clientId);
+
+        switch (result) {
+            case OK -> {
+                if (role == null)
+                    participationDAO.addParticipation(
+                            new Participation(clientId, room.getSessionId(), "BIDDER"));
+
+                context.sendResponse(new Response<>("BID", "SUCCESS", "Bạn đang dẫn đầu", price));
+
+                String nick = userDAO.getNickname(clientId);
+                JsonObject bidData = new JsonObject();
+                bidData.addProperty("newPrice",          price);
+                bidData.addProperty("newLeader",         clientId);
+                bidData.addProperty("newLeaderNickname", nick);
+                bidData.addProperty("bidTime",           java.time.LocalDateTime.now().toString());
+                room.broadcast("NEW_BID", nick + " vừa đặt giá mới", bidData);
+
+                AuctionSession session = auctionDAO.getAuctionById(room.getSessionId());
+                if (session != null) {
+                    NotificationService.getInstance().onNewBid(session, clientId, price);
+                    if (previousLeader != null && !previousLeader.isBlank()
+                            && !previousLeader.equals(clientId))
+                        NotificationService.getInstance().onOutbid(session, previousLeader, price);
+
+                    if (session.getBuyNowPrice() > 0 && price >= session.getBuyNowPrice()) {
+                        room.finishAuction();
+                        return;
+                    }
+                }
+
+                GlobalBroadcaster.getInstance().broadcastToAdmins(
+                        new Response<>("RELOAD_ALL_ITEMS", "NOTIFY",
+                                "Có bid mới trong phiên " + room.getSessionId(), room.getSessionId()));
+            }
+            case INSUFFICIENT_BALANCE ->
+                    context.sendResponse(new Response<>("BID", "FAILED",
+                            "Số dư không đủ để đặt giá này!", room.getCurrentPrice()));
+            case PRICE_TOO_LOW -> {
+                AuctionSession session = auctionDAO.getAuctionById(room.getSessionId());
+                double minNext = (session != null)
+                        ? room.getCurrentPrice() + session.getBidIncrease()
+                        : room.getCurrentPrice();
+                context.sendResponse(new Response<>("BID", "FAILED",
+                        "Giá tối thiểu là: " + minNext, room.getCurrentPrice()));
+            }
+            default ->
+                    context.sendResponse(new Response<>("BID", "FAILED",
+                            "Đặt giá thất bại, vui lòng thử lại.", room.getCurrentPrice()));
+        }
+    }
+
+    public void registerAutoBid(String raw) {
+        AuctionRoom room = context.getCurrentRoom();
+        if (room == null) {
+            context.sendResponse(new Response<>("REGISTER_AUTO_BID", "ERROR",
+                    "Bạn chưa vào phòng", null));
+            return;
+        }
+
+        String clientId = context.getClientId();
+
+        Participation role = participationDAO.getRoleType(clientId, room.getSessionId());
+        if (role != null && "SELLER".equals(role.getRoleType())) {
+            context.sendResponse(new Response<>("REGISTER_AUTO_BID", "FAILED",
+                    "Người bán không thể đăng ký auto-bid!", null));
+            return;
+        }
+
+        double maxBid;
+        try {
+            maxBid = JsonParser.parseString(raw)
+                    .getAsJsonObject().get("payload")
+                    .getAsJsonObject().get("maxBid").getAsDouble();
+        } catch (Exception e) {
+            context.sendResponse(new Response<>("REGISTER_AUTO_BID", "ERROR",
+                    "Dữ liệu không hợp lệ", null));
+            return;
+        }
+
+        AuctionSession session = auctionDAO.getAuctionById(room.getSessionId());
+        double minNext = (session != null)
+                ? room.getCurrentPrice() + session.getBidIncrease()
+                : room.getCurrentPrice();
+
+        if (maxBid < minNext) {
+            context.sendResponse(new Response<>("REGISTER_AUTO_BID", "FAILED",
+                    "maxBid phải cao hơn giá hiện tại tối thiểu: "
+                            + minNext, room.getCurrentPrice()));
+            return;
+        }
+
+        // Đảm bảo họ được ghi nhận là BIDDER trước
+        if (role == null)
+            participationDAO.addParticipation(
+                    new Participation(clientId, room.getSessionId(), "BIDDER"));
+
+        room.registerAutoBid(clientId, maxBid);
+
+        context.sendResponse(new Response<>("REGISTER_AUTO_BID", "AUTO_BID_REGISTERED",
+                "Đã đăng ký auto-bid thành công với mức tối đa: " + maxBid, maxBid));
     }
 
     public void cancelAuction(String raw) {

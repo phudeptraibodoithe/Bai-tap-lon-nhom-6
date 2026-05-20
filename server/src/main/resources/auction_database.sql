@@ -8,6 +8,8 @@ CREATE TABLE `user` (
   `balance` double DEFAULT '0',
   `description` varchar(500) DEFAULT NULL,
   `avatarURL` MEDIUMTEXT DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `phone` varchar(20) DEFAULT NULL,
   PRIMARY KEY (`accountName`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -31,6 +33,7 @@ CREATE TABLE `auction_session` (
                                    `endTime` datetime NOT NULL,
                                    `currentPrice` double NOT NULL,
                                    `bidIncrease` double NOT NULL,
+                                   `buyNowPrice` double DEFAULT '0',
                                    `status` varchar(50) NOT NULL,
                                    `highestBidderAccount` varchar(100) DEFAULT NULL,
                                    `itemId` int NOT NULL,
@@ -68,7 +71,3 @@ PRIMARY KEY (`accountName`, `auctionSessionId`),
 CONSTRAINT `fk_participation_user` FOREIGN KEY (`accountName`) REFERENCES `user` (`accountName`),
 CONSTRAINT `fk_participation_session` FOREIGN KEY (`auctionSessionId`) REFERENCES `auction_session` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-ALTER TABLE user
-    ADD COLUMN email varchar(100) DEFAULT NULL,
-    ADD COLUMN phone varchar(20) DEFAULT NULL;

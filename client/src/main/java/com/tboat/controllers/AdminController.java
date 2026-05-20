@@ -105,6 +105,7 @@ public class AdminController extends BaseController implements Initializable, So
         String sellerAccount = getStringJson(itemObj, "sellerAccountName", "");
         double currentPrice  = getDoubleJson(dataObj, "currentPrice", 0.0);
         double bidIncrease   = getDoubleJson(dataObj, "bidIncrease", 0.0);
+        double buyNowPrice   = getDoubleJson(dataObj, "buyNowPrice", 0.0);
 
         ItemFactory factory = ItemFactoryProducer.getFactory(type);
         Item item = factory.createItem(sellerAccount, name, description, imageURL);
@@ -114,6 +115,7 @@ public class AdminController extends BaseController implements Initializable, So
                 dataObj.has("endTime")   ? TimeUtils.parseServerTime(dataObj.get("endTime"))   : LocalDateTime.now().plusDays(1),
                 currentPrice, bidIncrease, item
         );
+        session.setBuyNowPrice(buyNowPrice);
         session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
 
         try {

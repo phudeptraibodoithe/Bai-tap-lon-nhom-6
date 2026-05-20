@@ -29,7 +29,7 @@ public class AuctionUIHelper {
 
     private final ImageView itemImage;
     private final Label timeRemaining, nameItem, idItem, sellerName;
-    private final Label description, currentPrice, highestBidder, lblNotification;
+    private final Label description, currentPrice, buyNowPrice, highestBidder, lblNotification;
     private final TextField bidAmount;
     private final Button btnBid;
     private final TableView<BidEntry> tableBidHistory;
@@ -44,7 +44,7 @@ public class AuctionUIHelper {
 
     public AuctionUIHelper(
             ImageView itemImage, Label timeRemaining, Label nameItem, Label idItem,
-            Label sellerName, Label description, Label currentPrice,
+            Label sellerName, Label description, Label currentPrice, Label buyNowPrice,
             Label highestBidder, Label lblNotification, TextField bidAmount, Button btnBid,
             TableView<BidEntry> tableBidHistory, TableColumn<BidEntry, String> colBidTime,
             TableColumn<BidEntry, String> colBidUser, TableColumn<BidEntry, Double> colBidPrice,
@@ -57,6 +57,7 @@ public class AuctionUIHelper {
         this.sellerName      = sellerName;
         this.description     = description;
         this.currentPrice    = currentPrice;
+        this.buyNowPrice     = buyNowPrice;
         this.highestBidder   = highestBidder;
         this.lblNotification = lblNotification;
         this.bidAmount       = bidAmount;
@@ -116,6 +117,12 @@ public class AuctionUIHelper {
         description.setText(session.getDescription() != null
                 ? "Mô tả: " + session.getDescription() : "Mô tả: Không có.");
         currentPrice.setText(CurrencyFormatter.formatDisplay(session.getCurrentPrice()));
+        if (buyNowPrice != null) {
+            double price = session.getBuyNowPrice();
+            buyNowPrice.setText(price > 0
+                    ? "Giá bán ngay: " + CurrencyFormatter.formatDisplay(price)
+                    : "Giá bán ngay: Chưa thiết lập");
+        }
         updateHighestBidderLabel(session);
         loadItemImage(session);
     }

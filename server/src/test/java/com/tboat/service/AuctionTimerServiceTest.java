@@ -49,7 +49,7 @@ class AuctionTimerServiceTest {
     private AuctionSession sessionWithStatus(int id, StatusOfAuction status) {
         LocalDateTime start = LocalDateTime.now().plusHours(1);
         LocalDateTime end   = LocalDateTime.now().plusHours(2);
-        return new AuctionSession(id, start, end, 500.0, 50.0, status, stubItem(), null);
+        return new AuctionSession(id, start, end, 500.0, 50.0, status, stubItem(), null, 0.0);
     }
 
     /**
@@ -57,7 +57,7 @@ class AuctionTimerServiceTest {
      */
     private AuctionSession ongoingSession(int id, LocalDateTime start, LocalDateTime end) {
         return new AuctionSession(id, start, end, 500.0, 50.0,
-                StatusOfAuction.ONGOING, stubItem(), null);
+                StatusOfAuction.ONGOING, stubItem(), null, 0.0);
     }
 
     // ─── Helper chấp nhận DB error ───────────────────────────────────────

@@ -243,12 +243,15 @@ public class ItemHandler {
     }
 
     private AuctionSession buildSessionFromPayload(JsonObject p, Item item) {
-        return new AuctionSession(
+        AuctionSession session = new AuctionSession(
                 LocalDateTime.parse(p.get("startTime").getAsString()),
                 LocalDateTime.parse(p.get("endTime").getAsString()),
                 p.get("currentPrice").getAsDouble(),
                 p.get("bidIncrease").getAsDouble(),
                 item
         );
+        session.setBuyNowPrice(p.has("buyNowPrice") && !p.get("buyNowPrice").isJsonNull()
+                ? p.get("buyNowPrice").getAsDouble() : 0.0);
+        return session;
     }
 }

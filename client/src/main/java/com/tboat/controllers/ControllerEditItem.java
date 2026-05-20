@@ -28,7 +28,7 @@ public class ControllerEditItem extends BaseController implements Initializable,
     @FXML private TextArea inforItem;
     @FXML private Label thongbao;
     @FXML private ImageView myImageView;
-    @FXML private Spinner<Double> priceSpinner, jumpSpinner;
+    @FXML private Spinner<Double> priceSpinner, jumpSpinner, buyNowSpinner;
     @FXML private DatePicker datePickerStart, datePickerEnd;
     @FXML private Spinner<Integer> hourStart, minuteStart, hourEnd, minuteEnd;
     @FXML private ComboBox<String> typeComboBox;
@@ -56,6 +56,7 @@ public class ControllerEditItem extends BaseController implements Initializable,
         // 👉 Áp dụng Utils xử lý tiền tệ
         CurrencyFormatter.setupCurrencySpinner(priceSpinner, 0.0, 10000.0);
         CurrencyFormatter.setupCurrencySpinner(jumpSpinner, 0.0, 5000.0);
+        CurrencyFormatter.setupCurrencySpinner(buyNowSpinner, 0.0, 10000.0);
         priceSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null && newVal > 0) {
                 double maxJump = newVal * 0.5;
@@ -84,6 +85,7 @@ public class ControllerEditItem extends BaseController implements Initializable,
 
         priceSpinner.getValueFactory().setValue(session.getCurrentPrice());
         jumpSpinner.getValueFactory().setValue(session.getBidIncrease());
+        buyNowSpinner.getValueFactory().setValue(session.getBuyNowPrice());
 
         if (session.getStartTime() != null) {
             datePickerStart.setValue(session.getStartTime().toLocalDate());
@@ -117,6 +119,7 @@ public class ControllerEditItem extends BaseController implements Initializable,
             typeComboBox.setDisable(true);
             priceSpinner.setDisable(true);
             jumpSpinner.setDisable(true);
+            buyNowSpinner.setDisable(true);
             datePickerStart.setDisable(true);
             datePickerEnd.setDisable(true);
             hourStart.setDisable(true);
@@ -149,6 +152,11 @@ public class ControllerEditItem extends BaseController implements Initializable,
             AlertUtils.showStatus(thongbao, "Tên, mô tả và loại sản phẩm không được để trống!", STYLE_ERROR);
             return;
         }
+        if (buyNowSpinner.getValue() != null && buyNowSpinner.getValue() > 0
+                && buyNowSpinner.getValue() <= priceSpinner.getValue()) {
+            AlertUtils.showStatus(thongbao, "Giá bán ngay phải lớn hơn giá khởi điểm!", STYLE_ERROR);
+            return;
+        }
 
         AlertUtils.showStatus(thongbao, "Đang xử lý cập nhật...", STYLE_PROCESSING);
 
@@ -161,6 +169,7 @@ public class ControllerEditItem extends BaseController implements Initializable,
         payload.addProperty("imageURL", base64Image);
         payload.addProperty("currentPrice", priceSpinner.getValue());
         payload.addProperty("bidIncrease", jumpSpinner.getValue());
+        payload.addProperty("buyNowPrice", buyNowSpinner.getValue());
         payload.addProperty("type", typeComboBox.getValue());
         payload.addProperty("startTime", startDT.toString());
         payload.addProperty("endTime", endDT.toString());

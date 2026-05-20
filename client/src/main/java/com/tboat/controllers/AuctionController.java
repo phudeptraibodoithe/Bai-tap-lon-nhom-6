@@ -37,8 +37,9 @@ public class AuctionController extends BaseController implements SocketListener 
 
     @FXML private ImageView itemImage;
     @FXML private Label timeRemaining, nameItem, idItem, sellerName;
-    @FXML private Label description, currentPrice, highestBidder, lblNotification;
+    @FXML private Label description, currentPrice, buyNowPrice, highestBidder, lblNotification;
     @FXML private TextField bidAmount;
+    @FXML private CheckBox autoBidCheckBox;
     @FXML private Button btnBid;
     @FXML private TableView<BidEntry> tableBidHistory;
     @FXML private TableColumn<BidEntry, String> colBidTime, colBidUser;
@@ -56,7 +57,7 @@ public class AuctionController extends BaseController implements SocketListener 
         ObservableList<BidEntry> listBids = FXCollections.observableArrayList();
         ui = new AuctionUIHelper(
                 itemImage, timeRemaining, nameItem, idItem,
-                sellerName, description, currentPrice, highestBidder, lblNotification,
+                sellerName, description, currentPrice, buyNowPrice, highestBidder, lblNotification,
                 bidAmount, btnBid,
                 tableBidHistory, colBidTime, colBidUser, colBidPrice,
                 bidLineChart, listBids
@@ -65,6 +66,14 @@ public class AuctionController extends BaseController implements SocketListener 
         if (lblNotification != null) lblNotification.setText("");
         CurrencyFormatter.attachCurrencyListener(bidAmount);
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
+        if (autoBidCheckBox != null) {
+            autoBidCheckBox.selectedProperty().addListener((obs, wasSelected, isNowSelected) -> {
+                if (!isNowSelected && bidAmount != null) {
+                    bidAmount.setOpacity(1.0);
+                    bidAmount.clear();
+                }
+            });
+        }
     }
 
     public void setItemData(AuctionSession session) {
@@ -89,6 +98,15 @@ public class AuctionController extends BaseController implements SocketListener 
         StatusOfAuction status = currentSession.getStatusOfAuction();
         ui.setupInputState(status, isUserSeller);
         ui.setupTimerState(status, currentSession);
+        boolean disableAutoBid = isUserSeller
+                || status == StatusOfAuction.ENDED
+                || status == StatusOfAuction.CANCELED
+                || status == StatusOfAuction.NOT_STARTED
+                || currentSession.getBuyNowPrice() <= 0;
+        if (autoBidCheckBox != null) {
+            autoBidCheckBox.setDisable(disableAutoBid);
+            if (disableAutoBid) autoBidCheckBox.setSelected(false);
+        }
     }
 
     @FXML
@@ -101,15 +119,29 @@ public class AuctionController extends BaseController implements SocketListener 
         try {
             double bidValue = CurrencyFormatter.parse(input);
             double minNext  = currentSession.getCurrentPrice() + currentSession.getBidIncrease();
+
             if (bidValue < minNext) {
                 AlertUtils.showStatus(lblNotification,
                         "Giá tối thiểu: " + CurrencyFormatter.formatDisplay(minNext), STYLE_ERROR);
                 return;
             }
+
             AlertUtils.showStatus(lblNotification, "Đang gửi lệnh đặt giá...",
                     "-fx-text-fill: #f39c12; -fx-font-weight: bold;");
-            SocketHelper.sendRequest("BID", bidValue);
-            bidAmount.clear();
+
+            boolean isAutoBid = autoBidCheckBox != null && autoBidCheckBox.isSelected();
+            if (isAutoBid) {
+                JsonObject payload = new JsonObject();
+                payload.addProperty("maxBid", bidValue);
+                SocketHelper.sendRequest("REGISTER_AUTO_BID", payload);
+
+                // Giữ checkbox + giá trị, chỉ làm mờ ô nhập
+                if (bidAmount != null) bidAmount.setOpacity(0.85);
+            } else {
+                SocketHelper.sendRequest("BID", bidValue);
+                bidAmount.clear();
+            }
+
         } catch (Exception e) {
             AlertUtils.showStatus(lblNotification, "Định dạng số không hợp lệ.", STYLE_ERROR);
         }
@@ -147,10 +179,12 @@ public class AuctionController extends BaseController implements SocketListener 
 
                 switch (status) {
                     case "SUCCESS"      -> handleSuccess(json, msg);
+                    case "AUTO_BID_REGISTERED" -> AlertUtils.showStatus(
+                            lblNotification, "✅ " + msg, STYLE_SUCCESS);
                     case "JOIN_SUCCESS" -> handleJoinSuccess(json);
                     case "FAILED"       -> handleFailed(json, msg);
                     case "ERROR"        -> AlertUtils.showStatus(lblNotification, "⚠️ " + msg, STYLE_ERROR);
-                    case "SERVER_READY" -> {}
+                    case "SYSTEM", "SERVER_READY" -> {}
                     default -> log.warn("Không khớp handler: type={}, status={}", type, status);
                 }
             } catch (Exception e) {
@@ -270,6 +304,8 @@ public class AuctionController extends BaseController implements SocketListener 
         JsonObject payload = json.getAsJsonObject("payload");
 
         currentSession.setCurrentPrice(payload.get("currentPrice").getAsDouble());
+        if (payload.has("buyNowPrice"))
+            currentSession.setBuyNowPrice(payload.get("buyNowPrice").getAsDouble());
         this.isUserSeller = payload.has("isSeller") && payload.get("isSeller").getAsBoolean();
         if (payload.has("sellerNickname"))
             currentSession.setSellerAccountName(payload.get("sellerNickname").getAsString());

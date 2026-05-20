@@ -54,7 +54,7 @@ public class NotificationManager implements SocketListener {
      * @param action  action string từ Response (ví dụ "NEW_BID")
      * @param payload JsonObject chứa title, subtitle, avatarText, avatarColor
      */
-    public void receive(String action, com.google.gson.JsonObject payload) {
+    public void receive(String action, JsonObject payload) {
         if (!NOTIF_ACTIONS.contains(action)) return;
         if (payload == null) return;
         if (!payload.has("title") || !payload.has("subtitle")) return;
@@ -109,7 +109,7 @@ public class NotificationManager implements SocketListener {
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────
-    private String getStr(com.google.gson.JsonObject obj, String key, String fallback) {
+    private String getStr(JsonObject obj, String key, String fallback) {
         return obj.has(key) && !obj.get(key).isJsonNull()
                 ? obj.get(key).getAsString()
                 : fallback;

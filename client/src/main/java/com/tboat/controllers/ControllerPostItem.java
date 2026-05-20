@@ -27,7 +27,7 @@ public class ControllerPostItem extends BaseController implements Initializable,
     @FXML private TextArea inforItem;
     @FXML private Label thongbao;
     @FXML private ImageView myImageView;
-    @FXML private Spinner<Double> priceSpinner, jumpSpinner;
+    @FXML private Spinner<Double> priceSpinner, jumpSpinner, buyNowSpinner;
     @FXML private DatePicker datePickerStart, datePickerEnd;
     @FXML private Spinner<Integer> hourStart, minuteStart, hourEnd, minuteEnd;
     @FXML private ComboBox<String> typeComboBox;
@@ -48,6 +48,7 @@ public class ControllerPostItem extends BaseController implements Initializable,
         typeComboBox.getItems().addAll("Điện tử", "Thời trang", "Trang sức", "Khác");
         CurrencyFormatter.setupCurrencySpinner(priceSpinner, 0.0, 10000.0);
         CurrencyFormatter.setupCurrencySpinner(jumpSpinner, 0.0, 5000.0);
+        CurrencyFormatter.setupCurrencySpinner(buyNowSpinner, 0.0, 10000.0);
         priceSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null && newVal > 0) {
                 double maxJump = newVal * 0.5;
@@ -98,6 +99,11 @@ public class ControllerPostItem extends BaseController implements Initializable,
             AlertUtils.showStatus(thongbao, "Thời gian kết thúc phải cách thời gian bắt đầu ít nhất 5 phút!", STYLE_ERROR);
             return;
         }
+        if (buyNowSpinner.getValue() != null && buyNowSpinner.getValue() > 0
+                && buyNowSpinner.getValue() <= priceSpinner.getValue()) {
+            AlertUtils.showStatus(thongbao, "Giá bán ngay phải lớn hơn giá khởi điểm!", STYLE_ERROR);
+            return;
+        }
 
         AlertUtils.showStatus(thongbao, "Đang xử lý, vui lòng đợi...", STYLE_PROCESSING);
 
@@ -108,6 +114,7 @@ public class ControllerPostItem extends BaseController implements Initializable,
         payload.addProperty("imageURL", ImageUtils.fileToBase64(selectedFile));
         payload.addProperty("currentPrice", priceSpinner.getValue());
         payload.addProperty("bidIncrease", jumpSpinner.getValue());
+        payload.addProperty("buyNowPrice", buyNowSpinner.getValue());
         payload.addProperty("startTime", startDT.toString());
         payload.addProperty("endTime", endDT.toString());
 

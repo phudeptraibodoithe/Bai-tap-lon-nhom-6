@@ -87,6 +87,8 @@ public class CommandDispatcher {
             case "JOIN"            -> auctionHandler.join(raw);
             case "BID"             -> auctionHandler.bid(raw);
             case "CANCEL_AUCTION"  -> auctionHandler.cancelAuction(raw);
+            case "REGISTER_AUTO_BID"-> auctionHandler.registerAutoBid(raw);
+
 
             // Item management
             case "POST_ITEM"       -> itemHandler.postItem(raw);

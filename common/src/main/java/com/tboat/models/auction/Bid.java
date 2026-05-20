@@ -1,5 +1,6 @@
 package com.tboat.models.auction;
 
+import com.tboat.exception.AuctionBusinessException;
 import java.time.LocalDateTime;
 
 public class Bid {
@@ -9,30 +10,27 @@ public class Bid {
     private double bidAmount;
     private LocalDateTime bidTime;
 
-    public Bid(int id,int auctionSessionId, String bidderAccount, double bidAmount,LocalDateTime bidTime) {
+    public Bid(int id, int auctionSessionId, String bidderAccount, double bidAmount, LocalDateTime bidTime) {
+        if (bidAmount <= 0) {
+            throw new AuctionBusinessException("ERR_BID_01", "Số tiền cược phải lớn hơn 0");
+        }
+        if (bidderAccount == null || bidderAccount.trim().isEmpty()) {
+            throw new AuctionBusinessException("ERR_USER_01", "Tài khoản không được để trống");
+        }
+        this.id = id;
         this.auctionSessionId = auctionSessionId;
-        this.id=id;
         this.bidderAccount = bidderAccount;
         this.bidAmount = bidAmount;
-
-//        if (bidTime == null) {
-//            this.bidTime = LocalDateTime.now();
-//        }
-//        else {
-//            this.bidTime=bidTime;
-//        }
-        this.bidTime = (bidTime != null) ? bidTime : LocalDateTime.now(); //Tuong tu if-else o tren
+        this.bidTime = (bidTime != null) ? bidTime : LocalDateTime.now();
     }
 
     public Bid(int auctionSessionId, String bidderAccount, double bidAmount) {
-        this.auctionSessionId = auctionSessionId;
-        this.bidderAccount = bidderAccount;
-        this.bidAmount = bidAmount;
-        this.bidTime = LocalDateTime.now();
+        this(0, auctionSessionId, bidderAccount, bidAmount, LocalDateTime.now());
     }
-    public Bid(){}
+
+    public Bid() {}
 
     public double getBidAmount() { return bidAmount; }
     public String getBidderAccount() { return bidderAccount; }
     public LocalDateTime getBidTime() { return bidTime; }
-}   
+}

@@ -1,33 +1,113 @@
 //package com.tboat.models;
 //
-//import org.junit.jupiter.api.Test;
-//import static org.junit.jupiter.api.Assertions.*;
 //import java.time.LocalDateTime;
 //
-//public class AuctionSessionTest {
+//import static org.junit.jupiter.api.Assertions.assertEquals;
+//import static org.junit.jupiter.api.Assertions.assertNull;
+//import static org.junit.jupiter.api.Assertions.assertThrows;
+//import static org.junit.jupiter.api.Assertions.assertTrue;
+//import org.junit.jupiter.api.BeforeEach;
+//import org.junit.jupiter.api.Test;
 //
-//    @Test
-//    void testUpdateStatusOngoing() {
-//        // Thiet lap thoi gian bat dau la qua khu, ket thuc la tuong lai -> Phai la ONGOING
-//        LocalDateTime start = LocalDateTime.now().minusHours(1);
-//        LocalDateTime end = LocalDateTime.now().plusHours(1);
+//import com.tboat.models.auction.AuctionSession;
+//import com.tboat.models.auction.StatusOfAuction;
+//import com.tboat.models.item.Item;
+//import com.tboat.models.item.OtherItem;
 //
-//        // Dung mot lop con cu the de test logic cua lop cha AuctionSession
-//        AuctionSession session = new ElectronicsAuction(start, end, 100.0, 10.0, "seller", "Test", "Desc", "url");
+//class AuctionSessionTest {
 //
-//        assertEquals(StatusOfAuction.ONGOING, session.getStatusOfAuction(),
-//                "Phien dau gia phai o trang thai ONGOING khi thoi gian hien tai nam trong khoang Start-End");
+//    private AuctionSession session;
+//    private LocalDateTime start;
+//    private LocalDateTime end;
+//    private Item item;
+//
+//    @BeforeEach
+//    void setUp() {
+//        start = LocalDateTime.now().plusHours(1);
+//        end = LocalDateTime.now().plusHours(3);
+//        item = new OtherItem("seller01", "Test Item", "Test Description", "https://img/test.jpg");
+//        session = new AuctionSession(start, end,500.0, 10.0, item);
 //    }
 //
 //    @Test
-//    void testUpdateStatusEnded() {
-//        // Thoi gian ket thuc da qua -> Phai la ENDED
-//        LocalDateTime start = LocalDateTime.now().minusDays(2);
-//        LocalDateTime end = LocalDateTime.now().minusDays(1);
+//    void testGetId() {
+//        assertEquals(1, session.getId());
+//    }
 //
-//        AuctionSession session = new ElectronicsAuction(start, end, 100.0, 10.0, "seller", "Test", "Desc", "url");
+//    @Test
+//    void testGetItemId() {
+//        assertEquals(101, session.getItemId());
+//    }
 //
-//        assertEquals(StatusOfAuction.ENDED, session.getStatusOfAuction(),
-//                "Phien dau gia phai o trang thai ENDED khi thoi gian ket thuc da qua");
+//    @Test
+//    void testGetStartTime() {
+//        assertEquals(start, session.getStartTime());
+//    }
+//
+//    @Test
+//    void testGetEndTime() {
+//        assertEquals(end, session.getEndTime());
+//    }
+//
+//    @Test
+//    void testGetCurrentPrice() {
+//        assertEquals(500.0, session.getCurrentPrice(), 0.001);
+//    }
+//
+//    @Test
+//    void testGetBidIncrease() {
+//        assertEquals(10.0, session.getBidIncrease(), 0.001);
+//    }
+//
+//    @Test
+//    void testGetStatus() {
+//        assertEquals(StatusOfAuction.NOT_STARTED, session.getStatusOfAuction());
+//    }
+//
+//    @Test
+//    void testGetHighestBidderAccountInitiallyNull() {
+//        assertNull(session.getHighestBidderAccount());
+//    }
+//
+//    @Test
+//    void testSetCurrentPrice() {
+//        session.setCurrentPrice(600.0);
+//        assertEquals(600.0, session.getCurrentPrice(), 0.001);
+//    }
+//
+//    @Test
+//    void testSetStatus() {
+//        session.setStatusOfAuction(StatusOfAuction.ONGOING);
+//        assertEquals(StatusOfAuction.ONGOING, session.getStatusOfAuction());
+//    }
+//
+//    @Test
+//    void testSetHighestBidderAccount() {
+//        session.setHighestBidderAccount("user01");
+//        assertEquals("user01", session.getHighestBidderAccount());
+//    }
+//
+//    @Test
+//    void testEndTimeAfterStartTime() {
+//        assertTrue(session.getEndTime().isAfter(session.getStartTime()));
+//    }
+//
+//    @Test
+//    void testSetEndTime() {
+//        LocalDateTime newEnd = end.plusHours(2);
+//        session.setEndTime(newEnd);
+//        assertEquals(newEnd, session.getEndTime());
+//    }
+//
+//    @Test
+//    void testCurrentPriceCannotBeNegative() {
+//        assertThrows(IllegalArgumentException.class,
+//            () -> session.setCurrentPrice(-1.0));
+//    }
+//
+//    @Test
+//    void testBidIncreaseCannotBeZero() {
+//        assertThrows(IllegalArgumentException.class,
+//            () -> new AuctionSession(start, end, 100.0, 0.0, item));
 //    }
 //}

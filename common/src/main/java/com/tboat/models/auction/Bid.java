@@ -1,4 +1,4 @@
-package com.tboat.models.core;
+package com.tboat.models.auction;
 
 import java.time.LocalDateTime;
 
@@ -34,4 +34,5 @@ public class Bid {
 
     public double getBidAmount() { return bidAmount; }
     public String getBidderAccount() { return bidderAccount; }
+    public LocalDateTime getBidTime() { return bidTime; }
 }   

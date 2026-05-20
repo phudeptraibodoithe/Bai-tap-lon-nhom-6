@@ -3,6 +3,7 @@ package com.tboat.socket;
 import com.google.gson.*;
 import com.tboat.models.network.Response;
 import com.tboat.service.AuctionRoom;
+import com.tboat.service.NotificationService;
 import com.tboat.service.UserManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,8 +66,10 @@ public class ClientContext {
     // ── Dọn dẹp ─────────────────────────────────────────────────────────
 
     public void cleanup() {
+        GlobalBroadcaster.getInstance().unregister(this);
         if (isLoggedIn()) {
             UserManager.getInstance().logout(clientId);
+            NotificationService.getInstance().unregister(clientId);
             log.info("[Server] Đã giải phóng tài nguyên cho user: {}", clientId);
         }
         if (currentRoom != null) {

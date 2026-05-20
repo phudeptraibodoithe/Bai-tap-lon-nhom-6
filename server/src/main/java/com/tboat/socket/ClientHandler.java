@@ -39,7 +39,7 @@ public class ClientHandler implements Runnable {
 
             // Gắn output vào context để các handler có thể gửi response
             context.setOut(out);
-
+            GlobalBroadcaster.getInstance().register(context);
             context.sendResponse(new Response<>("SERVER_READY", "SUCCESS",
                     "Chào mừng bạn đến với hệ thống đấu giá TBoat!", null));
 

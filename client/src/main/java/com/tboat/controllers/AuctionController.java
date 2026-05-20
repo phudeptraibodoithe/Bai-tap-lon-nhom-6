@@ -123,26 +123,26 @@ public class AuctionController extends BaseController implements SocketListener 
                 String status = SocketHelper.getStatus(response);
                 String msg    = SocketHelper.getMessage(response);
                 JsonObject json = JsonParser.parseString(response).getAsJsonObject();
+
                 if ("GET_PROFILE".equals(type) || "UPDATE_PROFILE".equals(type)) return;
-                if ("NEW_BID".equals(type) || "NEW_BID".equals(status)) {
+
+                // Broadcast từ room — check type VÀ status vì server có thể gửi dưới dạng nào cũng được
+                if ("NEW_BID".equals(type)        || "NEW_BID".equals(status)) {
                     if (json.has("payload") && json.get("payload").isJsonObject())
                         handleNewBid(json.getAsJsonObject("payload"));
                     return;
                 }
-                if ("AUCTION_STARTED".equals(type) || "AUCTION_STARTED".equals(status)) {
+                if ("AUCTION_STARTED".equals(type)  || "AUCTION_STARTED".equals(status)) {
                     handleAuctionStarted(msg); return;
                 }
                 if ("AUCTION_FINISHED".equals(type) || "AUCTION_FINISHED".equals(status)) {
                     handleAuctionFinished(json, msg); return;
                 }
-                if ("TIME_EXTENDED".equals(type) || "TIME_EXTENDED".equals(status)) {
-                    AlertUtils.showAlert(Alert.AlertType.WARNING, "Đấu giá kịch tính!", msg); return;
+                if ("TIME_EXTENDED".equals(type)    || "TIME_EXTENDED".equals(status)) {
+                    handleTimeExtended(json, msg); return;    // FIX: tách ra method riêng
                 }
                 if ("AUCTION_CANCELED".equals(type) || "AUCTION_CANCELED".equals(status)) {
-                    AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Thông báo",
-                            "Phiên đấu giá này đã bị hủy bởi người bán!");
-                    if (btnBid != null) btnBid.setDisable(true);
-                    return;
+                    handleAuctionCanceled(); return;
                 }
 
                 switch (status) {
@@ -158,6 +158,69 @@ public class AuctionController extends BaseController implements SocketListener 
             }
         });
     }
+
+// ── Handlers (các method đã thay đổi / thêm mới) ─────────────────────────────
+
+    /**
+     * FIX: Reset countdown timer theo newEndTime server gửi về.
+     * Trước đây chỉ show Alert, bộ đếm vẫn chạy theo endTime cũ.
+     */
+    private void handleTimeExtended(JsonObject json, String msg) {
+        AlertUtils.showAlert(Alert.AlertType.WARNING, "Đấu giá kịch tính!", msg);
+        try {
+            if (json.has("payload") && json.get("payload").isJsonObject()) {
+                String newEndStr = json.getAsJsonObject("payload").get("newEndTime").getAsString();
+                LocalDateTime newEnd = LocalDateTime.parse(newEndStr);
+                currentSession.setEndTime(newEnd);
+                ui.updateEndTime(newEnd);   // reset AuctionTimer với endTime mới
+            }
+        } catch (Exception e) {
+            log.warn("Không thể parse newEndTime từ TIME_EXTENDED: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * FIX: Phân biệt rõ 2 case:
+     *   - Có winner → hiển thị người thắng + trừ/cộng tiền
+     *   - Không winner → clear highestBidder, hiển thị "Không có người thắng"
+     */
+    private void handleAuctionFinished(JsonObject json, String msg) {
+        currentSession.setStatusOfAuction(StatusOfAuction.ENDED);
+
+        boolean hasWinner = json.has("payload") && !json.get("payload").isJsonNull()
+                && json.get("payload").isJsonObject();
+
+        if (hasWinner) {
+            JsonObject p      = json.getAsJsonObject("payload");
+            String winner     = p.has("winner")         ? p.get("winner").getAsString()        : null;
+            String winnerNick = p.has("winnerNickname")  ? p.get("winnerNickname").getAsString()
+                    : (winner != null ? winner : null);
+            double finalPrice = p.has("finalPrice")      ? p.get("finalPrice").getAsDouble()
+                    : currentSession.getCurrentPrice();
+
+            currentSession.setHighestBidderAccount(winnerNick);
+            currentSession.setCurrentPrice(finalPrice);
+            ui.updateUI(currentSession);
+            if (winner != null) updateUserBalance(winner, finalPrice);
+        } else {
+            // FIX: không có ai bid → clear winner rõ ràng, tránh sót nickname cũ
+            currentSession.setHighestBidderAccount(null);
+            ui.updateUI(currentSession);
+        }
+
+        refreshAuctionState();
+        ui.setAuctionEndedLabel(currentSession);   // hiển thị đúng theo null/non-null winner
+        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Kết thúc", msg);
+    }
+
+    /** Tách ra method riêng cho gọn handleServerResponse */
+    private void handleAuctionCanceled() {
+        currentSession.setStatusOfAuction(StatusOfAuction.CANCELED);
+        refreshAuctionState();
+        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Thông báo",
+                "Phiên đấu giá này đã bị hủy bởi người bán!");
+    }
+
 
     // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -221,29 +284,6 @@ public class AuctionController extends BaseController implements SocketListener 
         currentSession.setStatusOfAuction(StatusOfAuction.ONGOING);
         refreshAuctionState();
         AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Đã đến giờ", msg);
-    }
-
-    private void handleAuctionFinished(JsonObject json, String msg) {
-        currentSession.setStatusOfAuction(StatusOfAuction.ENDED);
-
-        if (json.has("payload") && !json.get("payload").isJsonNull()) {
-            JsonObject p      = json.getAsJsonObject("payload");
-            String winner     = p.has("winner")         ? p.get("winner").getAsString()         : null;
-            // Ưu tiên winnerNickname — server gửi từ AuctionRoom.finishAuction()
-            String winnerNick = p.has("winnerNickname") ? p.get("winnerNickname").getAsString()
-                    : (winner != null ? winner : "Không có");
-            double finalPrice = p.has("finalPrice")     ? p.get("finalPrice").getAsDouble()
-                    : currentSession.getCurrentPrice();
-
-            currentSession.setHighestBidderAccount(winnerNick); // nickname cho UI
-            currentSession.setCurrentPrice(finalPrice);
-            ui.updateUI(currentSession);
-            if (winner != null) updateUserBalance(winner, finalPrice);
-        }
-
-        refreshAuctionState();
-        ui.setAuctionEndedLabel(currentSession); // hiển thị "Người chiến thắng: X"
-        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Kết thúc", msg);
     }
 
     private void handleFailed(JsonObject json, String msg) {

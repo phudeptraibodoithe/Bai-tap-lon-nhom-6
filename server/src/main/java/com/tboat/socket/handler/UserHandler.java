@@ -6,6 +6,7 @@ import com.tboat.dao.UserDAO;
 import com.tboat.database.DatabaseConnection;
 import com.tboat.models.network.Response;
 import com.tboat.models.core.User;
+import com.tboat.service.NotificationService;
 import com.tboat.socket.ClientContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,6 +75,15 @@ public class UserHandler {
                     ok ? "Giao dịch đã được xử lý!"
                             : (amount < 0 ? "Số dư không đủ để rút." : "Giao dịch thất bại."),
                     ok ? amount : null));
+            if (ok) {
+                User updatedUser = userDAO.getUser(context.getClientId());
+                double newBalance = updatedUser != null ? updatedUser.getBalance() : 0;
+                if (amount > 0) {
+                    NotificationService.getInstance().onDeposit(context.getClientId(), amount, newBalance);
+                } else {
+                    NotificationService.getInstance().onWithdraw(context.getClientId(), Math.abs(amount), newBalance);
+                }
+            }
         } catch (SQLException e) {
             log.error("Lỗi DB khi TRANSACTION [{}]: {}", context.getClientId(), e.getMessage(), e);
             context.sendResponse(new Response<>("TRANSACTION", "ERROR",

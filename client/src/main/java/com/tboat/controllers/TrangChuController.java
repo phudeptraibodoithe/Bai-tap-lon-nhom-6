@@ -122,41 +122,50 @@ public class TrangChuController extends BaseController implements Initializable,
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                String status = SocketHelper.getStatus(response);
+                String type = SocketHelper.getType(response);
 
-                if ("SUCCESS".equals(status)) {
-                    if (!"LIST_AVAILABLE".equals(SocketHelper.getType(response))) return;
+                if (handleBroadcast(type)) return;
+                if (!"LIST_AVAILABLE".equals(type)) return;
+                if (!"SUCCESS".equals(SocketHelper.getStatus(response))) return;
 
-                    JsonArray auctionArray = SocketHelper.getPayloadArray(response);
-                    if (auctionArray == null) return;
+                renderAuctionList(response);
 
-                    allCards.clear();
-                    if (itemContainer != null) itemContainer.getChildren().clear();
-
-                    for (JsonElement element : auctionArray) {
-                        try {
-                            JsonObject dataObj = element.getAsJsonObject();
-                            AuctionSession session = JsonMapperUtils.parseAuctionSession(dataObj);
-
-                            String type = session.getItem().getType();
-                            FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/productCard.fxml"));
-                            VBox productCard = loader.load();
-
-                            ProductCardController cardController = loader.getController();
-                            cardController.setData(session);
-
-                            productCard.setUserData(type);
-                            allCards.add(productCard);
-
-                        } catch (Exception ex) {
-                            logger.severe("[TrangChu] Lỗi nạp FXML hoặc xử lý thẻ sản phẩm: " + ex.getMessage());
-                        }
-                    }
-                    applyFilter();
-                }
             } catch (Exception e) {
                 logger.severe("LỖI ĐỌC JSON TRANG CHỦ: " + e.getMessage());
             }
         });
+    }
+
+    /** @return true nếu đây là broadcast toàn cục, đã xử lý xong */
+    private boolean handleBroadcast(String type) {
+        if ("RELOAD_AVAILABLE".equals(type)) {
+            loadAuctions();
+            return true;
+        }
+        return false;
+    }
+
+    private void renderAuctionList(String response) {
+        JsonArray auctionArray = SocketHelper.getPayloadArray(response);
+        if (auctionArray == null) return;
+
+        DataCache.getInstance().put("LIST_AVAILABLE", response);
+        allCards.clear();
+        if (itemContainer != null) itemContainer.getChildren().clear();
+
+        for (JsonElement element : auctionArray) {
+            try {
+                AuctionSession session = JsonMapperUtils.parseAuctionSession(element.getAsJsonObject());
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/productCard.fxml"));
+                VBox productCard = loader.load();
+                ProductCardController cardController = loader.getController();
+                cardController.setData(session);
+                productCard.setUserData(session.getItem().getType());
+                allCards.add(productCard);
+            } catch (Exception ex) {
+                logger.severe("[TrangChu] Lỗi nạp card: " + ex.getMessage());
+            }
+        }
+        applyFilter();
     }
 }

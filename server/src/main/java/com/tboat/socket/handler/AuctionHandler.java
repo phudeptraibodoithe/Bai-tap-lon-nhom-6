@@ -11,8 +11,10 @@ import com.tboat.models.network.Response;
 import com.tboat.models.auction.StatusOfAuction;
 import com.tboat.service.AuctionManager;
 import com.tboat.service.AuctionRoom;
+import com.tboat.service.NotificationService;
 import com.tboat.service.SellerService;
 import com.tboat.socket.ClientContext;
+import com.tboat.socket.GlobalBroadcaster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +67,7 @@ public class AuctionHandler {
 
             String sellerNickname = userDAO.getNickname(session.getSellerAccountName());
             String leaderNickname = null;
-            String highestBidder = session.getHighestBidderAccount();
+            String highestBidder  = session.getHighestBidderAccount();
             if (highestBidder != null && !highestBidder.isBlank())
                 leaderNickname = userDAO.getNickname(highestBidder);
 
@@ -103,6 +105,10 @@ public class AuctionHandler {
         double price = JsonParser.parseString(raw)
                 .getAsJsonObject().get("payload").getAsDouble();
 
+        // FIX: Lấy previousLeader từ room thay vì query DB lần đầu — tránh double query
+        //      room.getLastBidder() đã được cập nhật sau mỗi lần bid thành công
+        String previousLeader = room.getLastBidder();
+
         boolean accepted = room.placeBid(price, clientId);
 
         if (accepted) {
@@ -115,9 +121,27 @@ public class AuctionHandler {
             String leaderNickname = userDAO.getNickname(clientId);
             JsonObject bidData = new JsonObject();
             bidData.addProperty("newPrice",          price);
-            bidData.addProperty("newLeader",         clientId);       // account — cho logic
-            bidData.addProperty("newLeaderNickname", leaderNickname); // nickname — cho UI
+            bidData.addProperty("newLeader",         clientId);
+            bidData.addProperty("newLeaderNickname", leaderNickname);
             room.broadcast("NEW_BID", leaderNickname + " vừa đặt giá mới", bidData);
+
+            // Query DB một lần duy nhất sau bid — dùng cho cả notification và reload
+            AuctionSession sessionAfterBid = auctionDAO.getAuctionById(room.getSessionId());
+            if (sessionAfterBid != null) {
+                NotificationService.getInstance().onNewBid(sessionAfterBid, clientId, price);
+
+                if (previousLeader != null
+                        && !previousLeader.isBlank()
+                        && !previousLeader.equals(clientId)) {
+                    NotificationService.getInstance().onOutbid(sessionAfterBid, previousLeader, price);
+                }
+            }
+
+            // FIX: Broadcast cho admin và history biết có bid mới để reload dữ liệu
+            GlobalBroadcaster.getInstance().broadcastToAdmins(
+                    new Response<>("RELOAD_ALL_ITEMS", "NOTIFY",
+                            "Có bid mới trong phiên " + room.getSessionId(), room.getSessionId()));
+
         } else {
             context.sendResponse(new Response<>("BID", "FAILED",
                     "Giá đặt phải cao hơn giá hiện tại", room.getCurrentPrice()));
@@ -139,12 +163,23 @@ public class AuctionHandler {
                 }
 
                 AuctionManager.getInstance().removeRoom(sessionId);
+
                 context.sendResponse(new Response<>("CANCEL_AUCTION", "SUCCESS",
                         "Đã hủy phiên đấu giá thành công", sessionId));
+
                 if (context.getCurrentRoom() != null) {
                     context.getCurrentRoom().removeSubscriber(context);
                     context.setCurrentRoom(null);
                 }
+
+                // FIX: Broadcast reload trang chủ và admin sau khi hủy
+                GlobalBroadcaster.getInstance().broadcastToAll(
+                        new Response<>("RELOAD_AVAILABLE", "NOTIFY",
+                                "Phiên " + sessionId + " đã bị hủy", sessionId));
+
+                GlobalBroadcaster.getInstance().broadcastToAdmins(
+                        new Response<>("RELOAD_ALL_ITEMS", "NOTIFY",
+                                "Phiên " + sessionId + " đã bị người bán hủy", sessionId));
 
             } else {
                 context.sendResponse(new Response<>("CANCEL_AUCTION", "ERROR",

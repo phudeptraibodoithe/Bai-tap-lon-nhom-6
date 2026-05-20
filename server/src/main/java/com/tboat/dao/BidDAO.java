@@ -1,7 +1,7 @@
 package com.tboat.dao;
 
 import com.tboat.database.DatabaseConnection;
-import com.tboat.models.core.Bid;
+import com.tboat.models.auction.Bid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

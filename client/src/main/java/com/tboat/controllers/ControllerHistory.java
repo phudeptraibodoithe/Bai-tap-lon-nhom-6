@@ -66,57 +66,96 @@ public class ControllerHistory extends BaseController implements Initializable, 
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                if (!"GET_HISTORY".equals(SocketHelper.getType(response))) return;
+                String type = SocketHelper.getType(response);
+
+                if (handleBroadcast(type)) return;
+                if (!"GET_HISTORY".equals(type)) return;
                 if (!"SUCCESS".equals(SocketHelper.getStatus(response))) return;
 
                 JsonArray historyArray = SocketHelper.getPayloadArray(response);
                 if (historyArray == null) return;
 
-                lichsu.getChildren().clear();
-                String me = UserSession.getInstance().getUsername();
+                renderHistoryList(historyArray);
 
-                for (JsonElement element : historyArray) {
-                    JsonObject dataObj = element.getAsJsonObject();
-
-                    String name   = getStringSafe(dataObj, "name", "N/A");
-                    String id     = getStringSafe(dataObj, "auctionSessionId", "0");
-                    String role   = getStringSafe(dataObj, "roleType", "BIDDER");
-                    String winner = (dataObj.has("winnerAccountName") && !dataObj.get("winnerAccountName").isJsonNull())
-                            ? dataObj.get("winnerAccountName").getAsString() : null;
-                    double finalPrice = dataObj.has("finalPrice") ? dataObj.get("finalPrice").getAsDouble() : 0.0;
-
-                    String statusText, moneyDisplay, colorStatus;
-
-                    if ("SELLER".equalsIgnoreCase(role)) {
-                        name = "[BÁN] " + name;
-                        if (winner == null) {
-                            statusText = "Đang rao bán"; moneyDisplay = "0 VNĐ"; colorStatus = "#f39c12";
-                        } else {
-                            statusText = "Đã bán";
-                            moneyDisplay = "+" + CurrencyFormatter.formatDisplay(finalPrice * PAYOUT_RATE);
-                            colorStatus = "#27ae60";
-                        }
-                    } else {
-                        name = "[MUA] " + name;
-                        if (winner == null) {
-                            statusText = "Đang diễn ra"; moneyDisplay = "0 VNĐ"; colorStatus = "#f39c12";
-                        } else if (me.equalsIgnoreCase(winner)) {
-                            statusText = "Thành công";
-                            moneyDisplay = "-" + CurrencyFormatter.formatDisplay(finalPrice);
-                            colorStatus = "#27ae60";
-                        } else {
-                            statusText = "Thất bại";
-                            moneyDisplay = CurrencyFormatter.formatDisplay(finalPrice);
-                            colorStatus = "#e74c3c";
-                        }
-                    }
-                    lichsu.getChildren().add(createHistoryRow(name, "ID: " + id, statusText, moneyDisplay, colorStatus));
-                }
             } catch (Exception e) {
-                log.severe("Lỗi render: " + e.getMessage());
+                log.severe("Lỗi render history: " + e.getMessage());
             }
         });
     }
+
+    private boolean handleBroadcast(String type) {
+        // AUCTION_FINISHED → phiên vừa kết thúc, reload lại lịch sử
+        if ("AUCTION_FINISHED".equals(type) || "RELOAD_HISTORY".equals(type)) {
+            SocketHelper.sendRequest("GET_HISTORY", null);
+            return true;
+        }
+        return false;
+    }
+
+    private void renderHistoryList(JsonArray historyArray) {
+        lichsu.getChildren().clear();
+        String me = UserSession.getInstance().getUsername();
+
+        for (JsonElement element : historyArray) {
+            JsonObject dataObj    = element.getAsJsonObject();
+            String name           = getStringSafe(dataObj, "name", "N/A");
+            String id             = getStringSafe(dataObj, "auctionSessionId", "0");
+            String role           = getStringSafe(dataObj, "roleType", "BIDDER");
+            String winner         = getWinner(dataObj);
+            double finalPrice     = dataObj.has("finalPrice") ? dataObj.get("finalPrice").getAsDouble() : 0.0;
+
+            HistoryRowData rowData = buildHistoryRowData(name, role, winner, finalPrice, me);
+            lichsu.getChildren().add(
+                    createHistoryRow("ID: " + id, rowData.label, rowData.statusText,
+                            rowData.moneyDisplay, rowData.colorStatus));
+        }
+    }
+
+    /** Lấy winnerAccountName an toàn, trả null nếu không có */
+    private String getWinner(JsonObject dataObj) {
+        return (dataObj.has("winnerAccountName") && !dataObj.get("winnerAccountName").isJsonNull())
+                ? dataObj.get("winnerAccountName").getAsString()
+                : null;
+    }
+
+    /** Tính label, statusText, moneyDisplay, colorStatus cho 1 dòng lịch sử */
+    private HistoryRowData buildHistoryRowData(String name, String role,
+                                               String winner, double finalPrice, String me) {
+        String label, statusText, moneyDisplay, colorStatus;
+
+        if ("SELLER".equalsIgnoreCase(role)) {
+            label = "[BÁN] " + name;
+            if (winner == null) {
+                statusText   = "Đang rao bán";
+                moneyDisplay = "0 VNĐ";
+                colorStatus  = "#f39c12";
+            } else {
+                statusText   = "Đã bán";
+                moneyDisplay = "+" + CurrencyFormatter.formatDisplay(finalPrice * PAYOUT_RATE);
+                colorStatus  = "#27ae60";
+            }
+        } else {
+            label = "[MUA] " + name;
+            if (winner == null) {
+                statusText   = "Đang diễn ra";
+                moneyDisplay = "0 VNĐ";
+                colorStatus  = "#f39c12";
+            } else if (me.equalsIgnoreCase(winner)) {
+                statusText   = "Thành công";
+                moneyDisplay = "-" + CurrencyFormatter.formatDisplay(finalPrice);
+                colorStatus  = "#27ae60";
+            } else {
+                statusText   = "Thất bại";
+                moneyDisplay = CurrencyFormatter.formatDisplay(finalPrice);
+                colorStatus  = "#e74c3c";
+            }
+        }
+        return new HistoryRowData(label, statusText, moneyDisplay, colorStatus);
+    }
+
+    /** Data class nội bộ, chỉ dùng trong HistoryController */
+    private record HistoryRowData(String label, String statusText,
+                                  String moneyDisplay, String colorStatus) {}
 
     private String getStringSafe(JsonObject obj, String memberName, String defaultValue) {
         if (obj.has(memberName) && !obj.get(memberName).isJsonNull()) {

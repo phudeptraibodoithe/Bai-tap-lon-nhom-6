@@ -12,4 +12,13 @@ public class Response<T> {
         this.message = message;
         this.payload = payload;
     }
+    public Response(String status, String message, T payload) {
+        this.status  = status;
+        this.message = message;
+        this.payload = payload;
+    }
+
+    public String getType() {
+        return type;
+    }
 }

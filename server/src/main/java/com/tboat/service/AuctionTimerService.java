@@ -1,5 +1,6 @@
 package com.tboat.service;
 
+import com.google.gson.JsonObject;
 import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.models.auction.AuctionSession;
 import com.tboat.models.auction.StatusOfAuction;
@@ -34,10 +35,11 @@ public class AuctionTimerService {
     public void scheduleAuction(AuctionSession session) {
         int sessionId = session.getId();
         StatusOfAuction currentStatus = session.getStatusOfAuction();
+
         if (currentStatus == StatusOfAuction.PENDING ||
                 currentStatus == StatusOfAuction.CANCELED ||
                 currentStatus == StatusOfAuction.ENDED) {
-            log.warn("[Timer] Phiên {} đang chờ duyệt (PENDING), không đưa vào hệ thống tự động.", sessionId);
+            log.warn("[Timer] Phiên {} đang ở trạng thái {}, không đưa vào hệ thống tự động.", sessionId, currentStatus);
             return;
         }
 
@@ -78,6 +80,7 @@ public class AuctionTimerService {
             }, delayToStart, TimeUnit.SECONDS);
 
             scheduledTasks.put(sessionId, startFuture);
+
         } else {
             dao.updateSessionStatus(sessionId, StatusOfAuction.ONGOING);
             log.info("[Timer] Phiên {} được mở BẮT ĐẦU ngay lập tức.", sessionId);
@@ -86,6 +89,7 @@ public class AuctionTimerService {
             if (room != null) {
                 room.broadcast("AUCTION_STARTED", "Phiên đấu giá hiện đang diễn ra, bạn có thể đặt giá!", null);
             }
+
             scheduleAuctionClose(sessionId, endTime);
         }
     }
@@ -104,15 +108,35 @@ public class AuctionTimerService {
         scheduledTasks.put(sessionId, future);
     }
 
+    /**
+     * FIX: Sau khi cập nhật endTime mới vào DB và reschedule timer,
+     * broadcast "TIME_EXTENDED" về tất cả client trong room để reset bộ đếm.
+     */
     public void extendAuction(int sessionId, int secondsToAdd) {
         AuctionSession session = dao.getAuctionById(sessionId);
-        if (session != null) {
-            LocalDateTime currentEnd = session.getEndTime();
-            LocalDateTime newEndTime = (currentEnd.isBefore(LocalDateTime.now()) ?
-                    LocalDateTime.now() : currentEnd).plusSeconds(secondsToAdd);
+        if (session == null) {
+            log.warn("[Timer] Không tìm thấy phiên {} để gia hạn.", sessionId);
+            return;
+        }
 
-            dao.updateEndTime(sessionId, newEndTime);
-            scheduleAuctionClose(sessionId, newEndTime);
+        LocalDateTime currentEnd = session.getEndTime();
+        LocalDateTime newEndTime = (currentEnd.isBefore(LocalDateTime.now()) ?
+                LocalDateTime.now() : currentEnd).plusSeconds(secondsToAdd);
+
+        dao.updateEndTime(sessionId, newEndTime);
+        scheduleAuctionClose(sessionId, newEndTime);
+
+        // FIX: Broadcast về client để reset countdown timer
+        AuctionRoom room = AuctionManager.getInstance().getRoom(sessionId);
+        if (room != null) {
+            JsonObject data = new JsonObject();
+            data.addProperty("newEndTime", newEndTime.toString());
+            data.addProperty("secondsAdded", secondsToAdd);
+            room.broadcast("TIME_EXTENDED",
+                    "Phiên đấu giá được gia hạn thêm " + secondsToAdd + " giây", data);
+            log.info("[Timer] Đã broadcast TIME_EXTENDED cho phiên {}, endTime mới: {}", sessionId, newEndTime);
+        } else {
+            log.warn("[Timer] Phiên {} không có room active, không thể broadcast TIME_EXTENDED.", sessionId);
         }
     }
 

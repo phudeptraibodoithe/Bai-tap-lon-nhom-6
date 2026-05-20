@@ -2,11 +2,11 @@ package com.tboat.models.item;
 
 public abstract class Item {
     private int id;
-    private String sellerAccountName;
-    private String name;
-    private String description;
-    private String imageURL;
-    private String type;
+    protected String sellerAccountName;
+    protected String name;
+    protected String description;
+    protected String imageURL;
+    protected String type;
 
     public Item(String sellerAccountName, String name, String description, String imageURL) {
         this.sellerAccountName = sellerAccountName;
@@ -29,4 +29,7 @@ public abstract class Item {
     public void setName(String name) { this.name = name; }
     public void setDescription(String description) { this.description = description; }
     public void setImageURL(String imageURL) { this.imageURL = imageURL; }
+    public int getId() {
+        return id;
+    }
 }

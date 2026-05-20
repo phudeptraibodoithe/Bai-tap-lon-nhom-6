@@ -1,6 +1,7 @@
 package com.tboat;
 
 import com.tboat.socket.SocketManager;
+import com.tboat.controllers.helper.NotificationManager;
 import com.tboat.ucb.CacheInterceptor;
 import com.tboat.ucb.UCBEngine;
 import javafx.application.Application;
@@ -21,6 +22,7 @@ public class ClientApp extends Application {
         // ── UCB System khởi động ─────────────────────────────────
         UCBEngine.getInstance();   // Load lịch sử từ Preferences
         SocketManager.getInstance().subscribe(CacheInterceptor.getInstance());
+        SocketManager.getInstance().subscribe(NotificationManager.getInstance());
         log.info("[UCB] CacheInterceptor đã đăng ký.");
         // ─────────────────────────────────────────────────────────
 

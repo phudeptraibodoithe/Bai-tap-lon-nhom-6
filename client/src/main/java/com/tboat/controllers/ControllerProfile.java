@@ -201,42 +201,62 @@ public class ControllerProfile extends BaseController implements Initializable, 
         Platform.runLater(() -> {
             try {
                 String type = SocketHelper.getType(response);
-                if (!"GET_PROFILE".equals(type) && !"UPDATE_PROFILE".equals(type)
-                        && !"LOGOUT".equals(type)) return;
 
-                String status  = SocketHelper.getStatus(response);
-                String message = SocketHelper.getMessage(response);
+                if (handleBroadcast(type)) return;
 
+                boolean isMyType = "GET_PROFILE".equals(type)
+                        || "UPDATE_PROFILE".equals(type)
+                        || "LOGOUT".equals(type);
+                if (!isMyType) return;
+
+                String status = SocketHelper.getStatus(response);
                 if ("SUCCESS".equals(status)) {
-                    if ("GET_PROFILE".equals(type)) {
-                        JsonObject data = SocketHelper.getPayloadObject(response);
-                        if (data != null) {
-                            user.setNickname(   data.has("nickname")    ? data.get("nickname").getAsString()    : "");
-                            user.setBalance(    data.has("balance")     ? data.get("balance").getAsDouble()     : 0.0);
-                            user.setAvatar(     data.has("avatarURL")   ? data.get("avatarURL").getAsString()   : "");
-                            user.setDescription(data.has("description") ? data.get("description").getAsString() : "");
-                            user.setEmail(      data.has("email")       ? data.get("email").getAsString()       : "");
-                            user.setPhone(      data.has("phone")       ? data.get("phone").getAsString()       : "");
-                            updateUI(user);
-                        }
-                    } else if ("UPDATE_PROFILE".equals(type)) {
-                        // Cập nhật local session
-                        user.setNickname(tfNickname.getText().trim());
-                        user.setDescription(desc.getText());
-                        user.setEmail(tfEmail.getText().trim());
-                        user.setPhone(tfPhone.getText().trim());
-                        if (selectedFile != null) user.setAvatar(ImageUtils.fileToBase64(selectedFile));
-                        nickname.setText(user.getNickname()); // cập nhật label tên
-                        selectedFile = null;
-                        setEditMode(false);
-                        AlertUtils.showStatus(err, "Cập nhật hồ sơ thành công!", STYLE_SUCCESS);
-                    }
+                    handleProfileSuccess(type, response);
                 } else {
-                    AlertUtils.showStatus(err, "Lỗi: " + message, STYLE_ERROR);
+                    AlertUtils.showStatus(err, "Lỗi: " + SocketHelper.getMessage(response), STYLE_ERROR);
                 }
+
             } catch (Exception e) {
                 AlertUtils.showStatus(err, "Lỗi kết nối với server.", STYLE_ERROR);
             }
         });
+    }
+
+    private boolean handleBroadcast(String type) {
+        if ("AUCTION_FINISHED".equals(type)) {
+            SocketHelper.sendRequest("GET_PROFILE", null);
+            return true;
+        }
+        return false;
+    }
+
+    private void handleProfileSuccess(String type, String response) {
+        switch (type) {
+            case "GET_PROFILE"    -> applyProfileData(SocketHelper.getPayloadObject(response));
+            case "UPDATE_PROFILE" -> commitProfileEdit();
+        }
+    }
+
+    private void applyProfileData(JsonObject data) {
+        if (data == null) return;
+        user.setNickname(    data.has("nickname")    ? data.get("nickname").getAsString()    : "");
+        user.setBalance(     data.has("balance")     ? data.get("balance").getAsDouble()     : 0.0);
+        user.setAvatar(      data.has("avatarURL")   ? data.get("avatarURL").getAsString()   : "");
+        user.setDescription( data.has("description") ? data.get("description").getAsString() : "");
+        user.setEmail(       data.has("email")       ? data.get("email").getAsString()       : "");
+        user.setPhone(       data.has("phone")       ? data.get("phone").getAsString()       : "");
+        updateUI(user);
+    }
+
+    private void commitProfileEdit() {
+        user.setNickname(   tfNickname.getText().trim());
+        user.setDescription(desc.getText());
+        user.setEmail(      tfEmail.getText().trim());
+        user.setPhone(      tfPhone.getText().trim());
+        if (selectedFile != null) user.setAvatar(ImageUtils.fileToBase64(selectedFile));
+        nickname.setText(user.getNickname());
+        selectedFile = null;
+        setEditMode(false);
+        AlertUtils.showStatus(err, "Cập nhật hồ sơ thành công!", STYLE_SUCCESS);
     }
 }

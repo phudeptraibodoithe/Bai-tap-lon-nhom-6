@@ -120,35 +120,49 @@ public class NapRutController extends BaseController implements Initializable, S
         Platform.runLater(() -> {
             btnSubmit.setDisable(false);
             try {
-                if (!"TRANSACTION".equals(SocketHelper.getType(response))) return;
+                String type = SocketHelper.getType(response);
 
-                String status  = SocketHelper.getStatus(response);
-                String message = SocketHelper.getMessage(response);
+                if (handleBroadcast(type)) return;
+                if (!"TRANSACTION".equals(type)) return;
 
+                String status = SocketHelper.getStatus(response);
                 if ("SUCCESS".equals(status)) {
-                    double changedAmount = SocketHelper.getPayloadObject(response) == null
-                            ? JsonParser.parseString(response).getAsJsonObject().get("payload").getAsDouble()
-                            : 0;
-                    // payload ở đây là số, không phải object → parse thẳng
-                    JsonObject json = JsonParser.parseString(response).getAsJsonObject();
-                    if (json.has("payload") && !json.get("payload").isJsonNull()) {
-                        changedAmount = json.get("payload").getAsDouble();
-                        double newBalance = UserSession.getInstance().getUser().getBalance() + changedAmount;
-                        UserSession.getInstance().getUser().setBalance(newBalance);
-                        currentBalance = newBalance;
-                        updateBalanceLabel();
-                        txtAmount.setText("");
-                        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Thành công",
-                                message.isEmpty() ? "Giao dịch đã được xử lý thành công!" : message);
-                    }
-                } else if ("FAILED".equals(status) || "ERROR".equals(status)) {
-                    AlertUtils.showAlert(Alert.AlertType.ERROR, "Thất bại",
-                            message.isEmpty() ? "Giao dịch bị từ chối." : message);
+                    handleTransactionSuccess(response);
+                } else {
+                    handleTransactionFailure(SocketHelper.getMessage(response));
                 }
+
             } catch (Exception e) {
                 AlertUtils.showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Lỗi đọc dữ liệu từ Server.");
                 logger.severe("❌ KHÔNG THỂ ĐỌC JSON NẠP/RÚT: " + response);
             }
         });
+    }
+
+    private boolean handleBroadcast(String type) {
+        // AUCTION_FINISHED → số dư có thể thay đổi (thắng/thua), reload profile
+        if ("AUCTION_FINISHED".equals(type)) {
+            SocketHelper.sendRequest("GET_PROFILE", null);
+            return true;
+        }
+        return false;
+    }
+
+    private void handleTransactionSuccess(String response) {
+        JsonObject json = JsonParser.parseString(response).getAsJsonObject();
+        if (!json.has("payload") || json.get("payload").isJsonNull()) return;
+
+        double changedAmount = json.get("payload").getAsDouble();
+        double newBalance    = UserSession.getInstance().getUser().getBalance() + changedAmount;
+        UserSession.getInstance().getUser().setBalance(newBalance);
+        currentBalance = newBalance;
+        updateBalanceLabel();
+        txtAmount.setText("");
+        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Thành công", "Giao dịch đã được xử lý thành công!");
+    }
+
+    private void handleTransactionFailure(String message) {
+        String text = (message == null || message.isEmpty()) ? "Giao dịch bị từ chối." : message;
+        AlertUtils.showAlert(Alert.AlertType.ERROR, "Thất bại", text);
     }
 }

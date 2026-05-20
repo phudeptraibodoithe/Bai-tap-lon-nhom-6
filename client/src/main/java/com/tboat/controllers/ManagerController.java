@@ -151,16 +151,27 @@ public class ManagerController extends BaseController implements Initializable, 
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                if (!"GET_MY_AUCTIONS".equals(SocketHelper.getType(response))) return;
+                String type = SocketHelper.getType(response);
 
-                if ("SUCCESS".equals(SocketHelper.getStatus(response))
-                        && SocketHelper.getPayloadArray(response) != null) {
-                    DataCache.getInstance().put("GET_MY_AUCTIONS", response);
-                    renderMyAuctions(response);
-                }
+                if (handleBroadcast(type)) return;
+                if (!"GET_MY_AUCTIONS".equals(type)) return;
+                if (!"SUCCESS".equals(SocketHelper.getStatus(response))) return;
+                if (SocketHelper.getPayloadArray(response) == null) return;
+
+                DataCache.getInstance().put("GET_MY_AUCTIONS", response);
+                renderMyAuctions(response);
+
             } catch (Exception e) {
                 logger.warning("[Manager] Lỗi xử lý phản hồi: " + e.getMessage());
             }
         });
+    }
+
+    private boolean handleBroadcast(String type) {
+        if ("RELOAD_ALL_ITEMS".equals(type) || "RELOAD_PENDING_ITEMS".equals(type)) {
+            loadMyAuctions();
+            return true;
+        }
+        return false;
     }
 }

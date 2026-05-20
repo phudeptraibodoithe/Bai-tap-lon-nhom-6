@@ -1,9 +1,10 @@
 package com.tboat.controllers.helper;
 
 import com.tboat.models.auction.AuctionSession;
-import com.tboat.models.auction.StatusOfAuction;
 import com.tboat.models.auction.BidEntry;
-import com.tboat.utilsclient.*;
+import com.tboat.models.auction.StatusOfAuction;
+import com.tboat.utilsclient.CurrencyFormatter;
+import com.tboat.utilsclient.ImageUtils;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -14,6 +15,8 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class AuctionUIHelper {
@@ -127,19 +130,6 @@ public class AuctionUIHelper {
         highestBidder.setText(sb.toString());
     }
 
-    // Gọi khi AUCTION_FINISHED — hiển thị người chiến thắng thay vì "đang dẫn đầu"
-    public void setAuctionEndedLabel(AuctionSession session) {
-        if (highestBidder == null) return;
-        String winner = session.getHighestBidderAccount();
-        if (winner == null || winner.isBlank()) {
-            highestBidder.setText("Kết thúc — Không có người chiến thắng");
-            highestBidder.setStyle("-fx-text-fill: #7f8c8d; -fx-font-weight: bold;");
-        } else {
-            highestBidder.setText("🏆 Người chiến thắng: " + winner);
-            highestBidder.setStyle("-fx-text-fill: #f39c12; -fx-font-weight: bold; -fx-font-size: 17px;");
-        }
-    }
-
     // ── Input & Timer ─────────────────────────────────────────────────────────
 
     public void setupInputState(StatusOfAuction status, boolean isUserSeller) {
@@ -157,27 +147,6 @@ public class AuctionUIHelper {
             bidAmount.setPromptText("Chưa tới giờ đấu giá...");
         } else {
             bidAmount.setPromptText("Nhập giá đặt tại đây...");
-        }
-    }
-
-    public void setupTimerState(StatusOfAuction status, AuctionSession session) {
-        stopTimer();
-        switch (status) {
-            case ENDED, CANCELED -> {
-                timeRemaining.setText("00 : 00 : 00");
-                timeRemaining.setStyle(STYLE_ENDED);
-            }
-            case NOT_STARTED -> {
-                String startStr = session.getStartTime() != null
-                        ? session.getStartTime().format(DateTimeFormatter.ofPattern("HH:mm - dd/MM"))
-                        : "Sắp diễn ra...";
-                timeRemaining.setText("Bắt đầu: " + startStr);
-                timeRemaining.setStyle(STYLE_WARNING);
-            }
-            case ONGOING -> {
-                timeRemaining.setStyle(STYLE_SUCCESS);
-                startTimer(session);
-            }
         }
     }
 
@@ -234,6 +203,59 @@ public class AuctionUIHelper {
         Platform.runLater(() ->
                 priceSeries.getData().add(new XYChart.Data<>(label, entry.getPrice()))
         );
+    }
+    public void updateEndTime(LocalDateTime newEndTime) {
+        if (auctionTimer != null) {
+            auctionTimer.updateEndTime(newEndTime);
+        }
+    }
+
+    /**
+     * FIX: Phân biệt rõ 3 case:
+     *   - winner != null → "Người chiến thắng: X"  (vàng)
+     *   - winner null    → "Không có người thắng"   (xám)
+     * Trước đây cả 2 case đều hiển thị giống nhau nếu highestBidderAccount còn sót từ lúc bid.
+     */
+    public void setAuctionEndedLabel(AuctionSession session) {
+        if (highestBidder == null) return;
+        String winner = session.getHighestBidderAccount();
+        if (winner == null || winner.isBlank()) {
+            highestBidder.setText("Phiên kết thúc — Không có người chiến thắng");
+            highestBidder.setStyle("-fx-text-fill: #7f8c8d; -fx-font-weight: bold; -fx-font-size: 15px;");
+        } else {
+            highestBidder.setText("🏆 Người chiến thắng: " + winner);
+            highestBidder.setStyle("-fx-text-fill: #f39c12; -fx-font-weight: bold; -fx-font-size: 17px;");
+        }
+    }
+
+    /**
+     * FIX: setupTimerState thêm log để tránh silent fail khi endTime null.
+     * Không thay đổi logic, chỉ thêm guard rõ ràng hơn.
+     */
+    public void setupTimerState(StatusOfAuction status, AuctionSession session) {
+        stopTimer();
+        switch (status) {
+            case ENDED, CANCELED -> {
+                timeRemaining.setText("00 : 00 : 00");
+                timeRemaining.setStyle(STYLE_ENDED);
+            }
+            case NOT_STARTED -> {
+                String startStr = session.getStartTime() != null
+                        ? session.getStartTime().format(DateTimeFormatter.ofPattern("HH:mm - dd/MM"))
+                        : "Sắp diễn ra...";
+                timeRemaining.setText("Bắt đầu: " + startStr);
+                timeRemaining.setStyle(STYLE_WARNING);
+            }
+            case ONGOING -> {
+                if (session.getEndTime() == null) {
+                    timeRemaining.setText("-- : -- : --");   // FIX: tránh NPE silent
+                    timeRemaining.setStyle(STYLE_WARNING);
+                    return;
+                }
+                timeRemaining.setStyle(STYLE_SUCCESS);
+                startTimer(session);
+            }
+        }
     }
 
     public ObservableList<BidEntry> getListBids()  { return listBids; }

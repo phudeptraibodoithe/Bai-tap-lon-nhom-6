@@ -241,35 +241,45 @@ public class AdminController extends BaseController implements Initializable, So
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                String type    = SocketHelper.getType(response);
-                String status  = SocketHelper.getStatus(response);
-                String message = SocketHelper.getMessage(response);
+                String type = SocketHelper.getType(response);
 
-                boolean isBroadcast  = "NEW_PENDING_ITEM".equals(status) || "NEW_ITEM".equals(status);
-                boolean isMyResponse = "GET_ALL_ITEMS".equals(type) || "APPROVE_ITEM".equals(type) // ← đổi key
-                        || "REJECT_ITEM".equals(type) || "LOGOUT".equals(type);
+                if (handleBroadcast(type)) return;
 
-                if (!isBroadcast && !isMyResponse) return;
+                boolean isMyType = "GET_ALL_ITEMS".equals(type)
+                        || "APPROVE_ITEM".equals(type)
+                        || "REJECT_ITEM".equals(type);
+                if (!isMyType) return;
 
-                switch (status) {
-                    case "SUCCESS" -> handleSuccessCase(JsonParser.parseString(response).getAsJsonObject(), message);
-                    case "NEW_PENDING_ITEM", "NEW_ITEM" -> {
-                        loadAllItems(); // ← đổi
-                        AlertUtils.showStatus(err, "Có người dùng vừa đăng sản phẩm mới! Đã tự động cập nhật.", "#9b59b6");
-                    }
-                    case "ERROR" -> AlertUtils.showStatus(err, "Lỗi: " + message, "red");
+                String status = SocketHelper.getStatus(response);
+                if ("SUCCESS".equals(status)) {
+                    handleAdminSuccess(type, response);
+                } else if ("ERROR".equals(status)) {
+                    AlertUtils.showStatus(err, "Lỗi: " + SocketHelper.getMessage(response), "red");
                 }
+
             } catch (Exception e) {
                 log.severe("LỖI JSON ADMIN: " + e.getMessage());
             }
         });
     }
 
-    private void handleSuccessCase(JsonObject jsonResponse, String message) {
-        switch (message) {
-            case "Danh sách tất cả phiên"       -> renderAllItems(jsonResponse.toString());
-            case "Đã duyệt và bắt đầu đấu giá" -> AlertUtils.showStatus(err, "Đã DUYỆT sản phẩm!", "green");
-            case "Đã từ chối sản phẩm"          -> AlertUtils.showStatus(err, "Đã TỪ CHỐI sản phẩm!", "#cc7a00");
+    private boolean handleBroadcast(String type) {
+        if ("RELOAD_ALL_ITEMS".equals(type) || "RELOAD_PENDING_ITEMS".equals(type)) {
+            loadAllItems();
+            AlertUtils.showStatus(err, "Dữ liệu vừa được cập nhật tự động.", "#9b59b6");
+            return true;
+        }
+        return false;
+    }
+
+    private void handleAdminSuccess(String type, String response) {
+        switch (type) {
+            case "GET_ALL_ITEMS" -> {
+                DataCache.getInstance().put("GET_ALL_ITEMS", response);
+                renderAllItems(response);
+            }
+            case "APPROVE_ITEM" -> AlertUtils.showStatus(err, "Đã DUYỆT sản phẩm!", "green");
+            case "REJECT_ITEM"  -> AlertUtils.showStatus(err, "Đã TỪ CHỐI sản phẩm!", "#cc7a00");
         }
     }
 }

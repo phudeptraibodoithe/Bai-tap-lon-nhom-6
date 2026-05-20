@@ -12,9 +12,13 @@ import com.tboat.models.item.Item;
 import com.tboat.models.item.factory.ItemFactory;
 import com.tboat.models.item.factory.ItemFactoryProducer;
 import com.tboat.models.network.Response;
+import com.tboat.service.AuctionManager;
+import com.tboat.service.AuctionRoom;
 import com.tboat.service.AuctionTimerService;
+import com.tboat.service.NotificationService;
 import com.tboat.service.SellerService;
 import com.tboat.socket.ClientContext;
+import com.tboat.socket.GlobalBroadcaster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +39,7 @@ public class ItemHandler {
 
     public void getAllItems() {
         try {
-            var list = auctionDAO.getAllAuctions(); // ← cần thêm method này trong AuctionSessionDAO
+            var list = auctionDAO.getAllAuctions();
             context.sendResponse(new Response<>("GET_ALL_ITEMS", "SUCCESS",
                     "Danh sách tất cả phiên", list != null ? list : new ArrayList<>()));
         } catch (Exception e) {
@@ -67,8 +71,15 @@ public class ItemHandler {
             if (sessionId > 0) {
                 participationDAO.addParticipation(
                         new Participation(context.getClientId(), sessionId, "SELLER"));
+
                 context.sendResponse(new Response<>("POST_ITEM", "SUCCESS",
                         "Đăng sản phẩm thành công, đang chờ duyệt", sessionId));
+
+                // FIX: Broadcast cho admin và manager biết có sản phẩm mới cần duyệt
+                GlobalBroadcaster.getInstance().broadcastToAdmins(
+                        new Response<>("RELOAD_PENDING_ITEMS", "NOTIFY",
+                                "Có sản phẩm mới chờ duyệt từ " + context.getClientId(), sessionId));
+
             } else {
                 context.sendResponse(new Response<>("POST_ITEM", "ERROR",
                         "Lỗi lưu phiên đấu giá vào Database", null));
@@ -110,6 +121,33 @@ public class ItemHandler {
             if (ok) {
                 context.sendResponse(new Response<>("EDIT_ITEM", "SUCCESS",
                         "Cập nhật thông tin sản phẩm thành công!", sessionId));
+
+                // FIX: Load lại session mới từ DB sau khi edit để có startTime/endTime chính xác
+                AuctionSession refreshed = auctionDAO.getAuctionById(sessionId);
+                if (refreshed != null) {
+
+                    // FIX: Reschedule timer theo thời gian mới (tránh timer cũ chạy sai)
+                    AuctionTimerService.getInstance().scheduleAuction(refreshed);
+                    log.info("[ItemHandler] Đã reschedule timer cho phiên {} sau khi edit.", sessionId);
+
+                    // FIX: Nếu phiên đang ONGOING, broadcast TIME_UPDATED về room để client reset countdown
+                    if (refreshed.getStatusOfAuction() == StatusOfAuction.ONGOING) {
+                        AuctionRoom room = AuctionManager.getInstance().getRoom(sessionId);
+                        if (room != null) {
+                            JsonObject timeData = new JsonObject();
+                            timeData.addProperty("newStartTime", refreshed.getStartTime().toString());
+                            timeData.addProperty("newEndTime",   refreshed.getEndTime().toString());
+                            room.broadcast("TIME_UPDATED",
+                                    "Thời gian phiên đấu giá đã được cập nhật", timeData);
+                        }
+                    }
+
+                    // FIX: Broadcast reload cho admin/manager để cập nhật danh sách
+                    GlobalBroadcaster.getInstance().broadcastToAdmins(
+                            new Response<>("RELOAD_ALL_ITEMS", "NOTIFY",
+                                    "Phiên " + sessionId + " vừa được cập nhật", sessionId));
+                }
+
             } else {
                 context.sendResponse(new Response<>("EDIT_ITEM", "ERROR",
                         "Không thể cập nhật: Phiên đã bắt đầu, đã có người bid hoặc lỗi quyền sở hữu.", null));
@@ -126,16 +164,25 @@ public class ItemHandler {
             int sessionId = JsonParser.parseString(raw)
                     .getAsJsonObject().get("payload").getAsInt();
 
-            // Update DB trước
             auctionDAO.updateSessionStatus(sessionId, StatusOfAuction.NOT_STARTED);
 
-            // Load lại session SAU KHI đã update — tránh truyền session cũ còn PENDING
             AuctionSession session = auctionDAO.getAuctionById(sessionId);
 
             if (session != null) {
                 AuctionTimerService.getInstance().scheduleAuction(session);
+
                 context.sendResponse(new Response<>("APPROVE_ITEM", "SUCCESS",
                         "Đã duyệt và bắt đầu đấu giá", sessionId));
+
+                NotificationService.getInstance().onItemApproved(
+                        session.getSellerAccountName(), session.getName());
+
+                // FIX: Broadcast reload trang chủ (LIST_AVAILABLE sẽ có phiên mới)
+                //      và broadcast cho seller biết sản phẩm được duyệt
+                GlobalBroadcaster.getInstance().broadcastToAll(
+                        new Response<>("RELOAD_AVAILABLE", "NOTIFY",
+                                "Có phiên đấu giá mới vừa được duyệt", sessionId));
+
                 log.info("[Server] Admin duyệt phiên ID: {}", sessionId);
             } else {
                 context.sendResponse(new Response<>("APPROVE_ITEM", "ERROR",
@@ -152,11 +199,25 @@ public class ItemHandler {
         try {
             int sessionId = JsonParser.parseString(raw)
                     .getAsJsonObject().get("payload").getAsInt();
+
             boolean ok = auctionDAO.updateSessionStatus(sessionId, StatusOfAuction.CANCELED);
 
             if (ok) {
+                AuctionSession session = auctionDAO.getAuctionById(sessionId);
+
                 context.sendResponse(new Response<>("REJECT_ITEM", "SUCCESS",
                         "Đã từ chối sản phẩm", sessionId));
+
+                if (session != null) {
+                    NotificationService.getInstance().onItemRejected(
+                            session.getSellerAccountName(), session.getName(), "Không đạt yêu cầu duyệt");
+                }
+
+                // FIX: Broadcast reload cho admin để cập nhật danh sách pending
+                GlobalBroadcaster.getInstance().broadcastToAdmins(
+                        new Response<>("RELOAD_PENDING_ITEMS", "NOTIFY",
+                                "Phiên " + sessionId + " vừa bị từ chối", sessionId));
+
                 log.info("[Server] Admin từ chối phiên ID: {}", sessionId);
             } else {
                 context.sendResponse(new Response<>("REJECT_ITEM", "ERROR",

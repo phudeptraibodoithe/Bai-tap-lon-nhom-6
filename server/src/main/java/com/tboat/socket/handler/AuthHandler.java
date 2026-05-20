@@ -5,8 +5,10 @@ import com.tboat.dao.UserDAO;
 import com.tboat.models.network.Request;
 import com.tboat.models.network.Response;
 import com.tboat.models.core.User;
+import com.tboat.service.NotificationService;
 import com.tboat.service.UserManager;
 import com.tboat.socket.ClientContext;
+import com.tboat.socket.GlobalBroadcaster;
 import com.tboat.utils.ResponseCode;
 
 import java.lang.reflect.Type;
@@ -28,6 +30,10 @@ public class AuthHandler {
 
         if (res == ResponseCode.SUCCESS) {
             context.setClientId(creds.getAccountName());
+            NotificationService.getInstance().register(context.getClientId(), context);
+            if ("admin".equalsIgnoreCase(creds.getAccountName())) {
+                GlobalBroadcaster.getInstance().registerAdmin(context);  // ← thêm dòng này
+            }
             User fullUser = userDAO.getUser(context.getClientId());
             context.sendResponse(new Response<>("LOGIN", "SUCCESS", "Đăng nhập thành công", fullUser));
         } else {
@@ -52,7 +58,9 @@ public class AuthHandler {
     }
 
     public void logout() {
-        userManager.logout(context.getClientId());
+        String username = context.getClientId();
+        userManager.logout(username);
+        NotificationService.getInstance().unregister(username);
         context.setClientId("Guest");
         if (context.getCurrentRoom() != null)
             context.getCurrentRoom().removeSubscriber(context);

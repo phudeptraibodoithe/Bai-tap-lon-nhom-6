@@ -48,48 +48,57 @@ classDiagram
     class User {
         -String description
         -String avatarURL
+        -String email
+        -String phone
     }
 
     class Admin {
         +censorSession(AuctionSession session) void
-        +ban(User user) void
     }
 
     Person <|-- User
     Person <|-- Admin
 
-    class AuctionSession {
+    %% --- PHẦN ITEM (ABSTRACT CLASS & SUBCLASSES) ---
+    class Item {
         <<abstract>>
         -int id
+        -String sellerAccountName
+        -String type
+        -String name
+        -String description
+        -String imageURL
+    }
+    class ElectronicItem {
+    }
+    class FashionItem {
+    }
+    class JewelryItem {
+    }
+    class OtherItem {
+    }
+
+    Item <|-- ElectronicItem
+    Item <|-- FashionItem
+    Item <|-- JewelryItem
+    Item <|-- OtherItem
+
+    %% --- PHẦN SESSION (CONCRETE CLASS) ---
+    class AuctionSession {
+        -int id
+        -int itemId
         -LocalDateTime startTime
         -LocalDateTime endTime
         -double currentPrice
         -double bidIncrease
         -StatusOfAuction statusOfAuction
-        -String sellerAccount
-        -String name
-        -String description
-        -String imageURL
         -String highestBidderAccount
     }
 
-    %% Các Class con của AuctionSession (Bạn hãy đổi tên theo đúng ảnh của bạn)
-    class ElectronicSession {
-    }
-    class FashionSession {
-    }
-    class JewelrySession {
-    }
-    class OtherSession {
-    }
-
-    AuctionSession <|-- ElectronicSession
-    AuctionSession <|-- FashionSession
-    AuctionSession <|-- JewelrySession
-    AuctionSession <|-- OtherSession
 
     AuctionSession --> StatusOfAuction : has status
 
+    %% --- PHẦN LỊCH SỬ & BID ---
     class Bid {
         -int id
         -int auctionSessionId
@@ -105,12 +114,6 @@ classDiagram
         -LocalDateTime completedAt
     }
 
-    User "1" -- "*" AuctionSession : creates/owns
-    User "1" --> "*" Bid : places
-    AuctionSession "1" --> "*" Bid : receives
-    User "1" --> "*" History : wins
-    AuctionSession "1" --> "1" History : results in
-
     %% --- PHẦN PARTICIPATION ---
     class Participation {
         -String accountName
@@ -118,7 +121,19 @@ classDiagram
         -String roleType
     }
 
-    %% Mối quan hệ của Participation
+    %% --- MỐI QUAN HỆ CỦA CÁC THỰC THỂ (RELATIONSHIPS) ---
+    
+    %% User tạo ra Item, Item được đấu giá trong Session
+    User "1" --> "*" Item : creates / owns
+    Item "1" -- "1" AuctionSession : is auctioned in
+    
+    %% User và Bid, History
+    User "1" --> "*" Bid : places
+    AuctionSession "1" --> "*" Bid : receives
+    User "1" --> "*" History : wins
+    AuctionSession "1" --> "1" History : results in
+    
+    %% Participation
     User "1" --> "*" Participation : joins
     AuctionSession "1" --> "*" Participation : has
 ```
@@ -245,19 +260,22 @@ sequenceDiagram
 
 ### Bảng chia việc chi tiết cho từng thành viên
 
- Thành viên | Nội dung nhiệm vụ |  tiến độ |
-| :--- | :--- | :--- |
-|  | Ghép nối code của cả nhóm |80% |
-| **Phúc** | Thiết kế giao diện trang chủ, trang nạp rút, admin, trang đấu giá | 100%|
-| **Phúc** | Xử lý cập nhật UI realtime và đọc dữ liệu để hiện thị  | 100%|
-| **Tâm** | Thiết kế các unit test  |60% |
-| **Tâm** | Xử lý Logic Broadcast (Gửi dữ liệu thời gian thực tới tất cả Client trong phòng) |100% |
-| **Tâm** | Xây dựng Giao thức truyền tin | 100% |
-| **Tâm** | Xử lý Đa luồng | 70% |
-| **Thái** | Thiết kế các lớp Java thuần (User, Item,...) | 100% |
-| **Thái** | Xử lý Validation dữ liệu & Bắt lỗi Ngoại lệ (Exception) | 70%|
-| **Phú** | Thiết kế giao diện login, register, trang Profile, History, UploadItem | 100%|
-| **Phú** | Lập trình tầng DAO (Data Access Object) & Thiết kế CSDL |100% |
-| **Phú và Tâm** | Thiết kế kiến trúc Socket (Server/Client) & Vẽ sơ đồ UML |100% |
-| **Tâm, Thái, Phú**| Code logic Bộ đếm thời gian (Timer) & Tự động chốt phiên đấu giá |100%|
-| **Thái, Phú, Tâm** | Code logic Trả giá & Xử lý đồng bộ (Synchronized chống trùng lặp) |80%|
+| Thành viên | Nhiệm vụ | Tiến độ |
+|---|---|---|
+| **Phúc** | Thiết kế UI: trang chủ, nạp/rút, admin, trang đấu giá, manager, editItem | 100% |
+| **Phúc** | Xử lý cập nhật UI real-time và đọc dữ liệu hiển thị | 100% |
+| **Phúc** | Xây dựng tính năng thông báo cho toàn bộ app | 100% |
+| **Tâm** | Xây dựng giao thức truyền tin (JSON Protocol) | 100% |
+| **Tâm** | Xử lý đa luồng (Multi-threading) | 100% |
+| **Tâm** | Logic Broadcast — gửi dữ liệu real-time đến tất cả Client trong phòng | 100% |
+| **Tâm** | xây dựng hệ thông UCB giúp load nhanh | 100% |
+| **Thái** | Thiết kế các lớp Java thuần (User, Item, AuctionSession...) | 100% |
+| **Thái** | xây dựng tính năng AutoBidding | 0% |
+| **Phú** | Thiết kế UI: Login, Register, Profile, History, UploadItem | 100% |
+| **Phú** | Lập trình tầng DAO & thiết kế CSDL (MySQL schema) | 100% |
+| **Phú & Tâm** | Kiến trúc Socket (Server/Client) & vẽ sơ đồ UML | 100% |
+| **Tâm & Thái** | Thiết kế Unit Test | 80% |
+| **Tâm & Phú** | Bộ đếm thời gian & tự động chốt phiên | 100% |
+| **Phú & Tâm** | Logic trả giá & xử lý đồng bộ (Synchronized) | 80% |
+| **Phúc & Phú** | Xử lý Controller phía Client cho các màn hình, Xử lý logic gửi/nhận dữ liệu xác thực qua Socket. | 80% |
+| **Thái, Tâm, Phú** | Validation dữ liệu & xử lý ngoại lệ (Exception Handling) | 100% |

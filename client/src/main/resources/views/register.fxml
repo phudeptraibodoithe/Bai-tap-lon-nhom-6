@@ -18,7 +18,7 @@
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
-<StackPane prefHeight="720.0" prefWidth="950.0" style="-fx-background-color: linear-gradient(to bottom right, #0F2027, #203A43, #2C5364);" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.ControllerRegister">
+<StackPane prefHeight="720.0" prefWidth="950.0" style="-fx-background-color: linear-gradient(to bottom right, #0F2027, #203A43, #2C5364);" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.RegisterController">
     <children>
         <VBox alignment="TOP_CENTER" maxHeight="680.0" maxWidth="780.0" spacing="10.0" style="-fx-background-color: white; -fx-background-radius: 30; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 20, 0, 0, 10);">
             <padding>

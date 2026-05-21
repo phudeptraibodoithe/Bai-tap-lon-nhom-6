@@ -2,6 +2,7 @@ package com.tboat.ucb;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.socket.SocketListener;
 
 import java.util.Map;
@@ -19,13 +20,13 @@ public class CacheInterceptor implements SocketListener {
     private static CacheInterceptor instance;
 
     // Map message → action key để biết cache dưới key nào
-    private static final Map<String, String> MESSAGE_TO_ACTION = Map.of(
-            "Danh sách chờ duyệt",         "GET_PENDING_ITEMS",
-            "Thông tin tài khoản",          "PROFILE",
-            "Danh sách phiên đấu giá",      "LIST_AVAILABLE",   // ← TrangChu
-            "Danh sách sản phẩm",           "LIST_AVAILABLE",   // ← fallback
-            "Lịch sử",                      "GET_HISTORY",
-            "Danh sách lượt đấu của bạn",   "GET_MY_AUCTIONS"
+    private static final Map<String, ServerEvent> MESSAGE_TO_ACTION = Map.of(
+            "Danh sách chờ duyệt",         ServerEvent.GET_ALL_ITEMS,
+            "Thông tin tài khoản",          ServerEvent.GET_PROFILE,
+            "Danh sách phiên đấu giá",      ServerEvent.LIST_AVAILABLE,
+            "Danh sách sản phẩm",           ServerEvent.LIST_AVAILABLE,
+            "Lịch sử",                      ServerEvent.GET_HISTORY,
+            "Danh sách lượt đấu của bạn",   ServerEvent.GET_MY_AUCTIONS
     );
 
     private CacheInterceptor() {}
@@ -43,11 +44,11 @@ public class CacheInterceptor implements SocketListener {
             String status  = json.has("status")  ? json.get("status").getAsString()  : "";
             String message = json.has("message") ? json.get("message").getAsString() : "";
 
-            if (!"SUCCESS".equals(status)) return; // Chỉ cache khi thành công
+            if (!ServerEvent.SUCCESS.name().equals(status)) return; // Chỉ cache khi thành công
 
             // Tìm action key tương ứng với message này
-            String actionKey = null;
-            for (Map.Entry<String, String> entry : MESSAGE_TO_ACTION.entrySet()) {
+            ServerEvent actionKey = null;
+            for (Map.Entry<String, ServerEvent> entry : MESSAGE_TO_ACTION.entrySet()) {
                 if (message.contains(entry.getKey())) {
                     actionKey = entry.getValue();
                     break;
@@ -56,7 +57,7 @@ public class CacheInterceptor implements SocketListener {
 
             if (actionKey != null) {
                 DataCache.getInstance().put(actionKey, response);
-                log.info("[CacheInterceptor] Cached: " + actionKey);
+                log.info("[CacheInterceptor] Cached: " + actionKey.name());
             }
 
         } catch (Exception e) {

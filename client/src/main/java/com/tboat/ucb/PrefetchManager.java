@@ -1,7 +1,7 @@
 package com.tboat.ucb;
 
-import com.google.gson.JsonObject;
-import com.tboat.socket.SocketManager;
+import com.tboat.models.network.ServerEvent;
+import com.tboat.socket.SocketHelper;
 
 import java.util.List;
 import java.util.Map;
@@ -16,18 +16,16 @@ public class PrefetchManager {
     private static final Logger log = Logger.getLogger(PrefetchManager.class.getName());
     private static PrefetchManager instance;
 
-    // Map: tên màn hình → danh sách action cần prefetch cho màn đó
-    // Key phải khớp với tên file fxml (không có ".fxml")
-    private static final Map<String, List<String>> SCREEN_ACTIONS = Map.of(
-            "adminFxml",       List.of("GET_PENDING_ITEMS"),
-            "adminWalletFxml", List.of("PROFILE"),
-            "TrangChuFxml",    List.of("LIST_AVAILABLE"),
-            "managerFxml",     List.of("GET_MY_AUCTIONS"),
-            "historyFxml",     List.of("GET_HISTORY"),
-            "profileFxml",     List.of("PROFILE"),
-            "NapRutFxml",      List.of("PROFILE"),
-            "editItemFxml", List.of(),
-            "postItemFxml", List.of(),
+    private static final Map<String, List<ServerEvent>> SCREEN_ACTIONS = Map.of(
+            "adminFxml",       List.of(ServerEvent.GET_ALL_ITEMS),
+            "adminWalletFxml", List.of(ServerEvent.GET_PROFILE),
+            "TrangChuFxml",    List.of(ServerEvent.LIST_AVAILABLE),
+            "managerFxml",     List.of(ServerEvent.GET_MY_AUCTIONS),
+            "historyFxml",     List.of(ServerEvent.GET_HISTORY),
+            "profileFxml",     List.of(ServerEvent.GET_PROFILE),
+            "NapRutFxml",      List.of(ServerEvent.GET_PROFILE),
+            "editItemFxml",    List.of(),
+            "postItemFxml",    List.of(),
             "auctionFxml",     List.of()
     );
 
@@ -61,23 +59,21 @@ public class PrefetchManager {
     }
 
     private void prefetchScreen(String screenName) {
-        List<String> actions = SCREEN_ACTIONS.get(screenName);
+        List<ServerEvent> actions = SCREEN_ACTIONS.get(screenName);
         if (actions == null) {
             log.warning("[Prefetch] Không tìm thấy actions cho screen: " + screenName);
             return;
         }
 
-        for (String action : actions) {
+        for (ServerEvent action : actions) {
             if (DataCache.getInstance().isFresh(action)) {
-                log.fine("[Prefetch] Bỏ qua " + action + " (cache còn fresh)");
+                log.fine("[Prefetch] Bỏ qua " + action.name() + " (cache còn fresh)");
                 continue;
             }
 
             // Gửi request ngầm — response sẽ được cache bởi CacheInterceptor
-            JsonObject request = new JsonObject();
-            request.addProperty("action", action);
-            SocketManager.getInstance().send(request.toString());
-            log.info("[Prefetch] → Gửi prefetch request: " + action);
+            SocketHelper.sendRequest(action);
+            log.info("[Prefetch] → Gửi prefetch request: " + action.name());
         }
     }
 }

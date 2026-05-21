@@ -29,12 +29,11 @@ public class AuctionTimer {
                 onFinish.run();
                 stop();
             } else {
-                long hours = ChronoUnit.HOURS.between(now, endTime);
+                long hours   = ChronoUnit.HOURS.between(now, endTime);
                 long minutes = ChronoUnit.MINUTES.between(now, endTime) % 60;
                 long seconds = ChronoUnit.SECONDS.between(now, endTime) % 60;
 
-                String timeString = String.format("%02d : %02d : %02d", hours, minutes, seconds);
-                onTick.accept(timeString);
+                onTick.accept(String.format("%02d : %02d : %02d", hours, minutes, seconds));
             }
         }));
 
@@ -45,6 +44,16 @@ public class AuctionTimer {
     public void stop() {
         if (timeline != null) {
             timeline.stop();
+            timeline = null;
         }
+    }
+
+    /**
+     * Cập nhật endTime mới và restart timer ngay lập tức.
+     * Gọi khi nhận được "TIME_EXTENDED" hoặc "TIME_UPDATED" từ server.
+     */
+    public void updateEndTime(LocalDateTime newEndTime) {
+        this.endTime = newEndTime;
+        start(); // stop() + restart với endTime mới
     }
 }

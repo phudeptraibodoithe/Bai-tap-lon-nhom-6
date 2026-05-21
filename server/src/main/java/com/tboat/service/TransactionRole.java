@@ -8,7 +8,10 @@ import com.tboat.models.auction.AuctionSession;
 import com.tboat.models.core.User;
 
 public interface TransactionRole {
-    // Thêm các DAO cần thiết vào tham số
+    /*
+     * Mỗi role nhận các DAO cần dùng để caller giữ được một luồng transaction rõ ràng,
+     * không tạo dependency ẩn bên trong role.
+     */
     boolean execute(User user, AuctionSession session, double amount,
                     UserDAO userDAO, AuctionSessionDAO sessionDAO, HistoryDAO historyDAO, BidDAO bidDAO);
 }

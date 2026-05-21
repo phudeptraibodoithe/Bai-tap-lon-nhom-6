@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.utils.GsonUtils;
 
 public class SocketHelper {
@@ -28,9 +29,9 @@ public class SocketHelper {
     }
 
     // ======== PHẦN GỬI DỮ LIỆU ========
-    public static void sendRequest(String action, Object payload) {
+    public static void sendRequest(ServerEvent action, Object payload) {
         JsonObject request = new JsonObject();
-        request.addProperty("action", action);
+        request.addProperty("action", action.name());
 
         if (payload != null) {
             if (payload instanceof Number) {
@@ -83,7 +84,24 @@ public class SocketHelper {
     }
 
     // Hàm Overload cho các request không cần payload (như PROFILE, LOGOUT)
-    public static void sendRequest(String action) {
+    public static void sendRequest(ServerEvent action) {
         sendRequest(action, null);
+    }
+
+    // Trong SocketHelper.java
+    public static ServerEvent getTypeEnum(String response) {
+        try {
+            return ServerEvent.valueOf(getType(response));
+        } catch (IllegalArgumentException e) {
+            return ServerEvent.UNKNOWN;
+        }
+    }
+
+    public static ServerEvent getStatusEnum(String response) {
+        try {
+            return ServerEvent.valueOf(getStatus(response));
+        } catch (IllegalArgumentException e) {
+            return ServerEvent.UNKNOWN;
+        }
     }
 }

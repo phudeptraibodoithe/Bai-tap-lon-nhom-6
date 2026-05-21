@@ -9,6 +9,7 @@ import com.tboat.models.auction.StatusOfAuction;
 import com.tboat.models.item.Item;
 import com.tboat.models.item.factory.ItemFactory;
 import com.tboat.models.item.factory.ItemFactoryProducer;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.session.UserSession;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
@@ -64,7 +65,7 @@ public class AdminController extends BaseController implements Initializable, So
         tableSessions.setItems(sessionList);
 
         String screenKey = BaseController.toScreenKey("admin.fxml");
-        String cached    = DataCache.getInstance().get("GET_ALL_ITEMS"); // ← đổi key
+        String cached    = DataCache.getInstance().get(ServerEvent.GET_ALL_ITEMS);
 
         if (cached != null) {
             log.info("[Admin] Cache HIT → render ngay");
@@ -75,22 +76,6 @@ public class AdminController extends BaseController implements Initializable, So
             log.info("[Admin] Cache MISS → fetch server");
             NavigationContext.getInstance().reportCacheHit(screenKey, false);
             loadAllItems();
-        }
-    }
-
-    private void renderAllItems(String response) {
-        try {
-            JsonObject json = JsonParser.parseString(response).getAsJsonObject();
-            if (!"GET_ALL_ITEMS".equals(json.has("type") ? json.get("type").getAsString() : "")) return;
-            if (!json.has("payload") || !json.get("payload").isJsonArray()) return;
-
-            sessionList.clear();
-            for (JsonElement element : json.getAsJsonArray("payload")) {
-                AuctionSession session = parseSingleAuctionSession(element.getAsJsonObject());
-                if (session != null) sessionList.add(session);
-            }
-        } catch (Exception e) {
-            log.warning("[Admin] Lỗi render: " + e.getMessage());
         }
     }
 
@@ -105,6 +90,7 @@ public class AdminController extends BaseController implements Initializable, So
         String sellerAccount = getStringJson(itemObj, "sellerAccountName", "");
         double currentPrice  = getDoubleJson(dataObj, "currentPrice", 0.0);
         double bidIncrease   = getDoubleJson(dataObj, "bidIncrease", 0.0);
+        double buyNowPrice   = getDoubleJson(dataObj, "buyNowPrice", 0.0);
 
         ItemFactory factory = ItemFactoryProducer.getFactory(type);
         Item item = factory.createItem(sellerAccount, name, description, imageURL);
@@ -114,6 +100,7 @@ public class AdminController extends BaseController implements Initializable, So
                 dataObj.has("endTime")   ? TimeUtils.parseServerTime(dataObj.get("endTime"))   : LocalDateTime.now().plusDays(1),
                 currentPrice, bidIncrease, item
         );
+        session.setBuyNowPrice(buyNowPrice);
         session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
 
         try {
@@ -133,7 +120,7 @@ public class AdminController extends BaseController implements Initializable, So
     }
 
     private void loadAllItems() {
-        SocketHelper.sendRequest("GET_ALL_ITEMS", null);
+        SocketHelper.sendRequest(ServerEvent.GET_ALL_ITEMS, null);
     }
 
     @Override
@@ -185,7 +172,7 @@ public class AdminController extends BaseController implements Initializable, So
                 btn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
                 btn.setOnAction(e -> {
                     AuctionSession session = getTableView().getItems().get(getIndex());
-                    SocketHelper.sendRequest("APPROVE_ITEM", session.getId());
+                    SocketHelper.sendRequest(ServerEvent.APPROVE_ITEM, session.getId());
                     // Cập nhật status local ngay để UI phản hồi nhanh
                     session.setStatusOfAuction(StatusOfAuction.NOT_STARTED);
                     getTableView().refresh();
@@ -209,7 +196,7 @@ public class AdminController extends BaseController implements Initializable, So
                 btn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
                 btn.setOnAction(e -> {
                     AuctionSession session = getTableView().getItems().get(getIndex());
-                    SocketHelper.sendRequest("REJECT_ITEM", session.getId());
+                    SocketHelper.sendRequest(ServerEvent.REJECT_ITEM, session.getId());
                     session.setStatusOfAuction(StatusOfAuction.CANCELED);
                     getTableView().refresh();
                 });
@@ -226,12 +213,12 @@ public class AdminController extends BaseController implements Initializable, So
     }
 
     public void switchToAdminNapRut(ActionEvent event) {
-        changeScene((Node) event.getSource(), "adminWallet.fxml");
+        changeScene((Node) event.getSource(), "admin-wallet.fxml");
     }
 
     public void logout(ActionEvent e) {
         if (AlertUtils.showConfirmation("Xác nhận đăng xuất", "Bạn có chắc chắn muốn đăng xuất không?")) {
-            SocketHelper.sendRequest("LOGOUT", null);
+            SocketHelper.sendRequest(ServerEvent.LOGOUT, null);
             UserSession.getInstance().cleanUserSession();
             changeScene((Node) e.getSource(), "start.fxml");
         }
@@ -241,23 +228,20 @@ public class AdminController extends BaseController implements Initializable, So
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                String type    = SocketHelper.getType(response);
-                String status  = SocketHelper.getStatus(response);
-                String message = SocketHelper.getMessage(response);
+                ServerEvent type = SocketHelper.getTypeEnum(response);
 
-                boolean isBroadcast  = "NEW_PENDING_ITEM".equals(status) || "NEW_ITEM".equals(status);
-                boolean isMyResponse = "GET_ALL_ITEMS".equals(type) || "APPROVE_ITEM".equals(type) // ← đổi key
-                        || "REJECT_ITEM".equals(type) || "LOGOUT".equals(type);
+                if (handleBroadcast(type)) return;
 
-                if (!isBroadcast && !isMyResponse) return;
+                boolean isMyType = type == ServerEvent.GET_ALL_ITEMS
+                        || type == ServerEvent.APPROVE_ITEM
+                        || type == ServerEvent.REJECT_ITEM;
+                if (!isMyType) return;
 
-                switch (status) {
-                    case "SUCCESS" -> handleSuccessCase(JsonParser.parseString(response).getAsJsonObject(), message);
-                    case "NEW_PENDING_ITEM", "NEW_ITEM" -> {
-                        loadAllItems(); // ← đổi
-                        AlertUtils.showStatus(err, "Có người dùng vừa đăng sản phẩm mới! Đã tự động cập nhật.", "#9b59b6");
-                    }
-                    case "ERROR" -> AlertUtils.showStatus(err, "Lỗi: " + message, "red");
+                ServerEvent status = SocketHelper.getStatusEnum(response);
+                if (status == ServerEvent.SUCCESS) {
+                    handleAdminSuccess(type, response);
+                } else if (status == ServerEvent.ERROR) {
+                    AlertUtils.showStatus(err, "Lỗi: " + SocketHelper.getMessage(response), "red");
                 }
             } catch (Exception e) {
                 log.severe("LỖI JSON ADMIN: " + e.getMessage());
@@ -265,11 +249,40 @@ public class AdminController extends BaseController implements Initializable, So
         });
     }
 
-    private void handleSuccessCase(JsonObject jsonResponse, String message) {
-        switch (message) {
-            case "Danh sách tất cả phiên"       -> renderAllItems(jsonResponse.toString());
-            case "Đã duyệt và bắt đầu đấu giá" -> AlertUtils.showStatus(err, "Đã DUYỆT sản phẩm!", "green");
-            case "Đã từ chối sản phẩm"          -> AlertUtils.showStatus(err, "Đã TỪ CHỐI sản phẩm!", "#cc7a00");
+    private boolean handleBroadcast(ServerEvent type) {
+        if (type == ServerEvent.RELOAD_ALL_ITEMS || type == ServerEvent.RELOAD_PENDING_ITEMS) {
+            loadAllItems();
+            AlertUtils.showStatus(err, "Dữ liệu vừa được cập nhật tự động.", "#9b59b6");
+            return true;
+        }
+        return false;
+    }
+
+    private void handleAdminSuccess(ServerEvent type, String response) {
+        switch (type) {
+            case GET_ALL_ITEMS -> {
+                DataCache.getInstance().put(ServerEvent.GET_ALL_ITEMS, response);
+                renderAllItems(response);
+            }
+            case APPROVE_ITEM -> AlertUtils.showStatus(err, "Đã DUYỆT sản phẩm!", "green");
+            case REJECT_ITEM  -> AlertUtils.showStatus(err, "Đã TỪ CHỐI sản phẩm!", "#cc7a00");
+        }
+    }
+
+    private void renderAllItems(String response) {
+        try {
+            JsonObject json = JsonParser.parseString(response).getAsJsonObject();
+            ServerEvent type = SocketHelper.getTypeEnum(response);
+            if (type != ServerEvent.GET_ALL_ITEMS) return;
+            if (!json.has("payload") || !json.get("payload").isJsonArray()) return;
+
+            sessionList.clear();
+            for (JsonElement element : json.getAsJsonArray("payload")) {
+                AuctionSession session = parseSingleAuctionSession(element.getAsJsonObject());
+                if (session != null) sessionList.add(session);
+            }
+        } catch (Exception e) {
+            log.warning("[Admin] Lỗi render: " + e.getMessage());
         }
     }
 }

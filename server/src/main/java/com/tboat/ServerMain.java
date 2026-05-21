@@ -2,7 +2,7 @@ package com.tboat;
 
 import com.tboat.logging.LogConfig;
 import com.tboat.service.AuctionTimerService;
-import com.tboat.socket.ClientHandler;
+import com.tboat.socket.ClientConnection;
 import com.tboat.service.AuctionManager;
 import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.models.auction.AuctionSession;
@@ -36,7 +36,7 @@ public class ServerMain {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                threadPool.execute(new ClientHandler(clientSocket));
+                threadPool.execute(new ClientConnection(clientSocket));
                 logger.info("[Network]: Chấp nhận kết nối từ: {}", clientSocket.getInetAddress());
             }
         } catch (IOException e) {

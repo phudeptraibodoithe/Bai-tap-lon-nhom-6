@@ -8,6 +8,7 @@ import com.tboat.models.auction.AuctionSession;
 import com.tboat.models.auction.StatusOfAuction;
 import com.tboat.models.auction.BidEntry;
 import com.tboat.models.core.User;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.session.UserSession;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
@@ -37,8 +38,9 @@ public class AuctionController extends BaseController implements SocketListener 
 
     @FXML private ImageView itemImage;
     @FXML private Label timeRemaining, nameItem, idItem, sellerName;
-    @FXML private Label description, currentPrice, highestBidder, lblNotification;
+    @FXML private Label description, currentPrice, buyNowPrice, highestBidder, lblNotification;
     @FXML private TextField bidAmount;
+    @FXML private CheckBox autoBidCheckBox;
     @FXML private Button btnBid;
     @FXML private TableView<BidEntry> tableBidHistory;
     @FXML private TableColumn<BidEntry, String> colBidTime, colBidUser;
@@ -56,7 +58,7 @@ public class AuctionController extends BaseController implements SocketListener 
         ObservableList<BidEntry> listBids = FXCollections.observableArrayList();
         ui = new AuctionUIHelper(
                 itemImage, timeRemaining, nameItem, idItem,
-                sellerName, description, currentPrice, highestBidder, lblNotification,
+                sellerName, description, currentPrice, buyNowPrice, highestBidder, lblNotification,
                 bidAmount, btnBid,
                 tableBidHistory, colBidTime, colBidUser, colBidPrice,
                 bidLineChart, listBids
@@ -65,21 +67,29 @@ public class AuctionController extends BaseController implements SocketListener 
         if (lblNotification != null) lblNotification.setText("");
         CurrencyFormatter.attachCurrencyListener(bidAmount);
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
+        if (autoBidCheckBox != null) {
+            autoBidCheckBox.selectedProperty().addListener((obs, wasSelected, isNowSelected) -> {
+                if (!isNowSelected && bidAmount != null) {
+                    bidAmount.setOpacity(1.0);
+                    bidAmount.clear();
+                }
+            });
+        }
     }
 
     public void setItemData(AuctionSession session) {
         if (session == null) return;
         this.currentSession = session;
         ui.updateUI(session);
-        SocketHelper.sendRequest("JOIN", session.getId());
-        SocketHelper.sendRequest("GET_SESSION_BIDS", session.getId());
+        SocketHelper.sendRequest(ServerEvent.JOIN, session.getId());
+        SocketHelper.sendRequest(ServerEvent.GET_SESSION_BIDS, session.getId());
         refreshAuctionState();
     }
 
     @Override
     public void onReload() {
         if (currentSession != null) {
-            SocketHelper.sendRequest("GET_SESSION_BIDS", currentSession.getId());
+            SocketHelper.sendRequest(ServerEvent.GET_SESSION_BIDS, currentSession.getId());
             log.info("Đã tải lại lịch sử giá!");
         }
     }
@@ -89,6 +99,14 @@ public class AuctionController extends BaseController implements SocketListener 
         StatusOfAuction status = currentSession.getStatusOfAuction();
         ui.setupInputState(status, isUserSeller);
         ui.setupTimerState(status, currentSession);
+        boolean disableAutoBid = isUserSeller
+                || status == StatusOfAuction.ENDED
+                || status == StatusOfAuction.CANCELED
+                || status == StatusOfAuction.NOT_STARTED;
+        if (autoBidCheckBox != null) {
+            autoBidCheckBox.setDisable(disableAutoBid);
+            if (disableAutoBid) autoBidCheckBox.setSelected(false);
+        }
     }
 
     @FXML
@@ -101,15 +119,29 @@ public class AuctionController extends BaseController implements SocketListener 
         try {
             double bidValue = CurrencyFormatter.parse(input);
             double minNext  = currentSession.getCurrentPrice() + currentSession.getBidIncrease();
+
             if (bidValue < minNext) {
                 AlertUtils.showStatus(lblNotification,
                         "Giá tối thiểu: " + CurrencyFormatter.formatDisplay(minNext), STYLE_ERROR);
                 return;
             }
+
             AlertUtils.showStatus(lblNotification, "Đang gửi lệnh đặt giá...",
                     "-fx-text-fill: #f39c12; -fx-font-weight: bold;");
-            SocketHelper.sendRequest("BID", bidValue);
-            bidAmount.clear();
+
+            boolean isAutoBid = autoBidCheckBox != null && autoBidCheckBox.isSelected();
+            if (isAutoBid) {
+                JsonObject payload = new JsonObject();
+                payload.addProperty("maxBid", bidValue);
+                SocketHelper.sendRequest(ServerEvent.REGISTER_AUTO_BID, payload);
+
+                // Giữ checkbox + giá trị, chỉ làm mờ ô nhập
+                if (bidAmount != null) bidAmount.setOpacity(0.85);
+            } else {
+                SocketHelper.sendRequest(ServerEvent.BID, bidValue);
+                bidAmount.clear();
+            }
+
         } catch (Exception e) {
             AlertUtils.showStatus(lblNotification, "Định dạng số không hợp lệ.", STYLE_ERROR);
         }
@@ -119,38 +151,42 @@ public class AuctionController extends BaseController implements SocketListener 
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                String type   = SocketHelper.getType(response);
-                String status = SocketHelper.getStatus(response);
-                String msg    = SocketHelper.getMessage(response);
-                JsonObject json = JsonParser.parseString(response).getAsJsonObject();
-                if ("GET_PROFILE".equals(type) || "UPDATE_PROFILE".equals(type)) return;
-                if ("NEW_BID".equals(type) || "NEW_BID".equals(status)) {
+                ServerEvent type   = SocketHelper.getTypeEnum(response);   // ← parse thành enum
+                ServerEvent status = SocketHelper.getStatusEnum(response);
+                String msg         = SocketHelper.getMessage(response);
+                JsonObject json    = JsonParser.parseString(response).getAsJsonObject();
+
+                if (type == ServerEvent.GET_PROFILE || type == ServerEvent.UPDATE_PROFILE) return;
+
+                if (type == ServerEvent.NEW_BID || status == ServerEvent.NEW_BID) {
                     if (json.has("payload") && json.get("payload").isJsonObject())
                         handleNewBid(json.getAsJsonObject("payload"));
                     return;
                 }
-                if ("AUCTION_STARTED".equals(type) || "AUCTION_STARTED".equals(status)) {
+                if (type == ServerEvent.AUCTION_STARTED || status == ServerEvent.AUCTION_STARTED) {
                     handleAuctionStarted(msg); return;
                 }
-                if ("AUCTION_FINISHED".equals(type) || "AUCTION_FINISHED".equals(status)) {
+                if (type == ServerEvent.AUCTION_FINISHED || status == ServerEvent.AUCTION_FINISHED) {
                     handleAuctionFinished(json, msg); return;
                 }
-                if ("TIME_EXTENDED".equals(type) || "TIME_EXTENDED".equals(status)) {
-                    AlertUtils.showAlert(Alert.AlertType.WARNING, "Đấu giá kịch tính!", msg); return;
+                if (type == ServerEvent.TIME_EXTENDED || status == ServerEvent.TIME_EXTENDED) {
+                    handleTimeExtended(json, msg); return;
                 }
-                if ("AUCTION_CANCELED".equals(type) || "AUCTION_CANCELED".equals(status)) {
-                    AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Thông báo",
-                            "Phiên đấu giá này đã bị hủy bởi người bán!");
-                    if (btnBid != null) btnBid.setDisable(true);
-                    return;
+                if (type == ServerEvent.AUCTION_CANCELED || status == ServerEvent.AUCTION_CANCELED) {
+                    handleAuctionCanceled(); return;
+                }
+                if (type == ServerEvent.AUTO_BID_OUT || status == ServerEvent.AUTO_BID_OUT) {
+                    handleAutoBidOut(msg); return;
                 }
 
                 switch (status) {
-                    case "SUCCESS"      -> handleSuccess(json, msg);
-                    case "JOIN_SUCCESS" -> handleJoinSuccess(json);
-                    case "FAILED"       -> handleFailed(json, msg);
-                    case "ERROR"        -> AlertUtils.showStatus(lblNotification, "⚠️ " + msg, STYLE_ERROR);
-                    case "SERVER_READY" -> {}
+                    case SUCCESS             -> handleSuccess(json, msg);
+                    case AUTO_BID_REGISTERED -> AlertUtils.showStatus(
+                            lblNotification, "✅ " + msg, STYLE_SUCCESS);
+                    case JOIN_SUCCESS        -> handleJoinSuccess(json);
+                    case FAILED              -> handleFailed(json, msg);
+                    case ERROR               -> AlertUtils.showStatus(lblNotification, "⚠️ " + msg, STYLE_ERROR);
+                    case SYSTEM, SERVER_READY -> {}
                     default -> log.warn("Không khớp handler: type={}, status={}", type, status);
                 }
             } catch (Exception e) {
@@ -158,6 +194,69 @@ public class AuctionController extends BaseController implements SocketListener 
             }
         });
     }
+
+// ── Handlers (các method đã thay đổi / thêm mới) ─────────────────────────────
+
+    /**
+     * FIX: Reset countdown timer theo newEndTime server gửi về.
+     * Trước đây chỉ show Alert, bộ đếm vẫn chạy theo endTime cũ.
+     */
+    private void handleTimeExtended(JsonObject json, String msg) {
+        AlertUtils.showAlert(Alert.AlertType.WARNING, "Đấu giá kịch tính!", msg);
+        try {
+            if (json.has("payload") && json.get("payload").isJsonObject()) {
+                String newEndStr = json.getAsJsonObject("payload").get("newEndTime").getAsString();
+                LocalDateTime newEnd = LocalDateTime.parse(newEndStr);
+                currentSession.setEndTime(newEnd);
+                ui.updateEndTime(newEnd);   // reset AuctionTimer với endTime mới
+            }
+        } catch (Exception e) {
+            log.warn("Không thể parse newEndTime từ TIME_EXTENDED: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * FIX: Phân biệt rõ 2 case:
+     *   - Có winner → hiển thị người thắng + trừ/cộng tiền
+     *   - Không winner → clear highestBidder, hiển thị "Không có người thắng"
+     */
+    private void handleAuctionFinished(JsonObject json, String msg) {
+        currentSession.setStatusOfAuction(StatusOfAuction.ENDED);
+
+        boolean hasWinner = json.has("payload") && !json.get("payload").isJsonNull()
+                && json.get("payload").isJsonObject();
+
+        if (hasWinner) {
+            JsonObject p      = json.getAsJsonObject("payload");
+            String winner     = p.has("winner")         ? p.get("winner").getAsString()        : null;
+            String winnerNick = p.has("winnerNickname")  ? p.get("winnerNickname").getAsString()
+                    : (winner != null ? winner : null);
+            double finalPrice = p.has("finalPrice")      ? p.get("finalPrice").getAsDouble()
+                    : currentSession.getCurrentPrice();
+
+            currentSession.setHighestBidderAccount(winnerNick);
+            currentSession.setCurrentPrice(finalPrice);
+            ui.updateUI(currentSession);
+            if (winner != null) updateUserBalance(winner, finalPrice);
+        } else {
+            // FIX: không có ai bid → clear winner rõ ràng, tránh sót nickname cũ
+            currentSession.setHighestBidderAccount(null);
+            ui.updateUI(currentSession);
+        }
+
+        refreshAuctionState();
+        ui.setAuctionEndedLabel(currentSession);   // hiển thị đúng theo null/non-null winner
+        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Kết thúc", msg);
+    }
+
+    /** Tách ra method riêng cho gọn handleServerResponse */
+    private void handleAuctionCanceled() {
+        currentSession.setStatusOfAuction(StatusOfAuction.CANCELED);
+        refreshAuctionState();
+        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Thông báo",
+                "Phiên đấu giá này đã bị hủy bởi người bán!");
+    }
+
 
     // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -207,6 +306,8 @@ public class AuctionController extends BaseController implements SocketListener 
         JsonObject payload = json.getAsJsonObject("payload");
 
         currentSession.setCurrentPrice(payload.get("currentPrice").getAsDouble());
+        if (payload.has("buyNowPrice"))
+            currentSession.setBuyNowPrice(payload.get("buyNowPrice").getAsDouble());
         this.isUserSeller = payload.has("isSeller") && payload.get("isSeller").getAsBoolean();
         if (payload.has("sellerNickname"))
             currentSession.setSellerAccountName(payload.get("sellerNickname").getAsString());
@@ -223,27 +324,20 @@ public class AuctionController extends BaseController implements SocketListener 
         AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Đã đến giờ", msg);
     }
 
-    private void handleAuctionFinished(JsonObject json, String msg) {
-        currentSession.setStatusOfAuction(StatusOfAuction.ENDED);
-
-        if (json.has("payload") && !json.get("payload").isJsonNull()) {
-            JsonObject p      = json.getAsJsonObject("payload");
-            String winner     = p.has("winner")         ? p.get("winner").getAsString()         : null;
-            // Ưu tiên winnerNickname — server gửi từ AuctionRoom.finishAuction()
-            String winnerNick = p.has("winnerNickname") ? p.get("winnerNickname").getAsString()
-                    : (winner != null ? winner : "Không có");
-            double finalPrice = p.has("finalPrice")     ? p.get("finalPrice").getAsDouble()
-                    : currentSession.getCurrentPrice();
-
-            currentSession.setHighestBidderAccount(winnerNick); // nickname cho UI
-            currentSession.setCurrentPrice(finalPrice);
-            ui.updateUI(currentSession);
-            if (winner != null) updateUserBalance(winner, finalPrice);
+    private void handleAutoBidOut(String msg) {
+        // Bỏ tích checkbox
+        if (autoBidCheckBox != null) {
+            autoBidCheckBox.setSelected(false);
+            autoBidCheckBox.setDisable(false);
         }
-
-        refreshAuctionState();
-        ui.setAuctionEndedLabel(currentSession); // hiển thị "Người chiến thắng: X"
-        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Kết thúc", msg);
+        // Xóa ô nhập và restore opacity
+        if (bidAmount != null) {
+            bidAmount.clear();
+            bidAmount.setOpacity(1.0);
+        }
+        // Thông báo cho user
+        AlertUtils.showStatus(lblNotification,
+                "⚠️ " + msg, STYLE_ERROR);
     }
 
     private void handleFailed(JsonObject json, String msg) {

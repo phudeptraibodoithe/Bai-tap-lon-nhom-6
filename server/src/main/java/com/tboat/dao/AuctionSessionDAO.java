@@ -25,8 +25,8 @@ public class AuctionSessionDAO {
      * Thêm auction session. itemId phải được set sẵn trước khi gọi hàm này.
      */
     public int addAuctionSession(AuctionSession session) {
-        String sql = "INSERT INTO auction_session (startTime, endTime, currentPrice, bidIncrease, status, highestBidderAccount, itemId) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO auction_session (startTime, endTime, currentPrice, bidIncrease, buyNowPrice, status, highestBidderAccount, itemId) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -34,9 +34,10 @@ public class AuctionSessionDAO {
             ps.setTimestamp(2, Timestamp.valueOf(session.getEndTime()));
             ps.setDouble(3, session.getCurrentPrice());
             ps.setDouble(4, session.getBidIncrease());
-            ps.setString(5, session.getStatusOfAuction().toString());
-            ps.setString(6, session.getHighestBidderAccount());
-            ps.setInt(7, session.getItemId());
+            ps.setDouble(5, session.getBuyNowPrice());
+            ps.setString(6, session.getStatusOfAuction().toString());
+            ps.setString(7, session.getHighestBidderAccount());
+            ps.setInt(8, session.getItemId());
 
             ps.executeUpdate();
             try (ResultSet rs = ps.getGeneratedKeys()) {
@@ -69,6 +70,7 @@ public class AuctionSessionDAO {
         session.setStatusOfAuction(StatusOfAuction.valueOf(rs.getString("status")));
         session.setHighestBidderAccount(rs.getString("highestBidderAccount"));
         session.setItemId(rs.getInt("itemId"));
+        session.setBuyNowPrice(rs.getDouble("buyNowPrice"));
         return session;
     }
 
@@ -196,14 +198,15 @@ public class AuctionSessionDAO {
      * Chỉ update các field thuộc auction_session. Item đã được update riêng từ bên ngoài.
      */
     public boolean updateAuction(AuctionSession session) {
-        String sql = "UPDATE auction_session SET currentPrice = ?, bidIncrease = ?, startTime = ?, endTime = ? WHERE id = ?";
+        String sql = "UPDATE auction_session SET currentPrice = ?, bidIncrease = ?, buyNowPrice = ?, startTime = ?, endTime = ? WHERE id = ?";
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setDouble(1, session.getCurrentPrice());
             ps.setDouble(2, session.getBidIncrease());
-            ps.setTimestamp(3, Timestamp.valueOf(session.getStartTime()));
-            ps.setTimestamp(4, Timestamp.valueOf(session.getEndTime()));
-            ps.setInt(5, session.getId());
+            ps.setDouble(3, session.getBuyNowPrice());
+            ps.setTimestamp(4, Timestamp.valueOf(session.getStartTime()));
+            ps.setTimestamp(5, Timestamp.valueOf(session.getEndTime()));
+            ps.setInt(6, session.getId());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             logger.error("Lỗi khi cập nhật thông tin Auction: ", e);

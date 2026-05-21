@@ -11,12 +11,20 @@ public class Request<T> {
         this.payload = payload;
     }
 
+    public Request(ServerEvent action, T payload) {
+        this(action.name(), payload);
+    }
+
     public String getAction() {
         return action;
     }
 
     public void setAction(String action) {
         this.action = action;
+    }
+
+    public void setAction(ServerEvent action) {
+        this.action = action.name();
     }
 
     public T getPayload() {

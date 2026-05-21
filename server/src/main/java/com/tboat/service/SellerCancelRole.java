@@ -27,7 +27,6 @@ public class SellerCancelRole implements TransactionRole {
             return false;
         }
 
-        // 3. THỰC THI: Gọi DAO để cập nhật trạng thái thành CANCELED
         boolean isCanceled = sessionDAO.cancelAuction(session.getId());
 
         if (isCanceled) {

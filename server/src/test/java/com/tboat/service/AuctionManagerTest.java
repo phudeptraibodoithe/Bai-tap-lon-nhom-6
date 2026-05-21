@@ -1,114 +1,209 @@
 package com.tboat.service;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Unit Test cho AuctionManager (sau khi đã xóa autoStartAuctions).
+ * KHÔNG cần DB — AuctionManager chỉ quản lý Map in-memory.
+ */
 class AuctionManagerTest {
 
-    private AuctionManager auctionManager;
+    private AuctionManager manager;
+
+    // ID dùng riêng cho test, tránh xung đột với data thật
+    private static final int ID_A = 9001;
+    private static final int ID_B = 9002;
+    private static final int ID_C = 9003;
 
     @BeforeEach
     void setUp() {
-        auctionManager = AuctionManager.getInstance();
+        manager = AuctionManager.getInstance();
     }
 
     @AfterEach
     void tearDown() {
-        auctionManager.removeRoom(101);
-        auctionManager.removeRoom(102);
-        auctionManager.removeRoom(103);
+        manager.removeRoom(ID_A);
+        manager.removeRoom(ID_B);
+        manager.removeRoom(ID_C);
     }
 
     // ===================== SINGLETON =====================
 
     @Test
-    @DisplayName("AuctionManager phải là Singleton - 2 lần getInstance() trả về cùng object")
-    void testSingletonInstance() {
-        AuctionManager instance1 = AuctionManager.getInstance();
-        AuctionManager instance2 = AuctionManager.getInstance();
-        assertSame(instance1, instance2, "AuctionManager phải là Singleton, chỉ có 1 instance duy nhất!");
+    @DisplayName("getInstance() phải trả về cùng một object (Singleton)")
+    void testSingleton_SameInstance() {
+        AuctionManager i1 = AuctionManager.getInstance();
+        AuctionManager i2 = AuctionManager.getInstance();
+        assertSame(i1, i2, "AuctionManager phải là Singleton.");
+    }
+
+    @Test
+    @DisplayName("getInstance() không được trả về null")
+    void testSingleton_NotNull() {
+        assertNotNull(AuctionManager.getInstance());
     }
 
     // ===================== CREATE ROOM =====================
 
     @Test
-    @DisplayName("Tạo phòng mới và lấy lại phải thành công")
-    void testCreateAndGetRoom() {
-        int sessionId = 101;
-        double initialPrice = 50000.0;
+    @DisplayName("createRoom rồi getRoom: phải trả về room đúng sessionId")
+    void testCreateAndGet_SessionIdMatches() {
+        manager.createRoom(ID_A, 50_000.0);
+        AuctionRoom room = manager.getRoom(ID_A);
 
-        auctionManager.createRoom(sessionId, initialPrice);
-        AuctionRoom room = auctionManager.getRoom(sessionId);
-
-        assertNotNull(room, "Phòng đấu giá phải tồn tại sau khi tạo.");
-        assertEquals(sessionId, room.getSessionId(), "Session ID phải khớp.");
-        assertEquals(initialPrice, room.getCurrentPrice(), "Giá khởi điểm phải khớp.");
+        assertNotNull(room);
+        assertEquals(ID_A, room.getSessionId());
     }
 
     @Test
-    @DisplayName("Tạo phòng trùng ID thì phải giữ nguyên phòng cũ (putIfAbsent)")
-    void testCreateRoomDuplicate_ShouldKeepOriginal() {
-        int sessionId = 103;
-        double firstPrice = 100000.0;
-        double secondPrice = 999999.0;
+    @DisplayName("createRoom rồi getRoom: giá khởi điểm phải khớp")
+    void testCreateAndGet_InitialPriceMatches() {
+        manager.createRoom(ID_A, 75_000.0);
+        assertEquals(75_000.0, manager.getRoom(ID_A).getCurrentPrice());
+    }
 
-        auctionManager.createRoom(sessionId, firstPrice);
-        auctionManager.createRoom(sessionId, secondPrice); // Tạo lại cùng ID
+    @Test
+    @DisplayName("createRoom: phòng mới phải chưa có lastBidder")
+    void testCreateRoom_NoBidderInitially() {
+        manager.createRoom(ID_A, 10_000.0);
+        assertNull(manager.getRoom(ID_A).getLastBidder());
+    }
 
-        AuctionRoom room = auctionManager.getRoom(sessionId);
-        assertNotNull(room);
-        // putIfAbsent: phòng đầu tiên phải được giữ nguyên, không bị ghi đè
-        assertEquals(firstPrice, room.getCurrentPrice(), "Phòng cũ phải được giữ nguyên khi tạo trùng ID.");
+    @Test
+    @DisplayName("createRoom: phòng mới chưa ở trạng thái finished")
+    void testCreateRoom_NotFinishedInitially() {
+        manager.createRoom(ID_A, 10_000.0);
+        assertFalse(manager.getRoom(ID_A).isFinished());
+    }
+
+    @Test
+    @DisplayName("createRoom với giá = 0: được tạo bình thường")
+    void testCreateRoom_ZeroPrice_Allowed() {
+        manager.createRoom(ID_A, 0.0);
+        assertNotNull(manager.getRoom(ID_A));
+        assertEquals(0.0, manager.getRoom(ID_A).getCurrentPrice());
+    }
+
+    @Test
+    @DisplayName("createRoom với giá âm: vẫn tạo được (không validate giá ở tầng này)")
+    void testCreateRoom_NegativePrice_Allowed() {
+        manager.createRoom(ID_A, -500.0);
+        assertNotNull(manager.getRoom(ID_A));
+    }
+
+    // ===================== putIfAbsent — KHÔNG GHI ĐÈ =====================
+
+    @Test
+    @DisplayName("createRoom trùng ID: phòng đầu tiên phải được giữ nguyên")
+    void testCreateRoom_Duplicate_KeepsOriginal() {
+        manager.createRoom(ID_A, 100_000.0);
+        manager.createRoom(ID_A, 999_999.0); // gọi lại cùng ID
+
+        assertEquals(100_000.0, manager.getRoom(ID_A).getCurrentPrice(),
+                "putIfAbsent: giá gốc phải được giữ, không bị ghi đè.");
+    }
+
+    @Test
+    @DisplayName("createRoom trùng ID: vẫn chỉ có đúng 1 phòng cho ID đó")
+    void testCreateRoom_Duplicate_OneRoomOnly() {
+        manager.createRoom(ID_A, 100_000.0);
+        AuctionRoom first = manager.getRoom(ID_A);
+
+        manager.createRoom(ID_A, 200_000.0);
+        AuctionRoom second = manager.getRoom(ID_A);
+
+        assertSame(first, second, "Phải là cùng 1 object AuctionRoom.");
     }
 
     // ===================== GET ROOM =====================
 
     @Test
-    @DisplayName("getRoom với ID không tồn tại phải trả về null")
-    void testGetRoom_NotExist_ShouldReturnNull() {
-        AuctionRoom room = auctionManager.getRoom(99999);
-        assertNull(room, "getRoom với ID không tồn tại phải trả về null.");
+    @DisplayName("getRoom với ID không tồn tại → null")
+    void testGetRoom_NotExist_ReturnsNull() {
+        assertNull(manager.getRoom(99_999));
+    }
+
+    @Test
+    @DisplayName("getRoom với ID âm không tồn tại → null")
+    void testGetRoom_NegativeId_ReturnsNull() {
+        assertNull(manager.getRoom(-1));
     }
 
     // ===================== REMOVE ROOM =====================
 
     @Test
-    @DisplayName("Xóa phòng thành công thì getRoom phải trả về null")
-    void testRemoveRoom() {
-        int sessionId = 102;
-        auctionManager.createRoom(sessionId, 100000.0);
-        assertNotNull(auctionManager.getRoom(sessionId));
+    @DisplayName("removeRoom sau createRoom: getRoom phải trả về null")
+    void testRemoveRoom_AfterCreate_ReturnsNull() {
+        manager.createRoom(ID_A, 50_000.0);
+        assertNotNull(manager.getRoom(ID_A));
 
-        auctionManager.removeRoom(sessionId);
-        assertNull(auctionManager.getRoom(sessionId), "Phòng đấu giá phải bị xóa khỏi hệ thống.");
+        manager.removeRoom(ID_A);
+        assertNull(manager.getRoom(ID_A));
     }
 
     @Test
-    @DisplayName("Xóa phòng không tồn tại không được throw Exception")
-    void testRemoveRoom_NotExist_ShouldNotThrow() {
-        // removeRoom ID không tồn tại không được crash
-        assertDoesNotThrow(() -> auctionManager.removeRoom(99999),
-                "Xóa phòng không tồn tại không được throw Exception.");
+    @DisplayName("removeRoom ID không tồn tại: không throw Exception")
+    void testRemoveRoom_NotExist_NoThrow() {
+        assertDoesNotThrow(() -> manager.removeRoom(99_999));
     }
 
-    // ===================== TRẠNG THÁI PHÒNG =====================
+    @Test
+    @DisplayName("removeRoom ID âm: không throw Exception")
+    void testRemoveRoom_NegativeId_NoThrow() {
+        assertDoesNotThrow(() -> manager.removeRoom(-1));
+    }
 
     @Test
-    @DisplayName("Phòng mới tạo: giá ban đầu đúng, lastBidder null, chưa kết thúc")
-    void testNewRoom_InitialState() {
-        int sessionId = 101;
-        double initialPrice = 75000.0;
+    @DisplayName("removeRoom gọi 2 lần cùng ID: không throw Exception")
+    void testRemoveRoom_CalledTwice_NoThrow() {
+        manager.createRoom(ID_A, 10_000.0);
+        manager.removeRoom(ID_A);
+        assertDoesNotThrow(() -> manager.removeRoom(ID_A));
+    }
 
-        auctionManager.createRoom(sessionId, initialPrice);
-        AuctionRoom room = auctionManager.getRoom(sessionId);
+    // ===================== NHIỀU PHÒNG CÙNG LÚC =====================
 
-        assertNotNull(room);
-        assertEquals(initialPrice, room.getCurrentPrice());
-        assertNull(room.getLastBidder(), "Phòng mới chưa có người đặt giá.");
-        assertFalse(room.isFinished(), "Phòng mới chưa kết thúc.");
+    @Test
+    @DisplayName("Tạo 3 phòng khác nhau: tất cả đều tồn tại độc lập")
+    void testMultipleRooms_AllExistIndependently() {
+        manager.createRoom(ID_A, 1_000.0);
+        manager.createRoom(ID_B, 2_000.0);
+        manager.createRoom(ID_C, 3_000.0);
+
+        assertNotNull(manager.getRoom(ID_A));
+        assertNotNull(manager.getRoom(ID_B));
+        assertNotNull(manager.getRoom(ID_C));
+        assertNotSame(manager.getRoom(ID_A), manager.getRoom(ID_B));
+        assertNotSame(manager.getRoom(ID_B), manager.getRoom(ID_C));
+    }
+
+    @Test
+    @DisplayName("Xóa 1 trong 3 phòng: 2 phòng còn lại không bị ảnh hưởng")
+    void testRemoveRoom_OneOfThree_OthersIntact() {
+        manager.createRoom(ID_A, 1_000.0);
+        manager.createRoom(ID_B, 2_000.0);
+        manager.createRoom(ID_C, 3_000.0);
+
+        manager.removeRoom(ID_B);
+
+        assertNotNull(manager.getRoom(ID_A), "Phòng A phải còn nguyên.");
+        assertNull(manager.getRoom(ID_B),    "Phòng B phải đã bị xóa.");
+        assertNotNull(manager.getRoom(ID_C), "Phòng C phải còn nguyên.");
+    }
+
+    @Test
+    @DisplayName("Tạo lại phòng sau khi đã xóa: tạo thành công với giá mới")
+    void testCreateRoom_AfterRemove_CreatesNew() {
+        manager.createRoom(ID_A, 1_000.0);
+        manager.removeRoom(ID_A);
+
+        manager.createRoom(ID_A, 5_000.0);
+        AuctionRoom newRoom = manager.getRoom(ID_A);
+
+        assertNotNull(newRoom);
+        assertEquals(5_000.0, newRoom.getCurrentPrice(),
+                "Phòng mới sau khi xóa phải có giá mới.");
     }
 }

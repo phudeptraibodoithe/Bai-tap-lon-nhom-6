@@ -1,5 +1,7 @@
 package com.tboat.ucb;
 
+import com.tboat.models.network.ServerEvent;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
@@ -18,18 +20,17 @@ public class DataCache {
     private static final Logger log = Logger.getLogger(DataCache.class.getName());
     private static DataCache instance;
 
-    // Map<actionName, CacheEntry>
-    private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
+    // Map<action, CacheEntry>
+    private final Map<ServerEvent, CacheEntry> cache = new ConcurrentHashMap<>();
 
     // ── TTL mặc định theo action (milliseconds) ──────────────────────────────
-    public static final Map<String, Long> DEFAULT_TTL = Map.of(
-            "GET_PENDING_ITEMS",   30_000L,  // 30 giây
-            "PROFILE",            120_000L,  // 2 phút
-            "LIST_AVAILABLE",      20_000L,  // ← THÊM: Trang chủ, 20 giây
-            "GET_MY_AUCTIONS",     30_000L,  // ← THÊM: Manager
-            "GET_HISTORY",         60_000L,   // 1 phút
-            "GET_ACTIVE_SESSIONS", 15_000L,  // 15 giây (giá đấu thay đổi nhanh)
-            "GET_MY_BIDS",         30_000L  // 30 giây
+    public static final Map<ServerEvent, Long> DEFAULT_TTL = Map.of(
+            ServerEvent.GET_ALL_ITEMS,      30_000L,
+            ServerEvent.GET_PROFILE,       120_000L,
+            ServerEvent.LIST_AVAILABLE,     20_000L,
+            ServerEvent.GET_MY_AUCTIONS,    30_000L,
+            ServerEvent.GET_HISTORY,        60_000L,
+            ServerEvent.GET_SESSION_BIDS,   15_000L
     );
     private static final long DEFAULT_TTL_FALLBACK = 30_000L;
 
@@ -41,34 +42,34 @@ public class DataCache {
     }
 
     // ─── Lưu response vào cache ───────────────────────────────────────────────
-    public void put(String action, String jsonResponse) {
+    public void put(ServerEvent action, String jsonResponse) {
         cache.put(action, new CacheEntry(jsonResponse, System.currentTimeMillis()));
-        log.fine("[Cache] Saved: " + action);
+        log.fine("[Cache] Saved: " + action.name());
     }
 
     // ─── Lấy cache nếu còn fresh ─────────────────────────────────────────────
-    public String get(String action) {
+    public String get(ServerEvent action) {
         long ttl = DEFAULT_TTL.getOrDefault(action, DEFAULT_TTL_FALLBACK);
         CacheEntry entry = cache.get(action);
         if (entry == null) return null;
         if (System.currentTimeMillis() - entry.timestamp > ttl) {
             cache.remove(action);
-            log.fine("[Cache] Expired: " + action);
+            log.fine("[Cache] Expired: " + action.name());
             return null;
         }
-        log.fine("[Cache] HIT: " + action);
+        log.fine("[Cache] HIT: " + action.name());
         return entry.json;
     }
 
     // ─── Kiểm tra nhanh ──────────────────────────────────────────────────────
-    public boolean isFresh(String action) {
+    public boolean isFresh(ServerEvent action) {
         return get(action) != null;
     }
 
     // ─── Xóa cache (dùng sau khi có thay đổi quan trọng) ────────────────────
-    public void invalidate(String action) {
+    public void invalidate(ServerEvent action) {
         cache.remove(action);
-        log.info("[Cache] Invalidated: " + action);
+        log.info("[Cache] Invalidated: " + action.name());
     }
 
     public void invalidateAll() {

@@ -6,6 +6,7 @@
 <?import javafx.scene.chart.LineChart?>
 <?import javafx.scene.chart.NumberAxis?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
@@ -103,6 +104,9 @@
                                         <Label fx:id="currentPrice" text="0" textFill="#0a1a3a">
                                             <font><Font name="System Bold" size="40.0" /></font>
                                         </Label>
+                                        <Label fx:id="buyNowPrice" text="Giá bán ngay: Đang tải..." textFill="#d35400">
+                                            <font><Font name="System Bold" size="15.0" /></font>
+                                        </Label>
                                         <Label fx:id="highestBidder" text="🏆 Trạng thái: Đang tải..." textFill="#4caf50">
                                             <font><Font name="System Bold" size="14.0" /></font>
                                         </Label>
@@ -160,6 +164,9 @@
                                         </Label>
                                         <HBox spacing="15.0">
                                             <children>
+                                                <CheckBox fx:id="autoBidCheckBox" mnemonicParsing="false" prefHeight="50.0" text="Autobid" textFill="#0a1a3a">
+                                                    <font><Font name="System Bold" size="13.0" /></font>
+                                                </CheckBox>
                                                 <TextField fx:id="bidAmount" prefHeight="50.0" promptText="Nhập mức giá bạn muốn trả..." styleClass="input-bid" HBox.hgrow="ALWAYS" maxWidth="Infinity" />
                                                 <Button fx:id="btnBid" minWidth="-Infinity" mnemonicParsing="false" onAction="#placeBid" prefHeight="50.0" prefWidth="180.0" styleClass="btn-place-bid" text="Place Bid" />
                                             </children>

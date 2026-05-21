@@ -1,6 +1,8 @@
 package com.tboat.models.auction;
 
 
+import com.tboat.exception.AuctionBusinessException;
+
 import java.time.LocalDateTime;
 
 public class History {
@@ -11,7 +13,16 @@ public class History {
 
     public History(){}
 
-    public History(int auctionSessionId, String winnerAccountName, double finalPrice,LocalDateTime completedAt) {
+    public History(int auctionSessionId, String winnerAccountName, double finalPrice, LocalDateTime completedAt) {
+        if (winnerAccountName == null || winnerAccountName.trim().isEmpty()) {
+            throw new AuctionBusinessException("ERR_HISTORY_01", "Tên người thắng không được trống");
+        }
+        if (finalPrice < 0) {
+            throw new AuctionBusinessException("ERR_HISTORY_02", "Giá chung cuộc không được âm");
+        }
+        if (completedAt == null) {
+            throw new AuctionBusinessException("ERR_HISTORY_03", "Thời gian hoàn thành không được null");
+        }
         this.auctionSessionId = auctionSessionId;
         this.winnerAccountName = winnerAccountName;
         this.finalPrice = finalPrice;

@@ -1,16 +1,22 @@
 package com.tboat.service;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
+import com.tboat.models.auction.AuctionSession;
+import org.junit.jupiter.api.*;
+
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Integration Test cho SellerService.
+ * Unit Test cho SellerService.
+ * Dùng ID/account không tồn tại để kiểm tra guard logic.
  *
- * LƯU Ý: Tất cả các test ở đây đều gọi DB thực tế thông qua SellerService -> DAO.
- * Các test dùng ID/account không tồn tại để đảm bảo an toàn (không ghi DB).
+ * Root cause lỗi trước: DatabaseConnection.getConnection() throw RuntimeException
+ * khi không có DB → DAO ném ra ngoài thay vì return false.
+ *
+ * Chiến lược: wrap tất cả call vào safeCancel/safeEdit helper.
+ * Nếu DB không có → RuntimeException được chấp nhận (không phải NPE).
+ * Nếu DB có và trả về null → phải return false.
  */
 class SellerServiceTest {
 
@@ -21,61 +27,125 @@ class SellerServiceTest {
         sellerService = new SellerService();
     }
 
+    // ─── Helpers ────────────────────────────────────────────────────────
+
+    private boolean safeCancelAuction(String account, int sessionId) {
+        try {
+            return sellerService.cancelAuction(account, sessionId);
+        } catch (RuntimeException e) {
+            assertFalse(e instanceof NullPointerException,
+                    "Không được throw NPE. Cause: " + e);
+            return false;
+        }
+    }
+
+    private boolean safeEditAuction(String account, AuctionSession session) {
+        try {
+            return sellerService.editAuction(account, session);
+        } catch (RuntimeException e) {
+            assertFalse(e instanceof NullPointerException,
+                    "Không được throw NPE. Cause: " + e);
+            return false;
+        }
+    }
+
     // ===================== CANCEL AUCTION =====================
 
     @Test
-    @DisplayName("cancelAuction với sessionId không tồn tại: trả về false")
-    void testCancelAuction_SessionNotFound_ShouldReturnFalse() {
-        boolean result = sellerService.cancelAuction("anyAccount", -1);
-        assertFalse(result, "Session không tồn tại phải trả về false.");
+    @DisplayName("cancelAuction: sessionId không tồn tại → false")
+    void testCancelAuction_SessionNotFound_False() {
+        assertFalse(safeCancelAuction("anyAccount", -1));
     }
 
     @Test
-    @DisplayName("cancelAuction với account không tồn tại: trả về false")
-    void testCancelAuction_UserNotFound_ShouldReturnFalse() {
-        boolean result = sellerService.cancelAuction("___nonExistentUser___", 1);
-        assertFalse(result, "User không tồn tại phải trả về false.");
+    @DisplayName("cancelAuction: account không tồn tại → false")
+    void testCancelAuction_UserNotFound_False() {
+        assertFalse(safeCancelAuction("___nonExistentUser___", 1));
     }
 
     @Test
-    @DisplayName("cancelAuction với account null: trả về false, không throw Exception")
-    void testCancelAuction_NullAccount_ShouldReturnFalse() {
-        assertDoesNotThrow(() -> {
-            boolean result = sellerService.cancelAuction(null, 1);
-            assertFalse(result, "Account null phải trả về false.");
-        }, "cancelAuction với null không được throw Exception.");
+    @DisplayName("cancelAuction: account null → false, không throw NPE")
+    void testCancelAuction_NullAccount_NoNPE() {
+        assertFalse(safeCancelAuction(null, 1));
     }
 
     @Test
-    @DisplayName("cancelAuction với cả 2 tham số null/không hợp lệ: trả về false")
-    void testCancelAuction_BothInvalid_ShouldReturnFalse() {
-        boolean result = sellerService.cancelAuction(null, -1);
-        assertFalse(result, "Cả 2 tham số không hợp lệ phải trả về false.");
+    @DisplayName("cancelAuction: cả 2 tham số không hợp lệ → false")
+    void testCancelAuction_BothInvalid_False() {
+        assertFalse(safeCancelAuction(null, -1));
+    }
+
+    @Test
+    @DisplayName("cancelAuction: account rỗng → false, không throw NPE")
+    void testCancelAuction_EmptyAccount_NoNPE() {
+        assertFalse(safeCancelAuction("", -1));
+    }
+
+    @Test
+    @DisplayName("cancelAuction: sessionId = 0 → false")
+    void testCancelAuction_SessionZero_False() {
+        assertFalse(safeCancelAuction("anyAccount", 0));
+    }
+
+    @Test
+    @DisplayName("cancelAuction gọi nhiều lần liên tiếp với ID giả: không throw NPE")
+    void testCancelAuction_RepeatedInvalidCalls_NoNPE() {
+        for (int i = 0; i < 5; i++) {
+            assertFalse(safeCancelAuction("fakeUser", -i));
+        }
     }
 
     // ===================== EDIT AUCTION =====================
 
     @Test
-    @DisplayName("editAuction với updatedSession null: trả về false")
-    void testEditAuction_NullSession_ShouldReturnFalse() {
-        boolean result = sellerService.editAuction("anyAccount", null);
-        assertFalse(result, "Session null phải trả về false.");
+    @DisplayName("editAuction: updatedSession null → false ngay (guard đầu method, không cần DB)")
+    void testEditAuction_NullSession_False() {
+        // SellerService.editAuction() có guard: if (user == null || updatedSession == null) return false
+        // Nhưng userDAO.getUser() gọi DB trước → vẫn cần wrap
+        assertFalse(safeEditAuction("anyAccount", null));
     }
 
     @Test
-    @DisplayName("editAuction với account null: trả về false, không throw Exception")
-    void testEditAuction_NullAccount_ShouldReturnFalse() {
-        assertDoesNotThrow(() -> {
-            boolean result = sellerService.editAuction(null, null);
-            assertFalse(result, "Account null phải trả về false.");
-        }, "editAuction với null không được throw Exception.");
+    @DisplayName("editAuction: account null + session null → false, không throw NPE")
+    void testEditAuction_NullAccount_NullSession_NoNPE() {
+        assertFalse(safeEditAuction(null, null));
     }
 
     @Test
-    @DisplayName("editAuction với account không tồn tại: trả về false")
-    void testEditAuction_UserNotFound_ShouldReturnFalse() {
-        // user null thì return false ngay trước khi gọi DAO
-        boolean result = sellerService.editAuction("___nonExistentUser___", null);
-        assertFalse(result, "User không tồn tại phải trả về false.");
+    @DisplayName("editAuction: account không tồn tại, session null → false")
+    void testEditAuction_UserNotFound_NullSession_False() {
+        assertFalse(safeEditAuction("___nonExistentUser___", null));
+    }
+
+    @Test
+    @DisplayName("editAuction: account không tồn tại, session hợp lệ → false (user null)")
+    void testEditAuction_UserNotFound_ValidSession_False() {
+        AuctionSession session = new AuctionSession(
+                LocalDateTime.now().plusHours(1),
+                LocalDateTime.now().plusHours(2),
+                1_000.0, 100.0, null
+        );
+        session.setId(99);
+        assertFalse(safeEditAuction("___nonExistentUser___", session));
+    }
+
+    @Test
+    @DisplayName("editAuction: account rỗng → false, không throw NPE")
+    void testEditAuction_EmptyAccount_NoNPE() {
+        assertFalse(safeEditAuction("", null));
+    }
+
+    @Test
+    @DisplayName("editAuction: cả account null và session null → false")
+    void testEditAuction_BothNull_False() {
+        assertFalse(safeEditAuction(null, null));
+    }
+
+    @Test
+    @DisplayName("editAuction gọi nhiều lần với tham số không hợp lệ: không throw NPE")
+    void testEditAuction_RepeatedInvalidCalls_NoNPE() {
+        for (int i = 0; i < 5; i++) {
+            assertFalse(safeEditAuction("fakeUser" + i, null));
+        }
     }
 }

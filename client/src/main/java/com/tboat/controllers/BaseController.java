@@ -116,7 +116,7 @@ public abstract class BaseController {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Helper: "TrangChu.fxml" → "TrangChuFxml", "admin.fxml" → "adminFxml"
+    // Helper: "home.fxml" → "TrangChuFxml", "admin.fxml" → "adminFxml"
     // ─────────────────────────────────────────────────────────────────────────
     public static String toScreenKey(String fxmlFile) {
         return fxmlFile.replace(".fxml", "") + "Fxml";
@@ -136,10 +136,10 @@ public abstract class BaseController {
     @FXML
     public void handleReloadClick(ActionEvent event) { onReload(); }
 
-    @FXML public void switchToMenu(Event event)         { changeScene((Node) event.getSource(), "TrangChu.fxml"); }
+    @FXML public void switchToMenu(Event event)         { changeScene((Node) event.getSource(), "home.fxml"); }
     @FXML public void switchToHistory(ActionEvent e)    { changeScene((Node) e.getSource(), "history.fxml"); }
-    @FXML public void switchToPostItem(ActionEvent e)   { changeScene((Node) e.getSource(), "postItem.fxml"); }
-    @FXML public void switchToWallet(ActionEvent e)     { changeScene((Node) e.getSource(), "NapRut.fxml"); }
+    @FXML public void switchToPostItem(ActionEvent e)   { changeScene((Node) e.getSource(), "post-item.fxml"); }
+    @FXML public void switchToWallet(ActionEvent e)     { changeScene((Node) e.getSource(), "wallet.fxml"); }
     @FXML public void switchToProfile(ActionEvent e)    { changeScene((Node) e.getSource(), "profile.fxml"); }
     @FXML public void switchToManager(ActionEvent e)    { changeScene((Node) e.getSource(), "manager.fxml"); }
     @FXML public void switchToLogin(ActionEvent e) throws IOException     { changeScene((Node) e.getSource(), "login.fxml"); }

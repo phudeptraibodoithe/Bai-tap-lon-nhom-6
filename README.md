@@ -156,13 +156,7 @@ Có thể mở nhiều cửa sổ Client cùng lúc để mô phỏng nhiều ng
 | 11 | Thông báo | Gửi thông báo cho seller khi phiên được duyệt, bắt đầu và kết thúc đồng bộ xuyên suốt ứng dụng dạng Push Notification. gửi thông báo cho bidder khi mua thành công, khi bị người khác vượt bid |
 | 12 | Xử lý lỗi & Ngoại lệ nghiệp vụ |Tự động chặn đặt giá thấp hơn giá hiện tại + bước giá, từ chối bid khi phiên đấu giá đã đóng hoặc kết thúc, Xử lý ngoại lệ kết nối mạng: Tự động dọn dẹp tài nguyên khi Client ngắt kết nối đột ngột |
 | 13 | Anti-sniping | Nếu có bất kỳ lệnh đặt giá hợp lệ nào xuất hiện trong 15 giây cuối cùng trước khi phiên đóng, hệ thống tự động gia hạn thời gian kết thúc của phiên thêm 30 giây để đảm bảo tính cạnh tranh công bằng|
-
-
-### 🔄 Chức năng đang phát triển
-
-| # | Chức năng | Tiến độ |
-|---|---|---|
-| 14 | Auto-bidding (đặt giá tự động) | ~50% |
+| 14 | Auto-bidding (đặt giá tự động)|
 ---
 
 ## 7. Tài liệu & Demo

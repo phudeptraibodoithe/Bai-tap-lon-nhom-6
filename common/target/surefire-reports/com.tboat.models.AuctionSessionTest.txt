@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.tboat.models.AuctionSessionTest
--------------------------------------------------------------------------------
-Tests run: 26, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.047 s -- in com.tboat.models.AuctionSessionTest

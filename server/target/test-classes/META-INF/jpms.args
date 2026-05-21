@@ -1,4 +1,0 @@
---patch-module
-com.tboat.server=_
---add-reads
-com.tboat.server=ALL-UNNAMED

@@ -2,11 +2,13 @@ package com.tboat.controllers.helper;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.tboat.models.network.ServerEvent;
+import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-
+import java.util.Set;
 /**
  * NotificationManager — nhận JSON từ server, giữ state trên client.
  *
@@ -30,10 +32,14 @@ public class NotificationManager implements SocketListener {
     public ObservableList<NotificationItem> getItems() { return items; }
 
     // ── Các action server gửi xuống được coi là thông báo ─────────────────────
-    private static final java.util.Set<String> NOTIF_ACTIONS = java.util.Set.of(
-            "NEW_BID", "OUTBID", "AUCTION_ENDING", "AUCTION_WON",
-            "AUCTION_SOLD", "AUCTION_CANCELED", "ITEM_APPROVED", "ITEM_REJECTED",
-            "DEPOSIT", "WITHDRAW"
+    private static final Set<ServerEvent> NOTIF_ACTIONS = Set.of(
+            ServerEvent.NEW_BID,
+            ServerEvent.AUCTION_STARTED,
+            ServerEvent.AUCTION_CANCELED,
+            ServerEvent.AUCTION_FINISHED,
+            ServerEvent.TRANSACTION,
+            ServerEvent.APPROVE_ITEM,
+            ServerEvent.REJECT_ITEM
     );
 
     // ════════════════════════════════════════════════════════════════════════
@@ -51,16 +57,16 @@ public class NotificationManager implements SocketListener {
      * // Các action khác (JOIN_SUCCESS, BID_RESULT...) xử lý riêng như cũ
      * </pre>
      *
-     * @param action  action string từ Response (ví dụ "NEW_BID")
+     * @param event  action string từ Response (ví dụ "NEW_BID")
      * @param payload JsonObject chứa title, subtitle, avatarText, avatarColor
      */
-    public void receive(String action, JsonObject payload) {
-        if (!NOTIF_ACTIONS.contains(action)) return;
+    public void receive(ServerEvent event, JsonObject payload) {
+        if (!NOTIF_ACTIONS.contains(event)) return;
         if (payload == null) return;
         if (!payload.has("title") || !payload.has("subtitle")) return;
 
         NotificationItem item = new NotificationItem(
-                getStr(payload, "title",       action),
+                getStr(payload, "title",       event.name()),
                 getStr(payload, "subtitle",    ""),
                 "Vừa xong",
                 getStr(payload, "avatarText",  "📢"),
@@ -75,23 +81,25 @@ public class NotificationManager implements SocketListener {
         }
     }
 
+    // handleServerResponse cũng cần cập nhật theo:
     @Override
     public void handleServerResponse(String response) {
         try {
-            JsonObject json = JsonParser.parseString(response).getAsJsonObject();
-            String action = json.has("type") && !json.get("type").isJsonNull()
-                    ? json.get("type").getAsString()
-                    : "";
-            JsonObject payload = json.has("payload") && json.get("payload").isJsonObject()
-                    ? json.getAsJsonObject("payload")
-                    : null;
-            if ("NOTIFICATION".equals(action) && payload != null && payload.has("notifType")) {
-                action = payload.get("notifType").getAsString();
+            JsonObject json    = JsonParser.parseString(response).getAsJsonObject();
+            ServerEvent type   = SocketHelper.getTypeEnum(response);
+            JsonObject payload = SocketHelper.getPayloadObject(response);
+
+            // Nếu là NOTIFICATION wrapper → đọc notifType bên trong
+            if (type == ServerEvent.NOTIFICATION && payload != null
+                    && payload.has("notifType")) {
+                try {
+                    type = ServerEvent.valueOf(payload.get("notifType").getAsString());
+                } catch (IllegalArgumentException ignored) {
+                    return;
+                }
             }
-            receive(action, payload);
-        } catch (Exception ignored) {
-            // Bỏ qua response không phải JSON thông báo.
-        }
+            receive(type, payload);
+        } catch (Exception ignored) {}
     }
 
     // ── Các thao tác khác ─────────────────────────────────────────────────────

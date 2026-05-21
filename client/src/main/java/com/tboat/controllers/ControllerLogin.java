@@ -3,6 +3,7 @@ package com.tboat.controllers;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.models.core.User;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.session.UserSession;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
@@ -45,19 +46,19 @@ public class ControllerLogin extends BaseController implements SocketListener {
         payload.addProperty("accountName", username);
         payload.addProperty("password", password);
 
-        SocketHelper.sendRequest("LOGIN", payload);
+        SocketHelper.sendRequest(ServerEvent.LOGIN.name(), payload);
     }
 
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                if (!"LOGIN".equals(SocketHelper.getType(response))) return;
+                if (SocketHelper.getTypeEnum(response) != ServerEvent.LOGIN) return;
 
-                String status = SocketHelper.getStatus(response);
-                String message = SocketHelper.getMessage(response);
+                ServerEvent status = SocketHelper.getStatusEnum(response);
+                String message     = SocketHelper.getMessage(response);
 
-                if ("SUCCESS".equals(status)) {
+                if (status == ServerEvent.SUCCESS) {
                     JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
                     if (jsonResponse.has("payload") && !jsonResponse.get("payload").isJsonNull()) {
                         JsonObject payload = jsonResponse.getAsJsonObject("payload");
@@ -76,14 +77,13 @@ public class ControllerLogin extends BaseController implements SocketListener {
                             changeScene(signText, "TrangChu.fxml");
                         }
                     }
-                } else if ("FAILED".equals(status) || "ERROR".equals(status)) {
-                    // 👉 Sử dụng Switch Expression của Java hiện đại để map lỗi
+                } else if (status == ServerEvent.FAILED || status == ServerEvent.ERROR) {
                     String displayMsg = switch (message) {
-                        case "USER_NOT_FOUND" -> "Tài khoản không tồn tại!";
-                        case "WRONG_PASSWORD" -> "Sai mật khẩu, vui lòng thử lại.";
+                        case "USER_NOT_FOUND"    -> "Tài khoản không tồn tại!";
+                        case "WRONG_PASSWORD"    -> "Sai mật khẩu, vui lòng thử lại.";
                         case "ALREADY_LOGGED_IN" -> "Tài khoản đang online ở nơi khác.";
-                        case "DATABASE_ERROR" -> "Lỗi cơ sở dữ liệu.";
-                        default -> "Đăng nhập thất bại: " + message;
+                        case "DATABASE_ERROR"    -> "Lỗi cơ sở dữ liệu.";
+                        default                  -> "Đăng nhập thất bại: " + message;
                     };
                     AlertUtils.showStatus(err, displayMsg, STYLE_ERROR);
                 }

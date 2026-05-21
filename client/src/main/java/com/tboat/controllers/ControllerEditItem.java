@@ -2,6 +2,7 @@ package com.tboat.controllers;
 
 import com.google.gson.JsonObject;
 import com.tboat.models.auction.AuctionSession;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
 import com.tboat.ucb.DataCache;
@@ -174,12 +175,12 @@ public class ControllerEditItem extends BaseController implements Initializable,
         payload.addProperty("startTime", startDT.toString());
         payload.addProperty("endTime", endDT.toString());
 
-        SocketHelper.sendRequest("EDIT_ITEM", payload);
+        SocketHelper.sendRequest(ServerEvent.EDIT_ITEM.name(), payload);
     }
 
     public void deleteItem(ActionEvent e) {
         if (AlertUtils.showConfirmation("Cảnh báo Xóa", "Bạn có chắc chắn muốn xóa (hủy) sản phẩm này không?\nHành động này không thể hoàn tác!")) {
-            SocketHelper.sendRequest("CANCEL_AUCTION", currentSessionId);
+            SocketHelper.sendRequest(ServerEvent.CANCEL_AUCTION.name(), currentSessionId);
         }
     }
 
@@ -191,26 +192,22 @@ public class ControllerEditItem extends BaseController implements Initializable,
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                String type = SocketHelper.getType(response);
-                if (!"EDIT_ITEM".equals(type) && !"CANCEL_AUCTION".equals(type)) return;
+                ServerEvent type   = SocketHelper.getTypeEnum(response);
+                ServerEvent status = SocketHelper.getStatusEnum(response);
 
-                String status  = SocketHelper.getStatus(response);
+                if (type != ServerEvent.EDIT_ITEM && type != ServerEvent.CANCEL_AUCTION) return;
+
                 String message = SocketHelper.getMessage(response);
 
-                if ("SUCCESS".equals(status)) {
-                    DataCache.getInstance().invalidate("LIST_AVAILABLE");
-                    DataCache.getInstance().invalidate("GET_MY_AUCTIONS");
-
-                    if ("EDIT_ITEM".equals(type)) {
-                        AlertUtils.showStatus(thongbao, "Cập nhật thành công!", STYLE_SUCCESS);
-                        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Cập nhật thành công", "Đã cập nhật sản phẩm thành công!");
-                        changeScene(thongbao, "manager.fxml");
-                    } else {
-                        AlertUtils.showStatus(thongbao, "Xóa thành công!", STYLE_SUCCESS);
-                        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Xóa thành công", "Đã xóa sản phẩm thành công!");
-                        changeScene(thongbao, "manager.fxml");
-                    }
-                } else if ("ERROR".equals(status) || "FAILED".equals(status)) {
+                if (status == ServerEvent.SUCCESS) {
+                    DataCache.getInstance().invalidate(ServerEvent.LIST_AVAILABLE.name());
+                    DataCache.getInstance().invalidate(ServerEvent.GET_MY_AUCTIONS.name());
+                    String label = (type == ServerEvent.EDIT_ITEM) ? "Cập nhật" : "Xóa";
+                    AlertUtils.showStatus(thongbao, label + " thành công!", STYLE_SUCCESS);
+                    AlertUtils.showAlert(Alert.AlertType.INFORMATION, label + " thành công",
+                            "Đã " + label.toLowerCase() + " sản phẩm thành công!");
+                    changeScene(thongbao, "manager.fxml");
+                } else if (status == ServerEvent.ERROR || status == ServerEvent.FAILED) {
                     AlertUtils.showStatus(thongbao, message, STYLE_ERROR);
                 }
             } catch (Exception e) {

@@ -9,6 +9,7 @@ import com.tboat.models.auction.StatusOfAuction;
 import com.tboat.models.item.Item;
 import com.tboat.models.item.factory.ItemFactory;
 import com.tboat.models.item.factory.ItemFactoryProducer;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.session.UserSession;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
@@ -75,22 +76,6 @@ public class AdminController extends BaseController implements Initializable, So
             log.info("[Admin] Cache MISS → fetch server");
             NavigationContext.getInstance().reportCacheHit(screenKey, false);
             loadAllItems();
-        }
-    }
-
-    private void renderAllItems(String response) {
-        try {
-            JsonObject json = JsonParser.parseString(response).getAsJsonObject();
-            if (!"GET_ALL_ITEMS".equals(json.has("type") ? json.get("type").getAsString() : "")) return;
-            if (!json.has("payload") || !json.get("payload").isJsonArray()) return;
-
-            sessionList.clear();
-            for (JsonElement element : json.getAsJsonArray("payload")) {
-                AuctionSession session = parseSingleAuctionSession(element.getAsJsonObject());
-                if (session != null) sessionList.add(session);
-            }
-        } catch (Exception e) {
-            log.warning("[Admin] Lỗi render: " + e.getMessage());
         }
     }
 
@@ -243,30 +228,29 @@ public class AdminController extends BaseController implements Initializable, So
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                String type = SocketHelper.getType(response);
+                ServerEvent type = SocketHelper.getTypeEnum(response);
 
                 if (handleBroadcast(type)) return;
 
-                boolean isMyType = "GET_ALL_ITEMS".equals(type)
-                        || "APPROVE_ITEM".equals(type)
-                        || "REJECT_ITEM".equals(type);
+                boolean isMyType = type == ServerEvent.GET_ALL_ITEMS
+                        || type == ServerEvent.APPROVE_ITEM
+                        || type == ServerEvent.REJECT_ITEM;
                 if (!isMyType) return;
 
-                String status = SocketHelper.getStatus(response);
-                if ("SUCCESS".equals(status)) {
+                ServerEvent status = SocketHelper.getStatusEnum(response);
+                if (status == ServerEvent.SUCCESS) {
                     handleAdminSuccess(type, response);
-                } else if ("ERROR".equals(status)) {
+                } else if (status == ServerEvent.ERROR) {
                     AlertUtils.showStatus(err, "Lỗi: " + SocketHelper.getMessage(response), "red");
                 }
-
             } catch (Exception e) {
                 log.severe("LỖI JSON ADMIN: " + e.getMessage());
             }
         });
     }
 
-    private boolean handleBroadcast(String type) {
-        if ("RELOAD_ALL_ITEMS".equals(type) || "RELOAD_PENDING_ITEMS".equals(type)) {
+    private boolean handleBroadcast(ServerEvent type) {
+        if (type == ServerEvent.RELOAD_ALL_ITEMS || type == ServerEvent.RELOAD_PENDING_ITEMS) {
             loadAllItems();
             AlertUtils.showStatus(err, "Dữ liệu vừa được cập nhật tự động.", "#9b59b6");
             return true;
@@ -274,14 +258,31 @@ public class AdminController extends BaseController implements Initializable, So
         return false;
     }
 
-    private void handleAdminSuccess(String type, String response) {
+    private void handleAdminSuccess(ServerEvent type, String response) {
         switch (type) {
-            case "GET_ALL_ITEMS" -> {
+            case GET_ALL_ITEMS -> {
                 DataCache.getInstance().put("GET_ALL_ITEMS", response);
                 renderAllItems(response);
             }
-            case "APPROVE_ITEM" -> AlertUtils.showStatus(err, "Đã DUYỆT sản phẩm!", "green");
-            case "REJECT_ITEM"  -> AlertUtils.showStatus(err, "Đã TỪ CHỐI sản phẩm!", "#cc7a00");
+            case APPROVE_ITEM -> AlertUtils.showStatus(err, "Đã DUYỆT sản phẩm!", "green");
+            case REJECT_ITEM  -> AlertUtils.showStatus(err, "Đã TỪ CHỐI sản phẩm!", "#cc7a00");
+        }
+    }
+
+    private void renderAllItems(String response) {
+        try {
+            JsonObject json = JsonParser.parseString(response).getAsJsonObject();
+            ServerEvent type = SocketHelper.getTypeEnum(response);
+            if (type != ServerEvent.GET_ALL_ITEMS) return;
+            if (!json.has("payload") || !json.get("payload").isJsonArray()) return;
+
+            sessionList.clear();
+            for (JsonElement element : json.getAsJsonArray("payload")) {
+                AuctionSession session = parseSingleAuctionSession(element.getAsJsonObject());
+                if (session != null) sessionList.add(session);
+            }
+        } catch (Exception e) {
+            log.warning("[Admin] Lỗi render: " + e.getMessage());
         }
     }
 }

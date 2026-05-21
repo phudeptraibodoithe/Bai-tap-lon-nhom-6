@@ -2,6 +2,7 @@ package com.tboat.controllers;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
 import com.tboat.utilsclient.*;
@@ -118,7 +119,7 @@ public class ControllerPostItem extends BaseController implements Initializable,
         payload.addProperty("startTime", startDT.toString());
         payload.addProperty("endTime", endDT.toString());
 
-        SocketHelper.sendRequest("POST_ITEM", payload);
+        SocketHelper.sendRequest(ServerEvent.POST_ITEM.name(), payload);
     }
 
     public void canclePost(ActionEvent e) {
@@ -131,19 +132,19 @@ public class ControllerPostItem extends BaseController implements Initializable,
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                if (!"POST_ITEM".equals(SocketHelper.getType(response))) return;
+                if (SocketHelper.getTypeEnum(response) != ServerEvent.POST_ITEM) return;
 
-                String status  = SocketHelper.getStatus(response);
-                String message = SocketHelper.getMessage(response);
+                ServerEvent status = SocketHelper.getStatusEnum(response);
+                String message     = SocketHelper.getMessage(response);
 
-                if ("SUCCESS".equals(status)) {
+                if (status == ServerEvent.SUCCESS) {
                     JsonObject json = JsonParser.parseString(response).getAsJsonObject();
                     String id = json.has("payload") && !json.get("payload").isJsonNull()
                             ? json.get("payload").getAsString() : "N/A";
                     AlertUtils.showStatus(thongbao, "Đăng bán thành công! ID Phiên: " + id, STYLE_SUCCESS);
                     AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Thành công", "Đăng sản phẩm thành công!");
                     changeScene(thongbao, "trangchu.fxml");
-                } else if ("ERROR".equals(status) || "FAILED".equals(status)) {
+                } else if (status == ServerEvent.ERROR || status == ServerEvent.FAILED) {
                     AlertUtils.showStatus(thongbao, message, STYLE_ERROR);
                 }
             } catch (Exception e) {

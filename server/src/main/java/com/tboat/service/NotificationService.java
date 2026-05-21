@@ -3,6 +3,7 @@ package com.tboat.service;
 import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.models.auction.AuctionSession;
 import com.tboat.models.network.Response;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.socket.ClientContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -290,7 +291,7 @@ public class NotificationService {
         payload.addProperty("avatarText",  avatarText);
         payload.addProperty("avatarColor", avatarColor);
 
-        ctx.sendResponse(new Response<>("NOTIFICATION", "SYSTEM", title, payload));
+        ctx.sendResponse(new Response<>(ServerEvent.NOTIFICATION.name(), ServerEvent.SYSTEM.name(), title, payload));
         log.debug("[Notif] Đã gửi '{}' → {}", action, username);
     }
 

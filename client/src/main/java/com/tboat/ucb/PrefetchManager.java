@@ -1,6 +1,7 @@
 package com.tboat.ucb;
 
 import com.google.gson.JsonObject;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.socket.SocketManager;
 
 import java.util.List;
@@ -16,18 +17,16 @@ public class PrefetchManager {
     private static final Logger log = Logger.getLogger(PrefetchManager.class.getName());
     private static PrefetchManager instance;
 
-    // Map: tên màn hình → danh sách action cần prefetch cho màn đó
-    // Key phải khớp với tên file fxml (không có ".fxml")
     private static final Map<String, List<String>> SCREEN_ACTIONS = Map.of(
-            "adminFxml",       List.of("GET_PENDING_ITEMS"),
-            "adminWalletFxml", List.of("PROFILE"),
-            "TrangChuFxml",    List.of("LIST_AVAILABLE"),
-            "managerFxml",     List.of("GET_MY_AUCTIONS"),
-            "historyFxml",     List.of("GET_HISTORY"),
-            "profileFxml",     List.of("PROFILE"),
-            "NapRutFxml",      List.of("PROFILE"),
-            "editItemFxml", List.of(),
-            "postItemFxml", List.of(),
+            "adminFxml",       List.of(ServerEvent.GET_ALL_ITEMS.name()),   // "GET_PENDING_ITEMS" không có trong enum → xem lại
+            "adminWalletFxml", List.of(ServerEvent.GET_PROFILE.name()),     // "PROFILE" → GET_PROFILE
+            "TrangChuFxml",    List.of(ServerEvent.LIST_AVAILABLE.name()),
+            "managerFxml",     List.of(ServerEvent.GET_MY_AUCTIONS.name()),
+            "historyFxml",     List.of(ServerEvent.GET_HISTORY.name()),
+            "profileFxml",     List.of(ServerEvent.GET_PROFILE.name()),     // "PROFILE" → GET_PROFILE
+            "NapRutFxml",      List.of(ServerEvent.GET_PROFILE.name()),     // "PROFILE" → GET_PROFILE
+            "editItemFxml",    List.of(),
+            "postItemFxml",    List.of(),
             "auctionFxml",     List.of()
     );
 

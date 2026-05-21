@@ -1,6 +1,7 @@
 package com.tboat.controllers;
 
 import com.google.gson.JsonObject;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
 import com.tboat.utilsclient.AlertUtils;
@@ -61,23 +62,25 @@ public class ControllerRegister extends BaseController implements SocketListener
         payload.addProperty("email", email);
         payload.addProperty("phone", phone);
 
-        SocketHelper.sendRequest("REGISTER", payload);
+        SocketHelper.sendRequest(ServerEvent.REGISTER.name(), payload);
     }
 
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                if (!"REGISTER".equals(SocketHelper.getType(response))) return;
+                if (SocketHelper.getTypeEnum(response) != ServerEvent.REGISTER) return;
 
-                String status = SocketHelper.getStatus(response);
-                String message = SocketHelper.getMessage(response);
+                ServerEvent status = SocketHelper.getStatusEnum(response);
+                String message     = SocketHelper.getMessage(response);
 
-                if ("SUCCESS".equals(status)) {
+                if (status == ServerEvent.SUCCESS) {
                     AlertUtils.showStatus(err, "Đăng ký thành công! Đang chuyển hướng...", STYLE_SUCCESS);
                     changeScene(err, "login.fxml");
-                } else if ("FAILED".equals(status) || "ERROR".equals(status)) {
-                    AlertUtils.showStatus(err, message.isEmpty() ? "Đăng ký thất bại, vui lòng thử lại!" : message, STYLE_ERROR);
+                } else if (status == ServerEvent.FAILED || status == ServerEvent.ERROR) {
+                    AlertUtils.showStatus(err,
+                            message.isEmpty() ? "Đăng ký thất bại, vui lòng thử lại!" : message,
+                            STYLE_ERROR);
                 }
             } catch (Exception e) {
                 AlertUtils.showStatus(err, "Lỗi đọc dữ liệu từ Server!", STYLE_ERROR);

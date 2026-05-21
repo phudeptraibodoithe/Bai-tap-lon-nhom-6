@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.tboat.models.auction.AuctionSession;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
 import com.tboat.ucb.DataCache;
@@ -48,7 +49,7 @@ public class TrangChuController extends BaseController implements Initializable,
 
         // ── UCB: Cache-then-Network ──────────────────────────────────────────
         String screenKey = BaseController.toScreenKey("TrangChu.fxml"); // "TrangChuFxml"
-        String cached = DataCache.getInstance().get("LIST_AVAILABLE");
+        String cached = DataCache.getInstance().get(ServerEvent.LIST_AVAILABLE.name());
 
         if (cached != null) {
             logger.info("[TrangChu] Cache HIT → render ngay");
@@ -70,7 +71,7 @@ public class TrangChuController extends BaseController implements Initializable,
     public void loadAuctions() {
         if (itemContainer != null) itemContainer.getChildren().clear();
         // 👉 Rút gọn siêu cấp: Gửi request thông qua SocketHelper
-        SocketHelper.sendRequest("LIST_AVAILABLE", "");
+        SocketHelper.sendRequest(ServerEvent.LIST_AVAILABLE.name(), "");
     }
 
     // =======================================================
@@ -122,11 +123,11 @@ public class TrangChuController extends BaseController implements Initializable,
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                String type = SocketHelper.getType(response);
+                ServerEvent type = SocketHelper.getTypeEnum(response);
 
                 if (handleBroadcast(type)) return;
-                if (!"LIST_AVAILABLE".equals(type)) return;
-                if (!"SUCCESS".equals(SocketHelper.getStatus(response))) return;
+                if (type != ServerEvent.LIST_AVAILABLE) return;
+                if (SocketHelper.getStatusEnum(response) != ServerEvent.SUCCESS) return;
 
                 renderAuctionList(response);
 
@@ -136,9 +137,8 @@ public class TrangChuController extends BaseController implements Initializable,
         });
     }
 
-    /** @return true nếu đây là broadcast toàn cục, đã xử lý xong */
-    private boolean handleBroadcast(String type) {
-        if ("RELOAD_AVAILABLE".equals(type)) {
+    private boolean handleBroadcast(ServerEvent type) {
+        if (type == ServerEvent.RELOAD_AVAILABLE) {
             loadAuctions();
             return true;
         }
@@ -149,7 +149,7 @@ public class TrangChuController extends BaseController implements Initializable,
         JsonArray auctionArray = SocketHelper.getPayloadArray(response);
         if (auctionArray == null) return;
 
-        DataCache.getInstance().put("LIST_AVAILABLE", response);
+        DataCache.getInstance().put(ServerEvent.LIST_AVAILABLE.name(), response);
         allCards.clear();
         if (itemContainer != null) itemContainer.getChildren().clear();
 

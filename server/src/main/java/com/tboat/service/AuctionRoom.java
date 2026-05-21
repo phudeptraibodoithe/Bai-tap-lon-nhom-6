@@ -10,6 +10,7 @@ import com.tboat.models.auction.BidResult;
 import com.tboat.models.auction.History;
 import com.tboat.models.auction.StatusOfAuction;
 import com.tboat.models.network.Response;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.socket.ClientContext;
 import com.tboat.socket.GlobalBroadcaster;
 import org.slf4j.Logger;
@@ -27,13 +28,12 @@ public class AuctionRoom {
 
     private static final Logger logger = LoggerFactory.getLogger(AuctionRoom.class);
 
-    // ── Auto-bid entry: so sánh theo maxBid DESC, nếu bằng thì ưu tiên đăng ký trước ──
     private record AutoBidEntry(String account, double maxBid, long registeredAt)
             implements Comparable<AutoBidEntry> {
         @Override
         public int compareTo(AutoBidEntry other) {
-            int cmp = Double.compare(other.maxBid, this.maxBid); // maxBid cao hơn → ưu tiên hơn
-            return cmp != 0 ? cmp : Long.compare(this.registeredAt, other.registeredAt); // đăng ký sớm hơn → ưu tiên hơn
+            int cmp = Double.compare(other.maxBid, this.maxBid);
+            return cmp != 0 ? cmp : Long.compare(this.registeredAt, other.registeredAt);
         }
     }
 
@@ -42,10 +42,8 @@ public class AuctionRoom {
     private String       lastBidder;
     private boolean      isFinished = false;
 
-    /** Mỗi account chỉ có 1 entry auto-bid — dùng Map để upsert nhanh, Queue để lấy top */
-    private final Map<String, AutoBidEntry>         autoBidMap   = new HashMap<>();
-    private final PriorityBlockingQueue<AutoBidEntry> autoBidQueue =
-            new PriorityBlockingQueue<>();
+    private final Map<String, AutoBidEntry>           autoBidMap   = new HashMap<>();
+    private final PriorityBlockingQueue<AutoBidEntry> autoBidQueue = new PriorityBlockingQueue<>();
 
     private final List<ClientContext> subscribers    = new CopyOnWriteArrayList<>();
     private final AuctionSessionDAO   sessionDAO     = new AuctionSessionDAO();
@@ -73,7 +71,7 @@ public class AuctionRoom {
         return BidResult.OK;
     }
 
-// ── Auto-bid ─────────────────────────────────────────────────────────────────
+    // ── Auto-bid ─────────────────────────────────────────────────────────────
 
     private void triggerAutoBids(String justBidAccount) {
         AuctionSession session = sessionDAO.getAuctionById(sessionId);
@@ -81,38 +79,41 @@ public class AuctionRoom {
 
         double bidStep = session.getBidIncrease();
 
+        Set<String> outAccounts = new HashSet<>();
+        String  finalLeader = lastBidder;
+        double  finalPrice  = currentPrice;
+        boolean anyBid      = false;
+
         int safetyLimit = autoBidMap.size() * 200 + 10;
+
         while (!isFinished && safetyLimit-- > 0) {
             double nextPrice = currentPrice + bidStep;
 
-            // Tìm challenger tốt nhất: maxBid >= nextPrice, không phải lastBidder
-            // Sort rõ ràng để đảm bảo thứ tự (PriorityBlockingQueue.stream không đảm bảo)
+            // Notify những account bị out do giá vượt maxBid
+            autoBidMap.values().stream()
+                    .filter(e -> e.maxBid() < nextPrice && !outAccounts.contains(e.account()))
+                    .forEach(e -> {
+                        outAccounts.add(e.account());
+                        notifyAutoBidOut(e.account());
+                    });
+
             AutoBidEntry challenger = autoBidMap.values().stream()
                     .filter(e -> !e.account().equals(lastBidder) && e.maxBid() >= nextPrice)
-                    .min(Comparator.naturalOrder()) // maxBid DESC → registeredAt ASC
+                    .min(Comparator.naturalOrder())
                     .orElse(null);
 
-            if (challenger == null) break; // không ai đáp trả được → người dẫn đầu thắng
+            if (challenger == null) break;
 
-            BidResult result = biddingService.placeBid(
-                    challenger.account(), sessionId, nextPrice);
+            BidResult result = biddingService.placeBid(challenger.account(), sessionId, nextPrice);
 
             switch (result) {
                 case OK -> {
                     currentPrice = nextPrice;
                     lastBidder   = challenger.account();
+                    finalLeader  = challenger.account();
+                    finalPrice   = nextPrice;
+                    anyBid       = true;
                     checkAndExtendIfSnipe();
-
-                    String nick = userDAO.getNickname(challenger.account());
-                    com.google.gson.JsonObject bidData = new com.google.gson.JsonObject();
-                    bidData.addProperty("newPrice",          nextPrice);
-                    bidData.addProperty("newLeader",         challenger.account());
-                    bidData.addProperty("newLeaderNickname", nick);
-                    bidData.addProperty("bidTime",           LocalDateTime.now().toString());
-                    broadcast("NEW_BID", nick + " (auto) vừa đặt giá mới", bidData);
-
-                    logger.info("[AutoBid] {} auto-bid {} cho phiên {}",
-                            challenger.account(), nextPrice, sessionId);
 
                     if (session.getBuyNowPrice() > 0 && nextPrice >= session.getBuyNowPrice()) {
                         finishAuction();
@@ -120,30 +121,48 @@ public class AuctionRoom {
                     }
                 }
                 case INSUFFICIENT_BALANCE -> {
-                    // Hết tiền → loại khỏi auto-bid, thử người tiếp theo
                     logger.info("[AutoBid] {} hết số dư, loại khỏi queue", challenger.account());
+                    outAccounts.add(challenger.account());
+                    notifyAutoBidOut(challenger.account());
                     autoBidQueue.remove(autoBidMap.remove(challenger.account()));
                 }
                 default -> {
-                    // Lỗi DB hoặc giá không hợp lệ → loại để tránh loop vô hạn
                     logger.warn("[AutoBid] Loại {} do result={}", challenger.account(), result);
                     autoBidQueue.remove(autoBidMap.remove(challenger.account()));
                 }
             }
         }
+
+        // Broadcast 1 lần duy nhất sau khi loop xong
+        if (anyBid) {
+            String nick = userDAO.getNickname(finalLeader);
+            com.google.gson.JsonObject bidData = new com.google.gson.JsonObject();
+            bidData.addProperty("newPrice",          finalPrice);
+            bidData.addProperty("newLeader",         finalLeader);
+            bidData.addProperty("newLeaderNickname", nick);
+            bidData.addProperty("bidTime",           LocalDateTime.now().toString());
+            broadcast(ServerEvent.NEW_BID.name(), nick + " (auto) vừa đặt giá mới", bidData);
+            logger.info("[AutoBid] Kết thúc loop — leader: {} @ {}", finalLeader, finalPrice);
+        }
     }
 
-    // ── Auto-bid ─────────────────────────────────────────────────────────────
+    private void notifyAutoBidOut(String account) {
+        subscribers.stream()
+                .filter(c -> account.equals(c.getClientId()))
+                .findFirst()
+                .ifPresent(c -> {
+                    try {
+                        c.sendSystemMessage(ServerEvent.AUTO_BID_OUT.name(),
+                                "Giá hiện tại đã vượt mức tối đa của bạn. Auto-bid đã dừng.", null);
+                    } catch (Exception e) {
+                        logger.warn("[AutoBid] Không thể notify out cho {}", account);
+                    }
+                });
+    }
 
-    /**
-     * Đăng ký / cập nhật auto-bid cho một tài khoản.
-     * Nếu account đã đăng ký rồi thì replace bằng entry mới (maxBid mới, thời gian mới).
-     * Sau khi đăng ký, kích hoạt ngay để xem có thể bid luôn không.
-     */
     public synchronized void registerAutoBid(String account, double maxBid) {
         if (isFinished) return;
 
-        // Upsert: xóa entry cũ nếu có
         AutoBidEntry old = autoBidMap.get(account);
         if (old != null) autoBidQueue.remove(old);
 
@@ -152,8 +171,6 @@ public class AuctionRoom {
         autoBidQueue.add(entry);
 
         logger.info("[AutoBid] {} đăng ký auto-bid maxBid={} cho phiên {}", account, maxBid, sessionId);
-
-        // Thử kích hoạt ngay nếu giá hiện tại < maxBid của người vừa đăng ký
         triggerAutoBids(null);
     }
 
@@ -186,11 +203,8 @@ public class AuctionRoom {
             return;
         }
 
-        if (lastBidder != null) {
-            finishWithWinner(session);
-        } else {
-            finishWithNoWinner();
-        }
+        if (lastBidder != null) finishWithWinner(session);
+        else                    finishWithNoWinner();
 
         AuctionManager.getInstance().removeRoom(sessionId);
     }
@@ -226,7 +240,7 @@ public class AuctionRoom {
         payload.put("winnerNickname", winnerNickname);
         payload.put("finalPrice",     currentPrice);
 
-        broadcast("AUCTION_FINISHED", "Phiên đấu giá kết thúc thành công!", payload);
+        broadcast(ServerEvent.AUCTION_FINISHED.name(), "Phiên đấu giá kết thúc thành công!", payload);
         NotificationService.getInstance().onAuctionWon(session, lastBidder, currentPrice);
         NotificationService.getInstance().onAuctionSold(session, lastBidder, currentPrice);
         broadcastGlobalFinished(payload);
@@ -237,20 +251,20 @@ public class AuctionRoom {
 
     private void finishWithNoWinner() {
         sessionDAO.updateSessionStatus(sessionId, StatusOfAuction.ENDED);
-        broadcast("AUCTION_FINISHED", "Kết thúc, không có người thắng", null);
+        broadcast(ServerEvent.AUCTION_FINISHED.name(), "Kết thúc, không có người thắng", null);
         broadcastGlobalFinished(null);
         logger.info("[Server] Phiên {} kết thúc, không có người thắng.", sessionId);
     }
 
     private void broadcastGlobalFinished(Object payload) {
         GlobalBroadcaster.getInstance().broadcastToAll(
-                new Response<>("AUCTION_FINISHED", "NOTIFY",
+                new Response<>(ServerEvent.AUCTION_FINISHED.name(), ServerEvent.NOTIFY.name(),
                         "Phiên " + sessionId + " đã kết thúc", payload));
         GlobalBroadcaster.getInstance().broadcastToAll(
-                new Response<>("RELOAD_AVAILABLE", "NOTIFY",
+                new Response<>(ServerEvent.RELOAD_AVAILABLE.name(), ServerEvent.NOTIFY.name(),
                         "Cập nhật danh sách phiên", sessionId));
         GlobalBroadcaster.getInstance().broadcastToAdmins(
-                new Response<>("RELOAD_ALL_ITEMS", "NOTIFY",
+                new Response<>(ServerEvent.RELOAD_ALL_ITEMS.name(), ServerEvent.NOTIFY.name(),
                         "Phiên " + sessionId + " vừa kết thúc", sessionId));
     }
 

@@ -2,6 +2,7 @@ package com.tboat.controllers;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.session.UserSession;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
@@ -120,18 +121,17 @@ public class AdminWalletController extends BaseController implements Initializab
         Platform.runLater(() -> {
             btnSubmit.setDisable(false);
             try {
-                String type = SocketHelper.getType(response);
+                ServerEvent type = SocketHelper.getTypeEnum(response);
 
                 if (handleBroadcast(type)) return;
-                if (!"TRANSACTION".equals(type)) return;
+                if (type != ServerEvent.TRANSACTION) return;
 
-                String status = SocketHelper.getStatus(response);
-                if ("SUCCESS".equals(status)) {
+                ServerEvent status = SocketHelper.getStatusEnum(response);
+                if (status == ServerEvent.SUCCESS) {
                     handleTransactionSuccess(response);
                 } else {
                     handleTransactionFailure(SocketHelper.getMessage(response));
                 }
-
             } catch (Exception e) {
                 AlertUtils.showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Lỗi đọc dữ liệu từ Server.");
                 log.error("Không thể đọc JSON: {} | {}", response, e.getMessage(), e);
@@ -139,8 +139,8 @@ public class AdminWalletController extends BaseController implements Initializab
         });
     }
 
-    private boolean handleBroadcast(String type) {
-        if ("AUCTION_FINISHED".equals(type)) {
+    private boolean handleBroadcast(ServerEvent type) {
+        if (type == ServerEvent.AUCTION_FINISHED) {
             SocketHelper.sendRequest("GET_PROFILE", null);
             return true;
         }

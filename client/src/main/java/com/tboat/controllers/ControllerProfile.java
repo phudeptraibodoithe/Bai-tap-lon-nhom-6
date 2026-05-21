@@ -2,6 +2,7 @@ package com.tboat.controllers;
 
 import com.google.gson.JsonObject;
 import com.tboat.models.core.User;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.session.UserSession;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
@@ -54,14 +55,14 @@ public class ControllerProfile extends BaseController implements Initializable, 
         if (user != null) updateUI(user);
 
         String screenKey = BaseController.toScreenKey("profile.fxml");
-        String cached    = DataCache.getInstance().get("PROFILE");
+        String cached = DataCache.getInstance().get(ServerEvent.GET_PROFILE.name());
         if (cached != null) {
             NavigationContext.getInstance().reportCacheHit(screenKey, true);
             handleServerResponse(cached);
         } else {
             NavigationContext.getInstance().reportCacheHit(screenKey, false);
         }
-        SocketHelper.sendRequest("PROFILE");
+        SocketHelper.sendRequest(ServerEvent.GET_PROFILE.name());
     }
 
     // ── Edit mode toggle ──────────────────────────────────────────────────────
@@ -88,7 +89,7 @@ public class ControllerProfile extends BaseController implements Initializable, 
         payload.addProperty("avatarURL",   imageData);
         payload.addProperty("email",       tfEmail.getText().trim());
         payload.addProperty("phone",       tfPhone.getText().trim());
-        SocketHelper.sendRequest("UPDATE_PROFILE", payload);
+        SocketHelper.sendRequest(ServerEvent.UPDATE_PROFILE.name(), payload);
     }
 
     @FXML
@@ -188,7 +189,7 @@ public class ControllerProfile extends BaseController implements Initializable, 
 
     public void logout(ActionEvent e) {
         if (AlertUtils.showConfirmation("Xác nhận đăng xuất", "Bạn có chắc chắn muốn đăng xuất không?")) {
-            SocketHelper.sendRequest("LOGOUT");
+            SocketHelper.sendRequest(ServerEvent.LOGOUT.name());
             UserSession.getInstance().cleanUserSession();
             changeScene((Node) e.getSource(), "start.fxml");
         }
@@ -200,41 +201,36 @@ public class ControllerProfile extends BaseController implements Initializable, 
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                String type = SocketHelper.getType(response);
+                ServerEvent type = SocketHelper.getTypeEnum(response);
 
                 if (handleBroadcast(type)) return;
 
-                boolean isMyType = "GET_PROFILE".equals(type)
-                        || "UPDATE_PROFILE".equals(type)
-                        || "LOGOUT".equals(type);
-                if (!isMyType) return;
+                if (type != ServerEvent.GET_PROFILE
+                        && type != ServerEvent.UPDATE_PROFILE
+                        && type != ServerEvent.LOGOUT) return;
 
-                String status = SocketHelper.getStatus(response);
-                if ("SUCCESS".equals(status)) {
+                if (SocketHelper.getStatusEnum(response) == ServerEvent.SUCCESS) {
                     handleProfileSuccess(type, response);
                 } else {
                     AlertUtils.showStatus(err, "Lỗi: " + SocketHelper.getMessage(response), STYLE_ERROR);
                 }
-
             } catch (Exception e) {
                 AlertUtils.showStatus(err, "Lỗi kết nối với server.", STYLE_ERROR);
             }
         });
     }
 
-    private boolean handleBroadcast(String type) {
-        if ("AUCTION_FINISHED".equals(type)) {
-            SocketHelper.sendRequest("GET_PROFILE", null);
+    private boolean handleBroadcast(ServerEvent type) {
+        if (type == ServerEvent.AUCTION_FINISHED) {
+            SocketHelper.sendRequest(ServerEvent.GET_PROFILE.name(), null);
             return true;
         }
         return false;
     }
 
-    private void handleProfileSuccess(String type, String response) {
-        switch (type) {
-            case "GET_PROFILE"    -> applyProfileData(SocketHelper.getPayloadObject(response));
-            case "UPDATE_PROFILE" -> commitProfileEdit();
-        }
+    private void handleProfileSuccess(ServerEvent type, String response) {
+        if (type == ServerEvent.GET_PROFILE) applyProfileData(SocketHelper.getPayloadObject(response));
+        else if (type == ServerEvent.UPDATE_PROFILE) commitProfileEdit();
     }
 
     private void applyProfileData(JsonObject data) {

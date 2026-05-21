@@ -1,5 +1,7 @@
 package com.tboat.ucb;
 
+import com.tboat.models.network.ServerEvent;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
@@ -23,13 +25,12 @@ public class DataCache {
 
     // ── TTL mặc định theo action (milliseconds) ──────────────────────────────
     public static final Map<String, Long> DEFAULT_TTL = Map.of(
-            "GET_PENDING_ITEMS",   30_000L,  // 30 giây
-            "PROFILE",            120_000L,  // 2 phút
-            "LIST_AVAILABLE",      20_000L,  // ← THÊM: Trang chủ, 20 giây
-            "GET_MY_AUCTIONS",     30_000L,  // ← THÊM: Manager
-            "GET_HISTORY",         60_000L,   // 1 phút
-            "GET_ACTIVE_SESSIONS", 15_000L,  // 15 giây (giá đấu thay đổi nhanh)
-            "GET_MY_BIDS",         30_000L  // 30 giây
+            ServerEvent.GET_ALL_ITEMS.name(),      30_000L,   // thay "GET_PENDING_ITEMS" nếu đó là action đúng
+            ServerEvent.GET_PROFILE.name(),       120_000L,   // thay "PROFILE"
+            ServerEvent.LIST_AVAILABLE.name(),     20_000L,
+            ServerEvent.GET_MY_AUCTIONS.name(),    30_000L,
+            ServerEvent.GET_HISTORY.name(),        60_000L,
+            ServerEvent.GET_SESSION_BIDS.name(),   15_000L   // thay "GET_ACTIVE_SESSIONS" — xem ghi chú
     );
     private static final long DEFAULT_TTL_FALLBACK = 30_000L;
 

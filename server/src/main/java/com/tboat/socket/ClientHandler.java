@@ -1,6 +1,7 @@
 package com.tboat.socket;
 
 import com.tboat.models.network.Response;
+import com.tboat.models.network.ServerEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,8 +41,8 @@ public class ClientHandler implements Runnable {
             // Gắn output vào context để các handler có thể gửi response
             context.setOut(out);
             GlobalBroadcaster.getInstance().register(context);
-            context.sendResponse(new Response<>("SERVER_READY", "SUCCESS",
-                    "Chào mừng bạn đến với hệ thống đấu giá TBoat!", null));
+            new Response<>(ServerEvent.SERVER_READY.name(), ServerEvent.SUCCESS.name(),
+                    "Chào mừng...", null)
 
             String line;
             while ((line = in.readLine()) != null) {

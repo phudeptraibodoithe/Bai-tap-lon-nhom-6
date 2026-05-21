@@ -5,6 +5,7 @@ import com.tboat.dao.UserDAO;
 import com.tboat.models.network.Request;
 import com.tboat.models.network.Response;
 import com.tboat.models.core.User;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.service.NotificationService;
 import com.tboat.service.UserManager;
 import com.tboat.socket.ClientContext;
@@ -35,9 +36,11 @@ public class AuthHandler {
                 GlobalBroadcaster.getInstance().registerAdmin(context);  // ← thêm dòng này
             }
             User fullUser = userDAO.getUser(context.getClientId());
-            context.sendResponse(new Response<>("LOGIN", "SUCCESS", "Đăng nhập thành công", fullUser));
+            context.sendResponse(new Response<>(ServerEvent.LOGIN.name(), ServerEvent.SUCCESS.name(),
+                    "Đăng nhập thành công", fullUser));
         } else {
-            context.sendResponse(new Response<>("LOGIN", "FAILED", res.name(), null));
+            context.sendResponse(new Response<>(ServerEvent.LOGIN.name(), ServerEvent.FAILED.name(),
+                    res.name(), null));
         }
     }
 
@@ -51,8 +54,8 @@ public class AuthHandler {
                 user.getEmail(), user.getPhone());
 
         context.sendResponse(new Response<>(
-                "REGISTER",
-                res == ResponseCode.SUCCESS ? "SUCCESS" : "FAILED",
+                ServerEvent.REGISTER.name(),
+                res == ResponseCode.SUCCESS ? ServerEvent.SUCCESS.name() : ServerEvent.FAILED.name(),
                 res == ResponseCode.EXISTED ? "Tài khoản đã tồn tại!" : res.name(),
                 null));
     }
@@ -65,6 +68,7 @@ public class AuthHandler {
         if (context.getCurrentRoom() != null)
             context.getCurrentRoom().removeSubscriber(context);
         context.setCurrentRoom(null);
-        context.sendResponse(new Response<>("LOGOUT", "SUCCESS", "Đã đăng xuất", null));
+        context.sendResponse(new Response<>(ServerEvent.LOGOUT.name(), ServerEvent.SUCCESS.name(),
+                "Đã đăng xuất", null));
     }
 }

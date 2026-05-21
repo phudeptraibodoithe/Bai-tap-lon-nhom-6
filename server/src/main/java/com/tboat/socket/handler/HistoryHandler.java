@@ -5,6 +5,7 @@ import com.tboat.dao.AuctionSessionDAO;
 import com.tboat.dao.BidDAO;
 import com.tboat.dao.HistoryDAO;
 import com.tboat.models.network.Response;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.socket.ClientContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,11 +26,11 @@ public class HistoryHandler {
     public void getHistory() {
         try {
             var list = historyDAO.getHistoryByAccount(context.getClientId());
-            context.sendResponse(new Response<>("GET_HISTORY", "SUCCESS",
+            context.sendResponse(new Response<>(ServerEvent.GET_HISTORY.name(), ServerEvent.SUCCESS.name(),
                     "Lấy lịch sử thành công", list != null ? list : new ArrayList<>()));
         } catch (Exception e) {
             log.error("Lỗi GET_HISTORY [{}]: {}", context.getClientId(), e.getMessage(), e);
-            context.sendResponse(new Response<>("GET_HISTORY", "ERROR",
+            context.sendResponse(new Response<>(ServerEvent.GET_HISTORY.name(), ServerEvent.ERROR.name(),
                     "Lỗi lấy lịch sử: " + e.getMessage(), null));
         }
     }
@@ -37,11 +38,11 @@ public class HistoryHandler {
     public void getMyAuctions() {
         try {
             var list = auctionDAO.getAuctionsBySeller(context.getClientId());
-            context.sendResponse(new Response<>("GET_MY_AUCTIONS", "SUCCESS",
+            context.sendResponse(new Response<>(ServerEvent.GET_MY_AUCTIONS.name(), ServerEvent.SUCCESS.name(),
                     "Lấy danh sách sản phẩm thành công", list != null ? list : new ArrayList<>()));
         } catch (Exception e) {
             log.error("Lỗi GET_MY_AUCTIONS [{}]: {}", context.getClientId(), e.getMessage(), e);
-            context.sendResponse(new Response<>("GET_MY_AUCTIONS", "ERROR",
+            context.sendResponse(new Response<>(ServerEvent.GET_MY_AUCTIONS.name(), ServerEvent.ERROR.name(),
                     "Lỗi lấy danh sách: " + e.getMessage(), null));
         }
     }
@@ -51,11 +52,11 @@ public class HistoryHandler {
             int sessionId = JsonParser.parseString(raw)
                     .getAsJsonObject().get("payload").getAsInt();
             var list = bidDAO.getBidsBySession(sessionId);
-            context.sendResponse(new Response<>("GET_SESSION_BIDS", "SUCCESS",
+            context.sendResponse(new Response<>(ServerEvent.GET_SESSION_BIDS.name(), ServerEvent.SUCCESS.name(),
                     "Lấy danh sách Bid thành công", list != null ? list : new ArrayList<>()));
         } catch (Exception e) {
             log.error("Lỗi GET_SESSION_BIDS [{}]: {}", context.getClientId(), e.getMessage(), e);
-            context.sendResponse(new Response<>("GET_SESSION_BIDS", "ERROR",
+            context.sendResponse(new Response<>(ServerEvent.GET_SESSION_BIDS.name(), ServerEvent.ERROR.name(),
                     "Lỗi lấy danh sách Bid: " + e.getMessage(), null));
         }
     }

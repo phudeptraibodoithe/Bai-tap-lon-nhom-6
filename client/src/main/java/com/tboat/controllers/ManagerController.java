@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.models.auction.AuctionSession;
 import com.tboat.models.auction.StatusOfAuction;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.session.UserSession;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
@@ -56,7 +57,7 @@ public class ManagerController extends BaseController implements Initializable, 
 
     private void handleCacheAndNetworkAndRefresh() {
         String screenKey = BaseController.toScreenKey("manager.fxml");
-        String cachedData = DataCache.getInstance().get("GET_MY_AUCTIONS");
+        String cachedData = DataCache.getInstance().get(ServerEvent.GET_MY_AUCTIONS.name());
 
         if (cachedData != null) {
             logger.info("[Manager] Cache HIT → Hiển thị giao diện ngay lập tức.");
@@ -122,12 +123,12 @@ public class ManagerController extends BaseController implements Initializable, 
     }
 
     public void loadMyAuctions() {
-        SocketHelper.sendRequest("GET_MY_AUCTIONS", UserSession.getInstance().getUsername());
+        SocketHelper.sendRequest(ServerEvent.GET_MY_AUCTIONS.name(), UserSession.getInstance().getUsername());
     }
 
     private void renderMyAuctions(String response) {
         try {
-            if (!"SUCCESS".equals(SocketHelper.getStatus(response))) return;
+            if (SocketHelper.getStatusEnum(response) != ServerEvent.SUCCESS) return;
             JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
             if (!jsonResponse.has("payload") || !jsonResponse.get("payload").isJsonArray()) return;
 
@@ -151,14 +152,14 @@ public class ManagerController extends BaseController implements Initializable, 
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                String type = SocketHelper.getType(response);
+                ServerEvent type = SocketHelper.getTypeEnum(response);
 
                 if (handleBroadcast(type)) return;
-                if (!"GET_MY_AUCTIONS".equals(type)) return;
-                if (!"SUCCESS".equals(SocketHelper.getStatus(response))) return;
+                if (type != ServerEvent.GET_MY_AUCTIONS) return;
+                if (SocketHelper.getStatusEnum(response) != ServerEvent.SUCCESS) return;
                 if (SocketHelper.getPayloadArray(response) == null) return;
 
-                DataCache.getInstance().put("GET_MY_AUCTIONS", response);
+                DataCache.getInstance().put(ServerEvent.GET_MY_AUCTIONS.name(), response);
                 renderMyAuctions(response);
 
             } catch (Exception e) {
@@ -167,8 +168,8 @@ public class ManagerController extends BaseController implements Initializable, 
         });
     }
 
-    private boolean handleBroadcast(String type) {
-        if ("RELOAD_ALL_ITEMS".equals(type) || "RELOAD_PENDING_ITEMS".equals(type)) {
+    private boolean handleBroadcast(ServerEvent type) {
+        if (type == ServerEvent.RELOAD_ALL_ITEMS || type == ServerEvent.RELOAD_PENDING_ITEMS) {
             loadMyAuctions();
             return true;
         }

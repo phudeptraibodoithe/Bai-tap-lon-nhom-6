@@ -8,6 +8,7 @@ import com.tboat.models.auction.AuctionSession;
 import com.tboat.models.auction.StatusOfAuction;
 import com.tboat.models.auction.BidEntry;
 import com.tboat.models.core.User;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.session.UserSession;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
@@ -101,8 +102,7 @@ public class AuctionController extends BaseController implements SocketListener 
         boolean disableAutoBid = isUserSeller
                 || status == StatusOfAuction.ENDED
                 || status == StatusOfAuction.CANCELED
-                || status == StatusOfAuction.NOT_STARTED
-                || currentSession.getBuyNowPrice() <= 0;
+                || status == StatusOfAuction.NOT_STARTED;
         if (autoBidCheckBox != null) {
             autoBidCheckBox.setDisable(disableAutoBid);
             if (disableAutoBid) autoBidCheckBox.setSelected(false);
@@ -151,40 +151,42 @@ public class AuctionController extends BaseController implements SocketListener 
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                String type   = SocketHelper.getType(response);
-                String status = SocketHelper.getStatus(response);
-                String msg    = SocketHelper.getMessage(response);
-                JsonObject json = JsonParser.parseString(response).getAsJsonObject();
+                ServerEvent type   = SocketHelper.getTypeEnum(response);   // ← parse thành enum
+                ServerEvent status = SocketHelper.getStatusEnum(response);
+                String msg         = SocketHelper.getMessage(response);
+                JsonObject json    = JsonParser.parseString(response).getAsJsonObject();
 
-                if ("GET_PROFILE".equals(type) || "UPDATE_PROFILE".equals(type)) return;
+                if (type == ServerEvent.GET_PROFILE || type == ServerEvent.UPDATE_PROFILE) return;
 
-                // Broadcast từ room — check type VÀ status vì server có thể gửi dưới dạng nào cũng được
-                if ("NEW_BID".equals(type)        || "NEW_BID".equals(status)) {
+                if (type == ServerEvent.NEW_BID || status == ServerEvent.NEW_BID) {
                     if (json.has("payload") && json.get("payload").isJsonObject())
                         handleNewBid(json.getAsJsonObject("payload"));
                     return;
                 }
-                if ("AUCTION_STARTED".equals(type)  || "AUCTION_STARTED".equals(status)) {
+                if (type == ServerEvent.AUCTION_STARTED || status == ServerEvent.AUCTION_STARTED) {
                     handleAuctionStarted(msg); return;
                 }
-                if ("AUCTION_FINISHED".equals(type) || "AUCTION_FINISHED".equals(status)) {
+                if (type == ServerEvent.AUCTION_FINISHED || status == ServerEvent.AUCTION_FINISHED) {
                     handleAuctionFinished(json, msg); return;
                 }
-                if ("TIME_EXTENDED".equals(type)    || "TIME_EXTENDED".equals(status)) {
-                    handleTimeExtended(json, msg); return;    // FIX: tách ra method riêng
+                if (type == ServerEvent.TIME_EXTENDED || status == ServerEvent.TIME_EXTENDED) {
+                    handleTimeExtended(json, msg); return;
                 }
-                if ("AUCTION_CANCELED".equals(type) || "AUCTION_CANCELED".equals(status)) {
+                if (type == ServerEvent.AUCTION_CANCELED || status == ServerEvent.AUCTION_CANCELED) {
                     handleAuctionCanceled(); return;
+                }
+                if (type == ServerEvent.AUTO_BID_OUT || status == ServerEvent.AUTO_BID_OUT) {
+                    handleAutoBidOut(msg); return;
                 }
 
                 switch (status) {
-                    case "SUCCESS"      -> handleSuccess(json, msg);
-                    case "AUTO_BID_REGISTERED" -> AlertUtils.showStatus(
+                    case SUCCESS             -> handleSuccess(json, msg);
+                    case AUTO_BID_REGISTERED -> AlertUtils.showStatus(
                             lblNotification, "✅ " + msg, STYLE_SUCCESS);
-                    case "JOIN_SUCCESS" -> handleJoinSuccess(json);
-                    case "FAILED"       -> handleFailed(json, msg);
-                    case "ERROR"        -> AlertUtils.showStatus(lblNotification, "⚠️ " + msg, STYLE_ERROR);
-                    case "SYSTEM", "SERVER_READY" -> {}
+                    case JOIN_SUCCESS        -> handleJoinSuccess(json);
+                    case FAILED              -> handleFailed(json, msg);
+                    case ERROR               -> AlertUtils.showStatus(lblNotification, "⚠️ " + msg, STYLE_ERROR);
+                    case SYSTEM, SERVER_READY -> {}
                     default -> log.warn("Không khớp handler: type={}, status={}", type, status);
                 }
             } catch (Exception e) {
@@ -320,6 +322,22 @@ public class AuctionController extends BaseController implements SocketListener 
         currentSession.setStatusOfAuction(StatusOfAuction.ONGOING);
         refreshAuctionState();
         AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Đã đến giờ", msg);
+    }
+
+    private void handleAutoBidOut(String msg) {
+        // Bỏ tích checkbox
+        if (autoBidCheckBox != null) {
+            autoBidCheckBox.setSelected(false);
+            autoBidCheckBox.setDisable(false);
+        }
+        // Xóa ô nhập và restore opacity
+        if (bidAmount != null) {
+            bidAmount.clear();
+            bidAmount.setOpacity(1.0);
+        }
+        // Thông báo cho user
+        AlertUtils.showStatus(lblNotification,
+                "⚠️ " + msg, STYLE_ERROR);
     }
 
     private void handleFailed(JsonObject json, String msg) {

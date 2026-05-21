@@ -12,6 +12,7 @@ import com.tboat.models.item.Item;
 import com.tboat.models.item.factory.ItemFactory;
 import com.tboat.models.item.factory.ItemFactoryProducer;
 import com.tboat.models.network.Response;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.service.AuctionManager;
 import com.tboat.service.AuctionRoom;
 import com.tboat.service.AuctionTimerService;
@@ -40,11 +41,11 @@ public class ItemHandler {
     public void getAllItems() {
         try {
             var list = auctionDAO.getAllAuctions();
-            context.sendResponse(new Response<>("GET_ALL_ITEMS", "SUCCESS",
+            context.sendResponse(new Response<>(ServerEvent.GET_ALL_ITEMS.name(), ServerEvent.SUCCESS.name(),
                     "Danh sách tất cả phiên", list != null ? list : new ArrayList<>()));
         } catch (Exception e) {
             log.error("Lỗi GET_ALL_ITEMS: {}", e.getMessage(), e);
-            context.sendResponse(new Response<>("GET_ALL_ITEMS", "ERROR",
+            context.sendResponse(new Response<>(ServerEvent.GET_ALL_ITEMS.name(), ServerEvent.ERROR.name(),
                     "Lỗi lấy danh sách: " + e.getMessage(), null));
         }
     }
@@ -58,7 +59,7 @@ public class ItemHandler {
 
             int itemId = itemDAO.addItem(item);
             if (itemId == -1) {
-                context.sendResponse(new Response<>("POST_ITEM", "ERROR",
+                context.sendResponse(new Response<>(ServerEvent.POST_ITEM.name(), ServerEvent.ERROR.name(),
                         "Lỗi lưu item vào Database", null));
                 return;
             }
@@ -72,21 +73,19 @@ public class ItemHandler {
                 participationDAO.addParticipation(
                         new Participation(context.getClientId(), sessionId, "SELLER"));
 
-                context.sendResponse(new Response<>("POST_ITEM", "SUCCESS",
+                context.sendResponse(new Response<>(ServerEvent.POST_ITEM.name(), ServerEvent.SUCCESS.name(),
                         "Đăng sản phẩm thành công, đang chờ duyệt", sessionId));
 
-                // FIX: Broadcast cho admin và manager biết có sản phẩm mới cần duyệt
                 GlobalBroadcaster.getInstance().broadcastToAdmins(
-                        new Response<>("RELOAD_PENDING_ITEMS", "NOTIFY",
+                        new Response<>(ServerEvent.RELOAD_PENDING_ITEMS.name(), ServerEvent.NOTIFY.name(),
                                 "Có sản phẩm mới chờ duyệt từ " + context.getClientId(), sessionId));
-
             } else {
-                context.sendResponse(new Response<>("POST_ITEM", "ERROR",
+                context.sendResponse(new Response<>(ServerEvent.POST_ITEM.name(), ServerEvent.ERROR.name(),
                         "Lỗi lưu phiên đấu giá vào Database", null));
             }
         } catch (Exception e) {
             log.error("Lỗi POST_ITEM [{}]: {}", context.getClientId(), e.getMessage(), e);
-            context.sendResponse(new Response<>("POST_ITEM", "ERROR",
+            context.sendResponse(new Response<>(ServerEvent.POST_ITEM.name(), ServerEvent.ERROR.name(),
                     "Dữ liệu gửi lên không hợp lệ!", null));
         }
     }
@@ -100,7 +99,7 @@ public class ItemHandler {
 
             AuctionSession existing = auctionDAO.getAuctionById(sessionId);
             if (existing == null) {
-                context.sendResponse(new Response<>("EDIT_ITEM", "ERROR",
+                context.sendResponse(new Response<>(ServerEvent.EDIT_ITEM.name(), ServerEvent.ERROR.name(),
                         "Không tìm thấy phiên đấu giá", null));
                 return;
             }
@@ -108,7 +107,7 @@ public class ItemHandler {
             Item updatedItem = buildItemFromPayload(payload, context.getClientId());
             boolean itemOk = itemDAO.updateItem(updatedItem, existing.getItemId());
             if (!itemOk) {
-                context.sendResponse(new Response<>("EDIT_ITEM", "ERROR",
+                context.sendResponse(new Response<>(ServerEvent.EDIT_ITEM.name(), ServerEvent.ERROR.name(),
                         "Lỗi cập nhật item", null));
                 return;
             }
@@ -119,7 +118,7 @@ public class ItemHandler {
 
             boolean ok = sellerService.editAuction(context.getClientId(), updated);
             if (ok) {
-                context.sendResponse(new Response<>("EDIT_ITEM", "SUCCESS",
+                context.sendResponse(new Response<>(ServerEvent.EDIT_ITEM.name(), ServerEvent.SUCCESS.name(),
                         "Cập nhật thông tin sản phẩm thành công!", sessionId));
 
                 // FIX: Load lại session mới từ DB sau khi edit để có startTime/endTime chính xác
@@ -137,24 +136,23 @@ public class ItemHandler {
                             JsonObject timeData = new JsonObject();
                             timeData.addProperty("newStartTime", refreshed.getStartTime().toString());
                             timeData.addProperty("newEndTime",   refreshed.getEndTime().toString());
-                            room.broadcast("TIME_UPDATED",
+                            room.broadcast(ServerEvent.TIME_UPDATED.name(),
                                     "Thời gian phiên đấu giá đã được cập nhật", timeData);
                         }
                     }
 
-                    // FIX: Broadcast reload cho admin/manager để cập nhật danh sách
                     GlobalBroadcaster.getInstance().broadcastToAdmins(
-                            new Response<>("RELOAD_ALL_ITEMS", "NOTIFY",
+                            new Response<>(ServerEvent.RELOAD_ALL_ITEMS.name(), ServerEvent.NOTIFY.name(),
                                     "Phiên " + sessionId + " vừa được cập nhật", sessionId));
                 }
 
             } else {
-                context.sendResponse(new Response<>("EDIT_ITEM", "ERROR",
+                context.sendResponse(new Response<>(ServerEvent.EDIT_ITEM.name(), ServerEvent.ERROR.name(),
                         "Không thể cập nhật: Phiên đã bắt đầu, đã có người bid hoặc lỗi quyền sở hữu.", null));
             }
         } catch (Exception e) {
             log.error("Lỗi EDIT_ITEM [{}]: {}", context.getClientId(), e.getMessage(), e);
-            context.sendResponse(new Response<>("EDIT_ITEM", "ERROR",
+            context.sendResponse(new Response<>(ServerEvent.EDIT_ITEM.name(), ServerEvent.ERROR.name(),
                     "Dữ liệu gửi lên không hợp lệ!", null));
         }
     }
@@ -171,26 +169,24 @@ public class ItemHandler {
             if (session != null) {
                 AuctionTimerService.getInstance().scheduleAuction(session);
 
-                context.sendResponse(new Response<>("APPROVE_ITEM", "SUCCESS",
+                context.sendResponse(new Response<>(ServerEvent.APPROVE_ITEM.name(), ServerEvent.SUCCESS.name(),
                         "Đã duyệt và bắt đầu đấu giá", sessionId));
 
                 NotificationService.getInstance().onItemApproved(
                         session.getSellerAccountName(), session.getName());
 
-                // FIX: Broadcast reload trang chủ (LIST_AVAILABLE sẽ có phiên mới)
-                //      và broadcast cho seller biết sản phẩm được duyệt
                 GlobalBroadcaster.getInstance().broadcastToAll(
-                        new Response<>("RELOAD_AVAILABLE", "NOTIFY",
+                        new Response<>(ServerEvent.RELOAD_AVAILABLE.name(), ServerEvent.NOTIFY.name(),
                                 "Có phiên đấu giá mới vừa được duyệt", sessionId));
 
                 log.info("[Server] Admin duyệt phiên ID: {}", sessionId);
             } else {
-                context.sendResponse(new Response<>("APPROVE_ITEM", "ERROR",
+                context.sendResponse(new Response<>(ServerEvent.APPROVE_ITEM.name(), ServerEvent.ERROR.name(),
                         "Không tìm thấy sản phẩm cần duyệt", null));
             }
         } catch (Exception e) {
             log.error("Lỗi APPROVE_ITEM: {}", e.getMessage(), e);
-            context.sendResponse(new Response<>("APPROVE_ITEM", "ERROR",
+            context.sendResponse(new Response<>(ServerEvent.APPROVE_ITEM.name(), ServerEvent.ERROR.name(),
                     "Lỗi xử lý duyệt: " + e.getMessage(), null));
         }
     }
@@ -205,7 +201,7 @@ public class ItemHandler {
             if (ok) {
                 AuctionSession session = auctionDAO.getAuctionById(sessionId);
 
-                context.sendResponse(new Response<>("REJECT_ITEM", "SUCCESS",
+                context.sendResponse(new Response<>(ServerEvent.REJECT_ITEM.name(), ServerEvent.SUCCESS.name(),
                         "Đã từ chối sản phẩm", sessionId));
 
                 if (session != null) {
@@ -213,19 +209,18 @@ public class ItemHandler {
                             session.getSellerAccountName(), session.getName(), "Không đạt yêu cầu duyệt");
                 }
 
-                // FIX: Broadcast reload cho admin để cập nhật danh sách pending
                 GlobalBroadcaster.getInstance().broadcastToAdmins(
-                        new Response<>("RELOAD_PENDING_ITEMS", "NOTIFY",
+                        new Response<>(ServerEvent.RELOAD_PENDING_ITEMS.name(), ServerEvent.NOTIFY.name(),
                                 "Phiên " + sessionId + " vừa bị từ chối", sessionId));
 
                 log.info("[Server] Admin từ chối phiên ID: {}", sessionId);
             } else {
-                context.sendResponse(new Response<>("REJECT_ITEM", "ERROR",
+                context.sendResponse(new Response<>(ServerEvent.REJECT_ITEM.name(), ServerEvent.ERROR.name(),
                         "Không thể thực hiện từ chối (Lỗi Database)", null));
             }
         } catch (Exception e) {
             log.error("Lỗi REJECT_ITEM: {}", e.getMessage(), e);
-            context.sendResponse(new Response<>("REJECT_ITEM", "ERROR",
+            context.sendResponse(new Response<>(ServerEvent.REJECT_ITEM.name(), ServerEvent.ERROR.name(),
                     "Lỗi xử lý từ chối: " + e.getMessage(), null));
         }
     }

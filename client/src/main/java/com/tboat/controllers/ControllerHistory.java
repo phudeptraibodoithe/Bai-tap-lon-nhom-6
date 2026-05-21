@@ -3,6 +3,7 @@ package com.tboat.controllers;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.session.UserSession;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
@@ -41,7 +42,7 @@ public class ControllerHistory extends BaseController implements Initializable, 
 
         // ── UCB: Cache-then-Network ──────────────────────────────────────────
         String screenKey = BaseController.toScreenKey("history.fxml");
-        String cached    = DataCache.getInstance().get("GET_HISTORY");
+        String cached = DataCache.getInstance().get(ServerEvent.GET_HISTORY.name());
 
         if (cached != null) {
             log.info("[History] Cache HIT → render ngay");
@@ -59,22 +60,21 @@ public class ControllerHistory extends BaseController implements Initializable, 
     public void loadlichsu() {
         lichsu.getChildren().clear();
         String username = UserSession.getInstance().getUsername();
-        SocketHelper.sendRequest("GET_HISTORY", username);
+        SocketHelper.sendRequest(ServerEvent.GET_HISTORY.name(), username);
     }
 
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                String type = SocketHelper.getType(response);
+                ServerEvent type = SocketHelper.getTypeEnum(response);
 
                 if (handleBroadcast(type)) return;
-                if (!"GET_HISTORY".equals(type)) return;
-                if (!"SUCCESS".equals(SocketHelper.getStatus(response))) return;
+                if (type != ServerEvent.GET_HISTORY) return;
+                if (SocketHelper.getStatusEnum(response) != ServerEvent.SUCCESS) return;
 
                 JsonArray historyArray = SocketHelper.getPayloadArray(response);
                 if (historyArray == null) return;
-
                 renderHistoryList(historyArray);
 
             } catch (Exception e) {
@@ -83,10 +83,9 @@ public class ControllerHistory extends BaseController implements Initializable, 
         });
     }
 
-    private boolean handleBroadcast(String type) {
-        // AUCTION_FINISHED → phiên vừa kết thúc, reload lại lịch sử
-        if ("AUCTION_FINISHED".equals(type) || "RELOAD_HISTORY".equals(type)) {
-            SocketHelper.sendRequest("GET_HISTORY", null);
+    private boolean handleBroadcast(ServerEvent type) {
+        if (type == ServerEvent.AUCTION_FINISHED) {
+            SocketHelper.sendRequest(ServerEvent.GET_HISTORY.name(), null);
             return true;
         }
         return false;

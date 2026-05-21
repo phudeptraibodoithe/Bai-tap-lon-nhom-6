@@ -2,6 +2,7 @@ package com.tboat.controllers;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.tboat.models.network.ServerEvent;
 import com.tboat.session.UserSession;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
@@ -89,7 +90,7 @@ public class NapRutController extends BaseController implements Initializable, S
             }
             btnSubmit.setDisable(true);
             double amountToSend = isDepositMode ? amount : -amount;
-            SocketHelper.sendRequest("TRANSACTION", amountToSend);
+            SocketHelper.sendRequest(ServerEvent.TRANSACTION.name(), amountToSend);
         } catch (Exception e) {
             AlertUtils.showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Đã xảy ra lỗi khi xử lý số tiền.");
         }
@@ -120,18 +121,16 @@ public class NapRutController extends BaseController implements Initializable, S
         Platform.runLater(() -> {
             btnSubmit.setDisable(false);
             try {
-                String type = SocketHelper.getType(response);
+                ServerEvent type = SocketHelper.getTypeEnum(response);
 
                 if (handleBroadcast(type)) return;
-                if (!"TRANSACTION".equals(type)) return;
+                if (type != ServerEvent.TRANSACTION) return;
 
-                String status = SocketHelper.getStatus(response);
-                if ("SUCCESS".equals(status)) {
+                if (SocketHelper.getStatusEnum(response) == ServerEvent.SUCCESS) {
                     handleTransactionSuccess(response);
                 } else {
                     handleTransactionFailure(SocketHelper.getMessage(response));
                 }
-
             } catch (Exception e) {
                 AlertUtils.showAlert(Alert.AlertType.ERROR, "Lỗi hệ thống", "Lỗi đọc dữ liệu từ Server.");
                 logger.severe("❌ KHÔNG THỂ ĐỌC JSON NẠP/RÚT: " + response);
@@ -139,10 +138,9 @@ public class NapRutController extends BaseController implements Initializable, S
         });
     }
 
-    private boolean handleBroadcast(String type) {
-        // AUCTION_FINISHED → số dư có thể thay đổi (thắng/thua), reload profile
-        if ("AUCTION_FINISHED".equals(type)) {
-            SocketHelper.sendRequest("GET_PROFILE", null);
+    private boolean handleBroadcast(ServerEvent type) {
+        if (type == ServerEvent.AUCTION_FINISHED) {
+            SocketHelper.sendRequest(ServerEvent.GET_PROFILE.name(), null);
             return true;
         }
         return false;

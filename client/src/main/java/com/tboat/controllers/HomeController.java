@@ -34,8 +34,7 @@ public class HomeController extends BaseController implements Initializable, Soc
     @FXML private Button btnHome, btnHistory, btnPostItem, btnHistory1;
     @FXML private Label lblGreeting;
     @FXML private ImageView userAvatar;
-
-    // Các nút Bộ Lọc
+    
     @FXML private Button btnFilterAll, btnFilterDienTu, btnFilterThoiTrang, btnFilterTrangSuc, btnFilterKhac;
 
     private final List<VBox> allCards = new ArrayList<>();

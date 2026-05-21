@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+<?import java.net.URL?>
+<HBox alignment="CENTER_LEFT" prefHeight="70.0" spacing="20.0" styleClass="header-container"
+      xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.tboat.controllers.HeaderController">
+
+    <stylesheets>
+        <URL value="@../styles/application.css" />
+    </stylesheets>
+
+    <padding>
+        <Insets left="30.0" right="30.0" />
+    </padding>
+
+    <children>
+        <ImageView fitHeight="77.0" fitWidth="103.0" onMouseClicked="#switchToMenu"
+                   pickOnBounds="true" preserveRatio="true" style="-fx-cursor: hand;">
+            <image><Image url="@../images/logo.png" /></image>
+        </ImageView>
+
+        <Button mnemonicParsing="false" onAction="#switchToMenu"    styleClass="nav-btn" text="Trang chủ">
+            <font><Font size="14.0" /></font>
+        </Button>
+        <Button mnemonicParsing="false" onAction="#switchToHistory" styleClass="nav-btn" text="Lịch sử">
+            <font><Font size="14.0" /></font>
+        </Button>
+        <Button mnemonicParsing="false" onAction="#switchToManager" styleClass="nav-btn" text="Quản lý sản phẩm">
+            <font><Font size="14.0" /></font>
+        </Button>
+        <Button mnemonicParsing="false" onAction="#switchToPostItem" styleClass="nav-btn" text="Đăng sản phẩm">
+            <font><Font size="14.0" /></font>
+        </Button>
+
+        <Region HBox.hgrow="ALWAYS" />
+
+        <HBox alignment="CENTER" spacing="15.0">
+            <children>
+                <Label fx:id="lblGreeting" text="Hello username" textFill="#0A1128">
+                    <font><Font name="System Bold" size="14.0" /></font>
+                </Label>
+
+                <!-- Bell button + badge, Popup được tạo hoàn toàn trong Controller -->
+                <StackPane fx:id="bellPane" minWidth="40" minHeight="40">
+                    <Button fx:id="btnBell" mnemonicParsing="false"
+                            onAction="#toggleNotificationPopup"
+                            styleClass="bell-btn" text="🔔">
+                        <font><Font size="18.0" /></font>
+                    </Button>
+                    <Label fx:id="lblBadge" styleClass="notification-badge"
+                           text="0" visible="false"
+                           StackPane.alignment="TOP_RIGHT" />
+                </StackPane>
+
+                <Button mnemonicParsing="false" onAction="#switchToProfile" styleClass="avatar-btn">
+                    <graphic>
+                        <ImageView fx:id="userAvatar" fitHeight="45.0" fitWidth="45.0"
+                                   pickOnBounds="true" preserveRatio="false"
+                                   style="-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);" />
+                    </graphic>
+                </Button>
+            </children>
+        </HBox>
+    </children>
+</HBox>

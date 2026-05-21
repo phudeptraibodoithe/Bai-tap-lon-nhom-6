@@ -1,0 +1,4 @@
+--patch-module
+com.tboat.common=_
+--add-reads
+com.tboat.common=ALL-UNNAMED

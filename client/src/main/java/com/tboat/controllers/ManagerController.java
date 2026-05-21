@@ -1,19 +1,20 @@
 package com.tboat.controllers;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.tboat.models.AuctionFactory;
-import com.tboat.models.AuctionFactoryProducer;
-import com.tboat.models.AuctionSession;
-import com.tboat.models.StatusOfAuction;
+import com.tboat.models.auction.AuctionSession;
+import com.tboat.models.auction.StatusOfAuction;
+import com.tboat.models.network.ServerEvent;
+import com.tboat.session.UserSession;
+import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
-import com.tboat.socket.SocketManager;
-import com.tboat.utils.GsonUtils;
-import com.tboat.utilsclient.HeaderUtils; // Import class dùng chung
-import com.tboat.utilsclient.UserSession;
+import com.tboat.ucb.DataCache;
+import com.tboat.ucb.NavigationContext;
+import com.tboat.utilsclient.CurrencyFormatter;
+import com.tboat.utilsclient.HeaderUtils;
+import com.tboat.utilsclient.JsonMapperUtils;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -21,21 +22,21 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Node;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.image.ImageView;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.util.Callback;
+import javafx.scene.image.ImageView;
 
 import java.net.URL;
-import java.time.LocalDateTime;
 import java.util.ResourceBundle;
 import java.util.logging.Logger;
 
 public class ManagerController extends BaseController implements Initializable, SocketListener {
+
+    private static final Logger logger = Logger.getLogger(ManagerController.class.getName());
+    private final ObservableList<AuctionSession> listMyItems = FXCollections.observableArrayList();
+
+    private static final String STYLE_BTN_EDIT   = "-fx-background-color: #3498db; -fx-text-fill: white; -fx-cursor: hand;";
+    private static final String STYLE_BTN_CLOSED = "-fx-background-color: #bdc3c7; -fx-text-fill: white;";
 
     @FXML private TableView<AuctionSession> tableMyItems;
     @FXML private TableColumn<AuctionSession, Integer> colId;
@@ -44,23 +45,30 @@ public class ManagerController extends BaseController implements Initializable, 
     @FXML private TableColumn<AuctionSession, Double> colPrice;
     @FXML private TableColumn<AuctionSession, StatusOfAuction> colStatus;
     @FXML private TableColumn<AuctionSession, Void> colAction;
-
-    // ĐÃ THÊM: Khai báo 2 biến UI cho Header
     @FXML private Label lblGreeting;
     @FXML private ImageView userAvatar;
-
-    private final Gson gson = GsonUtils.getInstance();
-    private static final Logger logger = Logger.getLogger(ManagerController.class.getName());
-    private ObservableList<AuctionSession> listMyItems = FXCollections.observableArrayList();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         setupTableColumns();
-        SocketManager.getInstance().subscribe(this);
-        loadMyAuctions();
-
-        // ĐÃ THÊM: Gọi class dùng chung để hiển thị Avatar và tên User
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
+        handleCacheAndNetworkAndRefresh();
+    }
+
+    private void handleCacheAndNetworkAndRefresh() {
+        String screenKey = BaseController.toScreenKey("manager.fxml");
+        String cachedData = DataCache.getInstance().get(ServerEvent.GET_MY_AUCTIONS);
+
+        if (cachedData != null) {
+            logger.info("[Manager] Cache HIT → Hiển thị giao diện ngay lập tức.");
+            NavigationContext.getInstance().reportCacheHit(screenKey, true);
+            renderMyAuctions(cachedData);
+            loadMyAuctions();
+        } else {
+            logger.info("[Manager] Cache MISS → Đợi dữ liệu từ mạng.");
+            NavigationContext.getInstance().reportCacheHit(screenKey, false);
+            loadMyAuctions();
+        }
     }
 
     private void setupTableColumns() {
@@ -69,121 +77,102 @@ public class ManagerController extends BaseController implements Initializable, 
         colStatus.setCellValueFactory(new PropertyValueFactory<>("statusOfAuction"));
         colType.setCellValueFactory(new PropertyValueFactory<>("type"));
         colPrice.setCellValueFactory(new PropertyValueFactory<>("currentPrice"));
-        colPrice.setCellFactory(column -> new TableCell<AuctionSession, Double>() {
+        colPrice.setCellFactory(column -> new TableCell<>() {
             @Override
             protected void updateItem(Double price, boolean empty) {
                 super.updateItem(price, empty);
-                if (empty || price == null) {
-                    setText(null);
-                } else {
-                    setText(String.format("%,.0f VNĐ", price));
-                }
+                setText((empty || price == null) ? null : CurrencyFormatter.formatDisplay(price));
             }
         });
 
-        colAction.setCellFactory(new Callback<TableColumn<AuctionSession, Void>, TableCell<AuctionSession, Void>>() {
+        colAction.setCellFactory(param -> new TableCell<>() {
+            private final Button btn = new Button("Chỉnh sửa");
+            {
+                btn.setOnAction((ActionEvent event) -> {
+                    AuctionSession data = getTableView().getItems().get(getIndex());
+                    logger.info("Bạn vừa bấm vào sản phẩm để sửa: " + data.getName());
+                    EditItemController editController = changeSceneAndGetController((Node) event.getSource(), "edit-item.fxml");
+                    if (editController != null) {
+                        editController.setEditData(data);
+                    }
+                });
+            }
+
             @Override
-            public TableCell<AuctionSession, Void> call(final TableColumn<AuctionSession, Void> param) {
-                return new TableCell<AuctionSession, Void>() {
-                    private final Button btn = new Button("Chỉnh sửa");
-                    {
-                        btn.setOnAction((ActionEvent event) -> {
-                            AuctionSession data = getTableView().getItems().get(getIndex());
-                            logger.info("Bạn vừa bấm vào sản phẩm để sửa: " + data.getName());
-
-                            ControllerEditItem editController = changeSceneAndGetController((Node) event.getSource(), "editItem.fxml");
-
-                            if (editController != null) {
-                                editController.setEditData(data);
-                            }
-                        });
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || getTableRow() == null || getTableRow().getItem() == null) {
+                    setGraphic(null);
+                } else {
+                    AuctionSession session = getTableRow().getItem();
+                    StatusOfAuction status = session.getStatusOfAuction();
+                    if (status == StatusOfAuction.ENDED || status == StatusOfAuction.CANCELED) {
+                        btn.setDisable(true);
+                        btn.setText("Đã đóng");
+                        btn.setStyle(STYLE_BTN_CLOSED);
+                    } else {
+                        btn.setDisable(false);
+                        btn.setText("Chỉnh sửa");
+                        btn.setStyle(STYLE_BTN_EDIT);
                     }
-
-                    @Override
-                    protected void updateItem(Void item, boolean empty) {
-                        super.updateItem(item, empty);
-                        if (empty || getTableRow() == null || getTableRow().getItem() == null) {
-                            setGraphic(null);
-                        } else {
-                            AuctionSession session = getTableRow().getItem();
-                            StatusOfAuction status = session.getStatusOfAuction();
-
-                            if (status == StatusOfAuction.ENDED || status == StatusOfAuction.CANCELED) {
-                                btn.setDisable(true);
-                                btn.setText("Đã đóng");
-                                btn.setStyle("-fx-background-color: #bdc3c7; -fx-text-fill: white;");
-                            } else {
-                                btn.setDisable(false);
-                                btn.setText("Chỉnh sửa");
-                                btn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-cursor: hand;");
-                            }
-                            setGraphic(btn);
-                        }
-                    }
-                };
+                    setGraphic(btn);
+                }
             }
         });
         tableMyItems.setItems(listMyItems);
     }
 
     public void loadMyAuctions() {
-        String myUsername = UserSession.getInstance().getUsername();
-        JsonObject request = new JsonObject();
-        request.addProperty("action", "GET_MY_AUCTIONS");
-        request.addProperty("payload", myUsername);
+        SocketHelper.sendRequest(ServerEvent.GET_MY_AUCTIONS, UserSession.getInstance().getUsername());
+    }
 
-        SocketManager.getInstance().send(gson.toJson(request));
+    private void renderMyAuctions(String response) {
+        try {
+            if (SocketHelper.getStatusEnum(response) != ServerEvent.SUCCESS) return;
+            JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+            if (!jsonResponse.has("payload") || !jsonResponse.get("payload").isJsonArray()) return;
+
+            JsonArray myArray = jsonResponse.getAsJsonArray("payload");
+            listMyItems.clear();
+
+            for (JsonElement element : myArray) {
+                try {
+                    AuctionSession session = JsonMapperUtils.parseAuctionSession(element.getAsJsonObject());
+                    if (session != null) listMyItems.add(session);
+                } catch (Exception e) {
+                    logger.warning("[Manager] Lỗi xử lý một phiên: " + e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            logger.severe("[Manager] Khởi tạo dữ liệu bảng thất bại: " + e.getMessage());
+        }
     }
 
     @Override
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                String status = jsonResponse.get("status").getAsString();
+                ServerEvent type = SocketHelper.getTypeEnum(response);
 
-                if ("SUCCESS".equals(status) && jsonResponse.has("payload") && jsonResponse.get("payload").isJsonArray()) {
-                    JsonArray myArray = jsonResponse.getAsJsonArray("payload");
-                    listMyItems.clear();
+                if (handleBroadcast(type)) return;
+                if (type != ServerEvent.GET_MY_AUCTIONS) return;
+                if (SocketHelper.getStatusEnum(response) != ServerEvent.SUCCESS) return;
+                if (SocketHelper.getPayloadArray(response) == null) return;
 
-                    for (JsonElement element : myArray) {
-                        JsonObject dataObj = element.getAsJsonObject();
+                DataCache.getInstance().put(ServerEvent.GET_MY_AUCTIONS, response);
+                renderMyAuctions(response);
 
-                        String type = dataObj.has("type") ? dataObj.get("type").getAsString() : "Khác";
-                        String name = dataObj.has("name") ? dataObj.get("name").getAsString() : "No name";
-                        double currentPrice = dataObj.has("currentPrice") ? dataObj.get("currentPrice").getAsDouble() : 0.0;
-                        double bidIncrease = dataObj.has("bidIncrease") ? dataObj.get("bidIncrease").getAsDouble() : 0.0;
-                        String sellerAccount = dataObj.has("sellerAccountName") && !dataObj.get("sellerAccountName").isJsonNull() ? dataObj.get("sellerAccountName").getAsString() : "";
-                        String description = dataObj.has("description") && !dataObj.get("description").isJsonNull() ? dataObj.get("description").getAsString() : "";
-                        String imageURL = dataObj.has("imageURL") && !dataObj.get("imageURL").isJsonNull() ? dataObj.get("imageURL").getAsString() : "";
-                        LocalDateTime startTime = LocalDateTime.now();
-                        if (dataObj.has("startTime") && !dataObj.get("startTime").isJsonNull()) {
-                            startTime = LocalDateTime.parse(dataObj.get("startTime").getAsString());
-                        }
-                        LocalDateTime endTime = LocalDateTime.now().plusDays(1);
-                        if (dataObj.has("endTime") && !dataObj.get("endTime").isJsonNull()) {
-                            endTime = LocalDateTime.parse(dataObj.get("endTime").getAsString());
-                        }
-                        AuctionFactory factory = AuctionFactoryProducer.getFactory(type);
-                        AuctionSession session = factory.createAuctionSession(
-                                startTime, endTime, currentPrice, bidIncrease,
-                                sellerAccount, name, description, imageURL
-                        );
-                        session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
-                        String statusString = dataObj.has("statusOfAuction") ? dataObj.get("statusOfAuction").getAsString() : "ONGOING";
-                        try {
-                            session.setStatusOfAuction(StatusOfAuction.valueOf(statusString));
-                        } catch (Exception ignored) {
-                            session.setStatusOfAuction(StatusOfAuction.ONGOING);
-                        }
-                        listMyItems.add(session);
-                    }
-                }
             } catch (Exception e) {
-                if (response.contains("{")) {
-                    logger.severe("❌ LỖI ĐỌC JSON TRANG MANAGER: " + response);
-                }
+                logger.warning("[Manager] Lỗi xử lý phản hồi: " + e.getMessage());
             }
         });
+    }
+
+    private boolean handleBroadcast(ServerEvent type) {
+        if (type == ServerEvent.RELOAD_ALL_ITEMS || type == ServerEvent.RELOAD_PENDING_ITEMS) {
+            loadMyAuctions();
+            return true;
+        }
+        return false;
     }
 }

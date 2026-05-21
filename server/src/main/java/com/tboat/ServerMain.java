@@ -1,10 +1,11 @@
 package com.tboat;
 
+import com.tboat.logging.LogConfig;
 import com.tboat.service.AuctionTimerService;
-import com.tboat.socket.ClientHandler;
+import com.tboat.socket.ClientConnection;
 import com.tboat.service.AuctionManager;
 import com.tboat.dao.AuctionSessionDAO;
-import com.tboat.models.AuctionSession;
+import com.tboat.models.auction.AuctionSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
@@ -16,18 +17,26 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ServerMain {
-    private static final ExecutorService threadPool = Executors.newFixedThreadPool(100);
+    private static final ExecutorService threadPool = Executors.newFixedThreadPool(30);
     public static final ExecutorService broadcastExecutor = Executors.newFixedThreadPool(10);
     private static final Logger logger = LoggerFactory.getLogger(ServerMain.class);
 
     public static void main(String[] args) {
+        LogConfig logConfig = new LogConfig("logs/server", 10);
+        logConfig.start();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            logger.info("Server đang tắt...");
+            logConfig.stop();
+        }));
+
         int port = 8888;
         logger.info("[System]: Đang khởi tạo danh sách phòng đấu giá...");
         initAuctionRooms();
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                threadPool.execute(new ClientHandler(clientSocket));
+                threadPool.execute(new ClientConnection(clientSocket));
                 logger.info("[Network]: Chấp nhận kết nối từ: {}", clientSocket.getInetAddress());
             }
         } catch (IOException e) {

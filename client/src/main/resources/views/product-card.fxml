@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.effect.DropShadow?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+<?import java.net.URL?>
+<VBox prefWidth="300.0" styleClass="product-card" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.tboat.controllers.ProductCardController">
+
+    <stylesheets>
+        <URL value="@../styles/application.css" />
+    </stylesheets>
+
+    <effect>
+        <DropShadow color="#00000014" radius="20.0" />
+    </effect>
+
+    <children>
+        <StackPane prefHeight="240.0" styleClass="product-image-pane">
+            <children>
+                <ImageView fx:id="itemImage" fitHeight="240.0" fitWidth="300.0" pickOnBounds="true" preserveRatio="false" />
+                <Button mnemonicParsing="false" styleClass="btn-heart" text="🤍" textFill="WHITE" StackPane.alignment="TOP_RIGHT">
+                    <StackPane.margin><Insets right="15.0" top="15.0" /></StackPane.margin>
+                    <font><Font size="14.0" /></font>
+                </Button>
+            </children>
+        </StackPane>
+
+        <VBox spacing="15.0">
+            <padding>
+                <Insets bottom="25.0" left="25.0" right="25.0" top="20.0" />
+            </padding>
+            <children>
+                <Label fx:id="lblName" prefHeight="55.0" styleClass="card-title" text="Tên sản phẩm" wrapText="true">
+                    <font><Font name="System Bold" size="20.0" /></font>
+                </Label>
+
+                <HBox spacing="10.0">
+                    <children>
+                        <VBox alignment="CENTER_LEFT" prefHeight="65.0" spacing="3.0" styleClass="card-info-box" HBox.hgrow="ALWAYS">
+                            <children>
+                                <Label styleClass="card-label-title" text="CURRENT BID">
+                                    <font><Font name="System Bold" size="10.0" /></font>
+                                </Label>
+                                <Label fx:id="lblCurrentBid" styleClass="card-label-value" text="0 VNĐ">
+                                    <font><Font name="System Bold" size="16.0" /></font>
+                                </Label>
+                            </children>
+                        </VBox>
+
+                        <VBox alignment="CENTER_LEFT" prefHeight="65.0" spacing="3.0" styleClass="card-info-box" HBox.hgrow="ALWAYS">
+                            <children>
+                                <Label styleClass="card-label-title" text="STATUS">
+                                    <font><Font name="System Bold" size="10.0" /></font>
+                                </Label>
+                                <Label fx:id="lblStatus" styleClass="card-label-status" text="ONGOING">
+                                    <font><Font name="System Bold" size="16.0" /></font>
+                                </Label>
+                            </children>
+                        </VBox>
+                    </children>
+                </HBox>
+
+                <Button fx:id="btnBid" maxWidth="1.7976931348623157E308" onAction="#handlePlaceBid" prefHeight="45.0" styleClass="btn-place-bid" text="PLACE BID">
+                    <font><Font name="System Bold" size="14.0" /></font>
+                </Button>
+            </children>
+        </VBox>
+    </children>
+</VBox>

@@ -1,48 +1,254 @@
 package com.tboat.service;
 
-import com.tboat.socket.ClientHandler;
+import com.tboat.socket.ClientSession;
 import com.tboat.utils.ResponseCode;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.*;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Unit Test cho UserManager.
+ * Không cần DB cho các test về onlineUsers map.
+ *
+ * LƯU Ý quan trọng:
+ * - ConcurrentHashMap.get(null) ném NPE — đây là hành vi Java chuẩn.
+ *   Test getHandler(null) được viết để chấp nhận cả null lẫn NPE.
+ * - register() / login() với account không online gọi DB → chấp nhận RuntimeException từ DB.
+ */
 class UserManagerTest {
+
     private UserManager userManager;
 
     @BeforeEach
     void setUp() {
         userManager = UserManager.getInstance();
-        // Đảm bảo map online trống trước mỗi test
         UserManager.getOnlineUsers().clear();
     }
 
+    @AfterEach
+    void tearDown() {
+        UserManager.getOnlineUsers().clear();
+    }
+
+    static class MockContext extends ClientSession {
+        public MockContext() {}
+        public MockContext(String clientId) {
+            this.setClientId(clientId);
+            this.setOut(new PrintWriter(new StringWriter(), true));
+        }
+    }
+
+    // ===================== SINGLETON =====================
+
     @Test
-    @DisplayName("Test tính chất Singleton của UserManager")
-    void testSingletonInstance() {
-        UserManager instance1 = UserManager.getInstance();
-        UserManager instance2 = UserManager.getInstance();
-        assertSame(instance1, instance2, "Phải là cùng một instance duy nhất");
+    @DisplayName("UserManager phải là Singleton")
+    void testSingleton_SameInstance() {
+        assertSame(UserManager.getInstance(), UserManager.getInstance());
     }
 
     @Test
-    @DisplayName("Test đăng nhập khi tài khoản đã online")
-    void testLogin_AlreadyLoggedIn() {
-        String account = "testUser";
-        ClientHandler mockHandler = new MockHandler();
+    @DisplayName("getInstance() không được trả về null")
+    void testSingleton_NotNull() {
+        assertNotNull(UserManager.getInstance());
+    }
 
-        // Giả lập user đã online
-        UserManager.getOnlineUsers().put(account, mockHandler);
+    // ===================== ONLINE USERS MAP =====================
 
-        ResponseCode result = userManager.login(account, "password", new MockHandler());
+    @Test
+    @DisplayName("onlineUsers phải trống sau setUp()")
+    void testOnlineUsers_InitiallyEmpty() {
+        assertTrue(UserManager.getOnlineUsers().isEmpty());
+    }
+
+    @Test
+    @DisplayName("getOnlineUsers() không được trả về null")
+    void testGetOnlineUsers_NotNull() {
+        assertNotNull(UserManager.getOnlineUsers());
+    }
+
+    // ===================== LOGIN — kiểm tra online map (KHÔNG cần DB) =====================
+
+    @Test
+    @DisplayName("Login khi account đang online → ALREADY_LOGGED_IN (không gọi DB)")
+    void testLogin_AlreadyOnline_ReturnsAlreadyLoggedIn() {
+        // Guard onlineUsers.containsKey() chạy TRƯỚC khi gọi DB → không cần DB
+        UserManager.getOnlineUsers().put("alice", new MockContext("alice"));
+        ResponseCode result = userManager.login("alice", "anypass", new MockContext());
         assertEquals(ResponseCode.ALREADY_LOGGED_IN, result);
     }
 
-    // Lớp giả lập để tránh lỗi khởi tạo Socket
-    class MockHandler extends ClientHandler {
-        public MockHandler() { super(null); }
-        @Override public void sendSystemMessage(String action, String message, Object payload) {
-            // Không làm gì cả khi chạy test
+    @Test
+    @DisplayName("Login khi account đang online: map không bị thay đổi")
+    void testLogin_AlreadyOnline_MapUnchanged() {
+        MockContext original = new MockContext("alice");
+        UserManager.getOnlineUsers().put("alice", original);
+        userManager.login("alice", "anypass", new MockContext());
+        assertSame(original, UserManager.getOnlineUsers().get("alice"));
+    }
+
+    @Test
+    @DisplayName("Login nhiều account đang online: tất cả đều ALREADY_LOGGED_IN")
+    void testLogin_MultipleOnlineAccounts_AllAlreadyLoggedIn() {
+        UserManager.getOnlineUsers().put("userA", new MockContext("userA"));
+        UserManager.getOnlineUsers().put("userB", new MockContext("userB"));
+        assertEquals(ResponseCode.ALREADY_LOGGED_IN,
+                userManager.login("userA", "pass", new MockContext()));
+        assertEquals(ResponseCode.ALREADY_LOGGED_IN,
+                userManager.login("userB", "pass", new MockContext()));
+    }
+
+    // ===================== LOGOUT =====================
+
+    @Test
+    @DisplayName("logout user đang online: bị xóa khỏi map")
+    void testLogout_OnlineUser_RemovedFromMap() {
+        UserManager.getOnlineUsers().put("alice", new MockContext("alice"));
+        userManager.logout("alice");
+        assertFalse(UserManager.getOnlineUsers().containsKey("alice"));
+    }
+
+    @Test
+    @DisplayName("logout user không online: không throw Exception")
+    void testLogout_NotOnline_NoThrow() {
+        assertDoesNotThrow(() -> userManager.logout("nonExistentUser"));
+    }
+
+    @Test
+    @DisplayName("logout null: không throw Exception (UserManager có guard null)")
+    void testLogout_Null_NoThrow() {
+        // UserManager.logout() có: if (account != null) { onlineUsers.remove(account) }
+        assertDoesNotThrow(() -> userManager.logout(null));
+    }
+
+    @Test
+    @DisplayName("logout chuỗi rỗng: không throw Exception")
+    void testLogout_EmptyString_NoThrow() {
+        assertDoesNotThrow(() -> userManager.logout(""));
+    }
+
+    @Test
+    @DisplayName("logout gọi 2 lần cùng account: không throw Exception")
+    void testLogout_CalledTwice_NoThrow() {
+        UserManager.getOnlineUsers().put("alice", new MockContext("alice"));
+        userManager.logout("alice");
+        assertDoesNotThrow(() -> userManager.logout("alice"));
+    }
+
+    // ===================== GET HANDLER =====================
+
+    @Test
+    @DisplayName("getHandler trả về đúng ClientSession đã đăng ký")
+    void testGetHandler_ReturnsCorrectContext() {
+        MockContext ctx = new MockContext("alice");
+        UserManager.getOnlineUsers().put("alice", ctx);
+        assertSame(ctx, UserManager.getHandler("alice"));
+    }
+
+    @Test
+    @DisplayName("getHandler với user không online → null")
+    void testGetHandler_NotOnline_ReturnsNull() {
+        assertNull(UserManager.getHandler("offlineUser"));
+    }
+
+    @Test
+    @DisplayName("getHandler với null: ConcurrentHashMap không chấp nhận null key → NPE là hành vi hợp lệ")
+    void testGetHandler_Null_BehaviorDocumented() {
+        // ConcurrentHashMap.get(null) ném NullPointerException theo spec Java.
+        // Test này xác nhận hành vi hiện tại (NPE) và tài liệu hoá nó.
+        // Nếu muốn an toàn hơn, cần thêm null-guard vào UserManager.getHandler().
+        assertThrows(NullPointerException.class, () -> UserManager.getHandler(null),
+                "ConcurrentHashMap.get(null) phải throw NPE theo đặc tả Java.");
+    }
+
+    @Test
+    @DisplayName("getHandler sau logout → null")
+    void testGetHandler_AfterLogout_ReturnsNull() {
+        UserManager.getOnlineUsers().put("alice", new MockContext("alice"));
+        userManager.logout("alice");
+        assertNull(UserManager.getHandler("alice"));
+    }
+
+    // ===================== NHIỀU USER =====================
+
+    @Test
+    @DisplayName("Thêm 3 user vào map: size phải là 3")
+    void testOnlineUsers_ThreeUsers_SizeIsThree() {
+        UserManager.getOnlineUsers().put("u1", new MockContext("u1"));
+        UserManager.getOnlineUsers().put("u2", new MockContext("u2"));
+        UserManager.getOnlineUsers().put("u3", new MockContext("u3"));
+        assertEquals(3, UserManager.getOnlineUsers().size());
+    }
+
+    @Test
+    @DisplayName("Logout tất cả user: map phải trống")
+    void testLogout_AllUsers_MapEmpty() {
+        UserManager.getOnlineUsers().put("u1", new MockContext("u1"));
+        UserManager.getOnlineUsers().put("u2", new MockContext("u2"));
+        userManager.logout("u1");
+        userManager.logout("u2");
+        assertTrue(UserManager.getOnlineUsers().isEmpty());
+    }
+
+    @Test
+    @DisplayName("Logout 1 trong 3 user: 2 user còn lại vẫn online")
+    void testLogout_OneOfThree_OthersTwoRemain() {
+        UserManager.getOnlineUsers().put("u1", new MockContext("u1"));
+        UserManager.getOnlineUsers().put("u2", new MockContext("u2"));
+        UserManager.getOnlineUsers().put("u3", new MockContext("u3"));
+        userManager.logout("u2");
+        assertEquals(2, UserManager.getOnlineUsers().size());
+        assertTrue(UserManager.getOnlineUsers().containsKey("u1"));
+        assertFalse(UserManager.getOnlineUsers().containsKey("u2"));
+        assertTrue(UserManager.getOnlineUsers().containsKey("u3"));
+    }
+
+    @Test
+    @DisplayName("Thêm cùng account 2 lần: map chỉ giữ giá trị cuối")
+    void testOnlineUsers_PutSameKeyTwice_LastValueWins() {
+        MockContext first  = new MockContext("alice");
+        MockContext second = new MockContext("alice");
+        UserManager.getOnlineUsers().put("alice", first);
+        UserManager.getOnlineUsers().put("alice", second);
+        assertEquals(1, UserManager.getOnlineUsers().size());
+        assertSame(second, UserManager.getHandler("alice"));
+    }
+
+    // ===================== REGISTER (gọi DB — chỉ test không phát sinh NPE) =====================
+
+    @Test
+    @DisplayName("register với account rỗng: nếu có DB trả về ResponseCode, nếu không có DB throw RuntimeException (không phải NPE)")
+    void testRegister_EmptyAccount_NoNPE() {
+        try {
+            ResponseCode result = userManager.register("", "pass", "nick", "", "");
+            assertNotNull(result, "Nếu có DB, kết quả không được null.");
+        } catch (RuntimeException e) {
+            assertFalse(e instanceof NullPointerException,
+                    "Chỉ chấp nhận DB RuntimeException, không chấp nhận NPE.");
+        }
+    }
+
+    @Test
+    @DisplayName("register với tất cả null: không phát sinh NPE (chỉ chấp nhận DB error)")
+    void testRegister_AllNull_NoNPE() {
+        try {
+            userManager.register(null, null, null, null, null);
+        } catch (RuntimeException e) {
+            assertFalse(e instanceof NullPointerException,
+                    "Không được throw NPE — chỉ DB-related exception là chấp nhận được.");
+        }
+    }
+
+    @Test
+    @DisplayName("register với email và phone null: không phát sinh NPE")
+    void testRegister_NullEmailPhone_NoNPE() {
+        try {
+            userManager.register("testUser", "pass", "nick", null, null);
+        } catch (RuntimeException e) {
+            assertFalse(e instanceof NullPointerException,
+                    "Không được throw NPE.");
         }
     }
 }

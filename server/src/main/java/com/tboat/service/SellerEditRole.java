@@ -1,13 +1,15 @@
 package com.tboat.service;
 
 import com.tboat.dao.AuctionSessionDAO;
-import com.tboat.dao.HistoryBidDAO;
+import com.tboat.dao.BidDAO;
+import com.tboat.dao.HistoryDAO;
 import com.tboat.dao.UserDAO;
-import com.tboat.models.AuctionSession;
-import com.tboat.models.StatusOfAuction;
-import com.tboat.models.User;
+import com.tboat.models.auction.AuctionSession;
+import com.tboat.models.auction.StatusOfAuction;
+import com.tboat.models.core.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.time.LocalDateTime;
 
 public class SellerEditRole implements TransactionRole {
@@ -15,7 +17,7 @@ public class SellerEditRole implements TransactionRole {
 
     @Override
     public boolean execute(User user, AuctionSession session, double amount,
-                           UserDAO userDAO, AuctionSessionDAO sessionDAO, HistoryBidDAO bidDAO) {
+                           UserDAO userDAO, AuctionSessionDAO sessionDAO, HistoryDAO historyDAO, BidDAO bidDAO) {
 
         AuctionSession dbSession = sessionDAO.getAuctionById(session.getId());
         if (dbSession == null || !dbSession.getSellerAccountName().equals(user.getAccountName())) {

@@ -1,0 +1,14 @@
+com/tboat/models/OtherItemTest.class
+com/tboat/models/JewelryItemTest.class
+com/tboat/models/ItemTest$ConcreteItem.class
+com/tboat/models/BidTest.class
+com/tboat/models/HistoryTest.class
+com/tboat/models/PersonTest.class
+com/tboat/models/ElectronicsItemTest.class
+com/tboat/models/UserTest.class
+com/tboat/models/FashionItemTest.class
+com/tboat/models/ItemTest.class
+com/tboat/models/PersonTest$ConcretePerson.class
+com/tboat/models/ParticipationTest.class
+com/tboat/models/StatusOfAuctionTest.class
+com/tboat/models/AuctionSessionTest.class

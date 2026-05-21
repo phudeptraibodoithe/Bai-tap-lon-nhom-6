@@ -1,6 +1,11 @@
 package com.tboat.utilsclient;
 
 import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.shape.Rectangle;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -12,6 +17,24 @@ public class ImageUtils {
 
     private static final Logger log = Logger.getLogger(ImageUtils.class.getName());
 
+    public static File chooseImageFile(Window ownerWindow, String title) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle(title != null ? title : "Chọn ảnh");
+        // Gộp chung các định dạng phổ biến nhất
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif")
+        );
+        return fileChooser.showOpenDialog(ownerWindow);
+    }
+
+    // --- ĐÃ THÊM: Tiện ích cắt ảnh bo góc cho ImageView ---
+    public static void applyRoundedClip(ImageView imageView, double arcWidth, double arcHeight) {
+        if (imageView == null) return;
+        Rectangle clip = new Rectangle(imageView.getFitWidth(), imageView.getFitHeight());
+        clip.setArcWidth(arcWidth);
+        clip.setArcHeight(arcHeight);
+        imageView.setClip(clip);
+    }
     public static String fileToBase64(File file) {
         try {
             byte[] fileContent = Files.readAllBytes(file.toPath());

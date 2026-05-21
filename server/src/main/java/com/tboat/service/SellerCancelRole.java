@@ -1,10 +1,11 @@
 package com.tboat.service;
 
 import com.tboat.dao.AuctionSessionDAO;
-import com.tboat.dao.HistoryBidDAO;
+import com.tboat.dao.BidDAO;
+import com.tboat.dao.HistoryDAO;
 import com.tboat.dao.UserDAO;
-import com.tboat.models.AuctionSession;
-import com.tboat.models.User;
+import com.tboat.models.auction.AuctionSession;
+import com.tboat.models.core.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +14,7 @@ public class SellerCancelRole implements TransactionRole {
 
     @Override
     public boolean execute(User user, AuctionSession session, double amount,
-                           UserDAO userDAO, AuctionSessionDAO sessionDAO, HistoryBidDAO bidDAO) {
+                           UserDAO userDAO, AuctionSessionDAO sessionDAO, HistoryDAO historyDAO, BidDAO bidDAO) {
 
         if (!session.getSellerAccountName().equals(user.getAccountName())) {
             logger.warn("Từ chối: Tài khoản {} không phải chủ của phiên này!", user.getAccountName());
@@ -26,7 +27,6 @@ public class SellerCancelRole implements TransactionRole {
             return false;
         }
 
-        // 3. THỰC THI: Gọi DAO để cập nhật trạng thái thành CANCELED
         boolean isCanceled = sessionDAO.cancelAuction(session.getId());
 
         if (isCanceled) {

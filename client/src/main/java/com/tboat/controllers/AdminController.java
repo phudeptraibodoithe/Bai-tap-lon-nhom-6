@@ -1,13 +1,24 @@
 package com.tboat.controllers;
 
-import com.google.gson.*;
-import com.google.gson.reflect.TypeToken;
-import com.tboat.models.AuctionSession;
-import com.tboat.models.User;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.tboat.models.auction.AuctionSession;
+import com.tboat.models.auction.StatusOfAuction;
+import com.tboat.models.item.Item;
+import com.tboat.models.item.factory.ItemFactory;
+import com.tboat.models.item.factory.ItemFactoryProducer;
+import com.tboat.models.network.ServerEvent;
+import com.tboat.session.UserSession;
+import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
-import com.tboat.socket.SocketManager;
+import com.tboat.ucb.DataCache;
+import com.tboat.ucb.NavigationContext;
 import com.tboat.utils.GsonUtils;
-import com.tboat.utilsclient.UserSession;
+import com.tboat.utilsclient.AlertUtils;
+import com.tboat.utilsclient.CurrencyFormatter;
+import com.tboat.utilsclient.TimeUtils;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -17,27 +28,21 @@ import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.image.Image;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
-import javafx.stage.Stage;
 
-import java.lang.reflect.Type;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalDateTime;
 import java.util.ResourceBundle;
 import java.util.logging.Logger;
 
 public class AdminController extends BaseController implements Initializable, SocketListener {
 
-    @FXML private TextField txtSearch;
     @FXML private TableView<AuctionSession> tableSessions;
     @FXML private TableColumn<AuctionSession, Integer> colId;
     @FXML private TableColumn<AuctionSession, String> colName;
     @FXML private TableColumn<AuctionSession, Double> colStartPrice;
     @FXML private TableColumn<AuctionSession, Double> colJump;
     @FXML private TableColumn<AuctionSession, String> colSeller;
+    @FXML private TableColumn<AuctionSession, StatusOfAuction> colStatus; // ← thêm
     @FXML private TableColumn<AuctionSession, Void> colApprove;
     @FXML private TableColumn<AuctionSession, Void> colReject;
     @FXML private Label err;
@@ -48,105 +53,174 @@ public class AdminController extends BaseController implements Initializable, So
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        SocketManager.getInstance().subscribe(this);
+        colId.setCellValueFactory(new PropertyValueFactory<>("id"));
+        colName.setCellValueFactory(new PropertyValueFactory<>("name"));
+        colSeller.setCellValueFactory(new PropertyValueFactory<>("sellerAccountName"));
+        setupCurrencyColumn(colStartPrice, "currentPrice");
+        setupCurrencyColumn(colJump, "bidIncrease");
+        setupStatusColumn();       // ← thêm
+        setupApproveColumn();      // ← tách riêng, có disable logic
+        setupRejectColumn();       // ← tách riêng, có disable logic
+        sessionList = FXCollections.observableArrayList();
+        tableSessions.setItems(sessionList);
 
-        this.colId.setCellValueFactory(new PropertyValueFactory<>("id"));
-        this.colName.setCellValueFactory(new PropertyValueFactory<>("name"));
-        this.colStartPrice.setCellValueFactory(new PropertyValueFactory<>("currentPrice"));
-        this.colJump.setCellValueFactory(new PropertyValueFactory<>("bidIncrease"));
-        this.colSeller.setCellValueFactory(new PropertyValueFactory<>("sellerAccountName"));
+        String screenKey = BaseController.toScreenKey("admin.fxml");
+        String cached    = DataCache.getInstance().get(ServerEvent.GET_ALL_ITEMS);
 
-        this.setupActionColumn(this.colApprove, "APPROVE_ITEM");
-        this.setupActionColumn(this.colReject, "REJECT_ITEM");
-
-        this.sessionList = FXCollections.observableArrayList();
-        this.tableSessions.setItems(this.sessionList);
-
-        // 1. Lấy danh sách sản phẩm chờ duyệt
-        loadPendingItems();
-
-        // 2. Gửi lệnh lấy Profile Admin để lưu vào UserSession (Dùng cho trang Wallet)
-        JsonObject profileReq = new JsonObject();
-        profileReq.addProperty("action", "PROFILE");
-        SocketManager.getInstance().send(gson.toJson(profileReq));
-
-        // 3. Cài đặt F5 reload
-        Platform.runLater(() -> {
-            if (txtSearch != null && txtSearch.getScene() != null) {
-                txtSearch.getScene().addEventFilter(KeyEvent.KEY_PRESSED, event -> {
-                    if (event.getCode() == KeyCode.F5) {
-                        onReload();
-                        event.consume();
-                    }
-                });
-            }
-        });
+        if (cached != null) {
+            log.info("[Admin] Cache HIT → render ngay");
+            NavigationContext.getInstance().reportCacheHit(screenKey, true);
+            renderAllItems(cached);
+            loadAllItems();
+        } else {
+            log.info("[Admin] Cache MISS → fetch server");
+            NavigationContext.getInstance().reportCacheHit(screenKey, false);
+            loadAllItems();
+        }
     }
 
-    private void loadPendingItems() {
-        JsonObject request = new JsonObject();
-        request.addProperty("action", "GET_PENDING_ITEMS");
-        SocketManager.getInstance().send(gson.toJson(request));
+    private AuctionSession parseSingleAuctionSession(JsonObject dataObj) {
+        JsonObject itemObj = dataObj.has("item") && dataObj.get("item").isJsonObject()
+                ? dataObj.getAsJsonObject("item") : dataObj;
+
+        String type          = getStringJson(itemObj, "type", "Khác");
+        String name          = getStringJson(itemObj, "name", "");
+        String description   = getStringJson(itemObj, "description", "");
+        String imageURL      = getStringJson(itemObj, "imageURL", "");
+        String sellerAccount = getStringJson(itemObj, "sellerAccountName", "");
+        double currentPrice  = getDoubleJson(dataObj, "currentPrice", 0.0);
+        double bidIncrease   = getDoubleJson(dataObj, "bidIncrease", 0.0);
+        double buyNowPrice   = getDoubleJson(dataObj, "buyNowPrice", 0.0);
+
+        ItemFactory factory = ItemFactoryProducer.getFactory(type);
+        Item item = factory.createItem(sellerAccount, name, description, imageURL);
+
+        AuctionSession session = new AuctionSession(
+                dataObj.has("startTime") ? TimeUtils.parseServerTime(dataObj.get("startTime")) : LocalDateTime.now(),
+                dataObj.has("endTime")   ? TimeUtils.parseServerTime(dataObj.get("endTime"))   : LocalDateTime.now().plusDays(1),
+                currentPrice, bidIncrease, item
+        );
+        session.setBuyNowPrice(buyNowPrice);
+        session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
+
+        try {
+            session.setStatusOfAuction(StatusOfAuction.valueOf(
+                    getStringJson(dataObj, "statusOfAuction", "ONGOING")));
+        } catch (Exception ignored) {
+            session.setStatusOfAuction(StatusOfAuction.ONGOING);
+        }
+        return session;
+    }
+
+    private String getStringJson(JsonObject json, String key, String def) {
+        return json.has(key) && !json.get(key).isJsonNull() ? json.get(key).getAsString() : def;
+    }
+    private double getDoubleJson(JsonObject json, String key, double def) {
+        return json.has(key) && !json.get(key).isJsonNull() ? json.get(key).getAsDouble() : def;
+    }
+
+    private void loadAllItems() {
+        SocketHelper.sendRequest(ServerEvent.GET_ALL_ITEMS, null);
     }
 
     @Override
     public void onReload() {
-        loadPendingItems();
-
-        // Reload cả profile luôn cho chắc chắn tiền nong khớp
-        JsonObject profileReq = new JsonObject();
-        profileReq.addProperty("action", "PROFILE");
-        SocketManager.getInstance().send(gson.toJson(profileReq));
-
-        if (err != null) {
-            err.setStyle("-fx-text-fill: #3498db;");
-            err.setText("Đang làm mới dữ liệu hệ thống...");
-        }
+        loadAllItems();
+        AlertUtils.showStatus(err, "Đang làm mới dữ liệu hệ thống...", "#3498db");
     }
 
-    private void setupActionColumn(TableColumn<AuctionSession, Void> column, String actionType) {
-        column.setCellFactory((param) -> new TableCell<AuctionSession, Void>() {
-            private final CheckBox checkBox = new CheckBox();
-            {
-                this.checkBox.setOnAction((event) -> {
-                    if (this.checkBox.isSelected()) {
-                        AuctionSession session = getTableView().getItems().get(getIndex());
-                        JsonObject request = new JsonObject();
-                        request.addProperty("action", actionType);
-                        request.addProperty("payload", session.getId());
-                        SocketManager.getInstance().send(gson.toJson(request));
-                        getTableView().getItems().remove(session);
-                    }
-                });
-            }
+    // ── Cell factories ───────────────────────────────────────────────────────
+
+    private void setupCurrencyColumn(TableColumn<AuctionSession, Double> column, String propertyName) {
+        column.setCellValueFactory(new PropertyValueFactory<>(propertyName));
+        column.setCellFactory(col -> new TableCell<>() {
             @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty) {
-                    this.setGraphic(null);
-                } else {
-                    this.checkBox.setSelected(false);
-                    this.setGraphic(this.checkBox);
+            protected void updateItem(Double price, boolean empty) {
+                super.updateItem(price, empty);
+                setText(empty || price == null ? null : CurrencyFormatter.formatDisplay(price));
+            }
+        });
+    }
+
+    private void setupStatusColumn() {
+        colStatus.setCellValueFactory(new PropertyValueFactory<>("statusOfAuction"));
+        colStatus.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(StatusOfAuction status, boolean empty) {
+                super.updateItem(status, empty);
+                if (empty || status == null) {
+                    setText(null);
+                    setStyle("");
+                    return;
+                }
+                switch (status) {
+                    case PENDING     -> { setText("Chờ duyệt");  setStyle("-fx-text-fill: #e67e22; -fx-font-weight: bold;"); }
+                    case NOT_STARTED -> { setText("Sắp diễn ra"); setStyle("-fx-text-fill: #2980b9; -fx-font-weight: bold;"); }
+                    case ONGOING     -> { setText("Đang diễn ra"); setStyle("-fx-text-fill: #27ae60; -fx-font-weight: bold;"); }
+                    case ENDED       -> { setText("Đã kết thúc"); setStyle("-fx-text-fill: #7f8c8d; -fx-font-weight: bold;"); }
+                    case CANCELED    -> { setText("Từ chối");    setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;"); }
+                    default          -> { setText(status.name()); setStyle(""); }
                 }
             }
         });
     }
 
+    private void setupApproveColumn() {
+        colApprove.setCellFactory(param -> new TableCell<>() {
+            private final Button btn = new Button("Duyệt");
+            {
+                btn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+                btn.setOnAction(e -> {
+                    AuctionSession session = getTableView().getItems().get(getIndex());
+                    SocketHelper.sendRequest(ServerEvent.APPROVE_ITEM, session.getId());
+                    // Cập nhật status local ngay để UI phản hồi nhanh
+                    session.setStatusOfAuction(StatusOfAuction.NOT_STARTED);
+                    getTableView().refresh();
+                });
+            }
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) { setGraphic(null); return; }
+                AuctionSession session = getTableView().getItems().get(getIndex());
+                btn.setDisable(!StatusOfAuction.PENDING.equals(session.getStatusOfAuction()));
+                setGraphic(btn);
+            }
+        });
+    }
+
+    private void setupRejectColumn() {
+        colReject.setCellFactory(param -> new TableCell<>() {
+            private final Button btn = new Button("Từ chối");
+            {
+                btn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+                btn.setOnAction(e -> {
+                    AuctionSession session = getTableView().getItems().get(getIndex());
+                    SocketHelper.sendRequest(ServerEvent.REJECT_ITEM, session.getId());
+                    session.setStatusOfAuction(StatusOfAuction.CANCELED);
+                    getTableView().refresh();
+                });
+            }
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) { setGraphic(null); return; }
+                AuctionSession session = getTableView().getItems().get(getIndex());
+                btn.setDisable(!StatusOfAuction.PENDING.equals(session.getStatusOfAuction()));
+                setGraphic(btn);
+            }
+        });
+    }
+
     public void switchToAdminNapRut(ActionEvent event) {
-        changeScene((Node) event.getSource(), "adminNapRut.fxml");
+        changeScene((Node) event.getSource(), "admin-wallet.fxml");
     }
 
     public void logout(ActionEvent e) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Xác nhận đăng xuất");
-        alert.setHeaderText(null);
-        alert.setContentText("Bạn có chắc chắn muốn đăng xuất không?");
-        if (alert.showAndWait().get() == ButtonType.OK) {
-            JsonObject request = new JsonObject();
-            request.addProperty("action", "LOGOUT");
-            SocketManager.getInstance().send(gson.toJson(request));
+        if (AlertUtils.showConfirmation("Xác nhận đăng xuất", "Bạn có chắc chắn muốn đăng xuất không?")) {
+            SocketHelper.sendRequest(ServerEvent.LOGOUT, null);
             UserSession.getInstance().cleanUserSession();
-            changeScene((Button) e.getSource(), "start.fxml");
+            changeScene((Node) e.getSource(), "start.fxml");
         }
     }
 
@@ -154,66 +228,61 @@ public class AdminController extends BaseController implements Initializable, So
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
-                String status = jsonResponse.has("status") ? jsonResponse.get("status").getAsString() : jsonResponse.get("action").getAsString();
-                String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
+                ServerEvent type = SocketHelper.getTypeEnum(response);
 
-                if ("SUCCESS".equals(status)) {
-                    // --- XỬ LÝ LẤY DANH SÁCH CHỜ ---
-                    if ("Danh sách chờ duyệt".equals(message)) {
-                        sessionList.clear();
-                        Type listType = new TypeToken<ArrayList<AuctionSession>>(){}.getType();
-                        List<AuctionSession> items = gson.fromJson(jsonResponse.get("payload"), listType);
-                        if (items != null) sessionList.addAll(items);
-                    }
-                    // --- XỬ LÝ LƯU DỮ LIỆU ADMIN VÀO USERSESSION ---
-                    /*else if (message.contains("Thông tin tài khoản") && jsonResponse.has("payload")) {
-                        JsonObject data = jsonResponse.getAsJsonObject("payload");
+                if (handleBroadcast(type)) return;
 
-                        User adminUser = UserSession.getInstance().getUser();
-                        if (adminUser == null) {
-                            adminUser = new User();
-                            UserSession.getInstance().setUser(adminUser);
-                        }
+                boolean isMyType = type == ServerEvent.GET_ALL_ITEMS
+                        || type == ServerEvent.APPROVE_ITEM
+                        || type == ServerEvent.REJECT_ITEM;
+                if (!isMyType) return;
 
-                        adminUser.setNickname(data.has("nickname") ? data.get("nickname").getAsString() : "Admin");
-                        adminUser.setBalance(data.has("balance") ? data.get("balance").getAsDouble() : 0.0);
-                        adminUser.setAvatarURL(data.has("avatarURL") ? data.get("avatarURL").getAsString() : "");
-
-                        log.info("Đã đồng bộ dữ liệu Admin vào UserSession. Số dư: " + adminUser.getBalance());
-                    }*/
-                    // --- XỬ LÝ DUYỆT ĐƠN ---
-                    else if ("Đã duyệt và bắt đầu đấu giá".equals(message)) {
-                        if (err != null) {
-                            err.setStyle("-fx-text-fill: green;");
-                            err.setText("Đã DUYỆT sản phẩm!");
-                        }
-                    }
-                    // --- XỬ LÝ TỪ CHỐI ĐƠN ---
-                    else if ("Đã từ chối sản phẩm".equals(message)) {
-                        if (err != null) {
-                            err.setStyle("-fx-text-fill: #cc7a00;");
-                            err.setText("Đã TỪ CHỐI sản phẩm!");
-                        }
-                    }
-                }
-                // --- XỬ LÝ REAL-TIME KHI CÓ NGƯỜI ĐĂNG BÀI MỚI ---
-                else if ("NEW_PENDING_ITEM".equals(status) || "NEW_ITEM".equals(status)) {
-                    loadPendingItems();
-                    if (err != null) {
-                        err.setStyle("-fx-text-fill: #9b59b6;");
-                        err.setText("Có người dùng vừa đăng sản phẩm mới! Đã tự động cập nhật.");
-                    }
-                }
-                else if ("ERROR".equals(status)) {
-                    if (err != null) {
-                        err.setStyle("-fx-text-fill: red;");
-                        err.setText("Lỗi: " + message);
-                    }
+                ServerEvent status = SocketHelper.getStatusEnum(response);
+                if (status == ServerEvent.SUCCESS) {
+                    handleAdminSuccess(type, response);
+                } else if (status == ServerEvent.ERROR) {
+                    AlertUtils.showStatus(err, "Lỗi: " + SocketHelper.getMessage(response), "red");
                 }
             } catch (Exception e) {
                 log.severe("LỖI JSON ADMIN: " + e.getMessage());
             }
         });
+    }
+
+    private boolean handleBroadcast(ServerEvent type) {
+        if (type == ServerEvent.RELOAD_ALL_ITEMS || type == ServerEvent.RELOAD_PENDING_ITEMS) {
+            loadAllItems();
+            AlertUtils.showStatus(err, "Dữ liệu vừa được cập nhật tự động.", "#9b59b6");
+            return true;
+        }
+        return false;
+    }
+
+    private void handleAdminSuccess(ServerEvent type, String response) {
+        switch (type) {
+            case GET_ALL_ITEMS -> {
+                DataCache.getInstance().put(ServerEvent.GET_ALL_ITEMS, response);
+                renderAllItems(response);
+            }
+            case APPROVE_ITEM -> AlertUtils.showStatus(err, "Đã DUYỆT sản phẩm!", "green");
+            case REJECT_ITEM  -> AlertUtils.showStatus(err, "Đã TỪ CHỐI sản phẩm!", "#cc7a00");
+        }
+    }
+
+    private void renderAllItems(String response) {
+        try {
+            JsonObject json = JsonParser.parseString(response).getAsJsonObject();
+            ServerEvent type = SocketHelper.getTypeEnum(response);
+            if (type != ServerEvent.GET_ALL_ITEMS) return;
+            if (!json.has("payload") || !json.get("payload").isJsonArray()) return;
+
+            sessionList.clear();
+            for (JsonElement element : json.getAsJsonArray("payload")) {
+                AuctionSession session = parseSingleAuctionSession(element.getAsJsonObject());
+                if (session != null) sessionList.add(session);
+            }
+        } catch (Exception e) {
+            log.warning("[Admin] Lỗi render: " + e.getMessage());
+        }
     }
 }

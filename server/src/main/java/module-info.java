@@ -11,4 +11,5 @@ module com.tboat.server {
     exports com.tboat.socket;
 
     opens com.tboat.dao to java.sql;
+    exports com.tboat.socket.handler;
 }

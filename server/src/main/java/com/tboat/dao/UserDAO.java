@@ -1,7 +1,7 @@
 package com.tboat.dao;
 
 import com.tboat.database.DatabaseConnection;
-import com.tboat.models.User;
+import com.tboat.models.core.User;
 import com.tboat.utils.ResponseCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,47 +11,74 @@ import java.sql.*;
 public class UserDAO {
     private static final Logger logger = LoggerFactory.getLogger(UserDAO.class);
 
-    public ResponseCode addUser(String accountName, String password, String nickname) {
-        String insertSql = "INSERT INTO user(accountName, password, nickname, balance, description, avatarURL) VALUES(?,?,?,?,?,?)";
+    public ResponseCode addUser(String accountName, String password, String nickname,
+                                String email, String phone) {
+        String sql = "INSERT INTO user(accountName, password, nickname, balance, " +
+                "description, avatarURL, email, phone) VALUES(?,?,?,?,?,?,?,?)";
         try (Connection c = DatabaseConnection.getConnection();
-             PreparedStatement psInsert = c.prepareStatement(insertSql)) {
-            psInsert.setString(1, accountName);
-            psInsert.setString(2, password);
-            psInsert.setString(3, nickname);
-            psInsert.setDouble(4, 0.0);
-            psInsert.setString(5, "");
-            psInsert.setString(6, "");
-
-            if (psInsert.executeUpdate() > 0) {
-                return ResponseCode.SUCCESS;
-            }
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, accountName);
+            ps.setString(2, password);
+            ps.setString(3, nickname);
+            ps.setDouble(4, 0.0);
+            ps.setString(5, "");
+            ps.setString(6, "");
+            ps.setString(7, email);
+            ps.setString(8, phone);
+            if (ps.executeUpdate() > 0) return ResponseCode.SUCCESS;
         } catch (SQLIntegrityConstraintViolationException e) {
-            // lỗi này có thể là trùng primacykey, vi phạm foreignkey, trống cái not null hoặc bị casi unique
             return ResponseCode.EXISTED;
         } catch (SQLException e) {
-            logger.error("Lỗi SQLException khi thêm user: ", e);
+            logger.error("Lỗi addUser: ", e);
             return ResponseCode.ERROR;
         }
         return ResponseCode.ERROR;
     }
 
-    public boolean updateProfile(String accountName, String description, String avatarURL) {
-        // Cập nhật profile người dùng, true nếu update thành công
-        boolean ck = false;
-        String update = "UPDATE user SET description = ?, avatarURL = ? WHERE accountName = ?";
+    // Thêm method updateProfile mới hỗ trợ đủ fields
+    public boolean updateProfile(String accountName, String nickname, String description,
+                                 String avatarURL, String email, String phone) {
+        String sql = "UPDATE user SET nickname=?, description=?, avatarURL=?, email=?, phone=? " +
+                "WHERE accountName=?";
         try (Connection c = DatabaseConnection.getConnection();
-             PreparedStatement ps = c.prepareStatement(update)) {
-            ps.setString(1, description);
-            ps.setString(2, avatarURL);
-            ps.setString(3, accountName);
-            int af = ps.executeUpdate();
-            if (af > 0) {
-                ck = true;
-            }
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, nickname);
+            ps.setString(2, description);
+            ps.setString(3, avatarURL);
+            ps.setString(4, email);
+            ps.setString(5, phone);
+            ps.setString(6, accountName);
+            return ps.executeUpdate() > 0;
         } catch (Exception e) {
-            logger.error("Lỗi khi cập nhật profile: ", e);
+            logger.error("Lỗi updateProfile: ", e);
+            return false;
         }
-        return ck;
+    }
+
+    public User getUser(String accountName) {
+        String sql = "SELECT * FROM user WHERE accountName = ?";
+        try (Connection c = DatabaseConnection.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, accountName);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    User u = new User(
+                            rs.getString("accountName"),
+                            rs.getString("password"),
+                            rs.getString("nickname"),
+                            rs.getDouble("balance"),
+                            rs.getString("description"),
+                            rs.getString("avatarURL")
+                    );
+                    u.setEmail(rs.getString("email"));
+                    u.setPhone(rs.getString("phone"));
+                    return u;
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Lỗi getUser: ", e);
+        }
+        return null;
     }
 
     public boolean updateBalance(Connection conn, String accountName, double amount) throws SQLException {
@@ -91,40 +118,17 @@ public class UserDAO {
         }
     }
 
-    public User getUser(String accountName) {
-        String sql = "SELECT * FROM user WHERE accountName = ?";
+    public String getNickname(String accountName) {
+        String sql = "SELECT nickname FROM user WHERE accountName = ?";
         try (Connection c = DatabaseConnection.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, accountName);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return new User(
-                            rs.getString("accountName"),
-                            rs.getString("password"),
-                            rs.getString("nickname"),
-                            rs.getDouble("balance"),
-                            rs.getString("description"),
-                            rs.getString("avatarURL")
-                    );
-                }
+                if (rs.next()) return rs.getString("nickname");
             }
-        } catch (SQLException e) { // Dùng SQLException thay vì Exception chung
-            logger.error("Lỗi khi lấy thông tin user: ", e);
+        } catch (SQLException e) {
+            logger.error("Lỗi khi lấy nickname của {}: ", accountName, e);
         }
-        return null;
-    }
-
-    public double getBalance(String accountName) {
-        String sql = "SELECT balance FROM user WHERE accountName = ?";
-        try (Connection c = DatabaseConnection.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, accountName);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return rs.getDouble("balance");
-            }
-        } catch (Exception e) {
-            logger.error("Lỗi khi lấy số dư: ", e);
-        }
-        return 0;
+        return accountName;
     }
 }

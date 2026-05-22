@@ -40,7 +40,7 @@ Hệ thống tuân thủ chặt chẽ nguyên lý hướng đối tượng (OOP)
 
 | Thành phần | Chi tiết |
 |---|---|
-| Ngôn ngữ | Java 21 |
+| Ngôn ngữ | Java 25 |
 | Giao diện | JavaFX 21.0.1 |
 | Kiến trúc mạng | Java Socket (TCP/IP, Client-Server) |
 | Định dạng dữ liệu | JSON (thư viện Gson 2.10.1) |
@@ -52,7 +52,7 @@ Hệ thống tuân thủ chặt chẽ nguyên lý hướng đối tượng (OOP)
 
 ### Yêu cầu cài đặt
 
-- **Java Development Kit (JDK)**: Phiên bản 21 trở lên ([Tải tại đây](https://www.oracle.com/java/technologies/downloads/))
+- **Java Development Kit (JDK)**: Phiên bản 25 trở lên ([Tải tại đây](https://www.oracle.com/java/technologies/downloads/))
 - **Cơ sở dữ liệu**: MySQL Server phiên bản 8.0 trở lên ([Tải tại đây](https://dev.mysql.com/downloads/mysql/))
 - **Công cụ quản lý mã nguồn**: Apache Maven 3.9 trở lên (nếu muốn build từ source)
 

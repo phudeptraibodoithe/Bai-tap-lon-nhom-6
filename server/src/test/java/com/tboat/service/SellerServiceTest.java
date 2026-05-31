@@ -8,15 +8,15 @@ import java.time.LocalDateTime;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit Test cho SellerService.
- * Dùng ID/account không tồn tại để kiểm tra guard logic.
+ * Kiểm thử đơn vị cho SellerService.
+ * Dùng ID/account không tồn tại để kiểm tra logic chốt điều kiện.
  *
- * Root cause lỗi trước: DatabaseConnection.getConnection() throw RuntimeException
- * khi không có DB → DAO ném ra ngoài thay vì return false.
+ * Nguyên nhân gốc của lỗi trước: DatabaseConnection.getConnection() ném RuntimeException
+ * khi không có DB nên DAO ném ra ngoài thay vì trả về false.
  *
- * Chiến lược: wrap tất cả call vào safeCancel/safeEdit helper.
+ * Chiến lược: bọc tất cả lời gọi vào hàm hỗ trợ safeCancel/safeEdit.
  * Nếu DB không có → RuntimeException được chấp nhận (không phải NPE).
- * Nếu DB có và trả về null → phải return false.
+ * Nếu DB có và trả về null thì phải trả về false.
  */
 class SellerServiceTest {
 
@@ -27,7 +27,7 @@ class SellerServiceTest {
         sellerService = new SellerService();
     }
 
-    // ─── Helpers ────────────────────────────────────────────────────────
+    // ─── Hàm hỗ trợ ─────────────────────────────────────────────────────
 
     private boolean safeCancelAuction(String account, int sessionId) {
         try {
@@ -49,7 +49,7 @@ class SellerServiceTest {
         }
     }
 
-    // ===================== CANCEL AUCTION =====================
+    // ===================== HỦY PHIÊN ĐẤU GIÁ =====================
 
     @Test
     @DisplayName("cancelAuction: sessionId không tồn tại → false")
@@ -95,13 +95,13 @@ class SellerServiceTest {
         }
     }
 
-    // ===================== EDIT AUCTION =====================
+    // ===================== SỬA PHIÊN ĐẤU GIÁ =====================
 
     @Test
     @DisplayName("editAuction: updatedSession null → false ngay (guard đầu method, không cần DB)")
     void testEditAuction_NullSession_False() {
-        // SellerService.editAuction() có guard: if (user == null || updatedSession == null) return false
-        // Nhưng userDAO.getUser() gọi DB trước → vẫn cần wrap
+        // SellerService.editAuction() có chốt kiểm tra: if (user == null || updatedSession == null) return false
+        // Nhưng userDAO.getUser() gọi DB trước nên vẫn cần bọc lại
         assertFalse(safeEditAuction("anyAccount", null));
     }
 

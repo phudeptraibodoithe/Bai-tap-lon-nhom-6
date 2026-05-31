@@ -6,15 +6,18 @@ import javafx.animation.Timeline;
 import javafx.util.Duration;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 public class AuctionTimer {
+    private static final int TIMER_TICK_SECONDS = 1;
+    private static final int TIME_UNIT_MODULO = 60;
+
     private Timeline timeline;
     private LocalDateTime endTime;
-    private Consumer<String> onTick;
+    private BiConsumer<String, Long> onTick;
     private Runnable onFinish;
 
-    public AuctionTimer(LocalDateTime endTime, Consumer<String> onTick, Runnable onFinish) {
+    public AuctionTimer(LocalDateTime endTime, BiConsumer<String, Long> onTick, Runnable onFinish) {
         this.endTime = endTime;
         this.onTick = onTick;
         this.onFinish = onFinish;
@@ -22,7 +25,7 @@ public class AuctionTimer {
 
     public void start() {
         stop();
-        timeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
+        timeline = new Timeline(new KeyFrame(Duration.seconds(TIMER_TICK_SECONDS), event -> {
             LocalDateTime now = LocalDateTime.now();
 
             if (now.isAfter(endTime) || now.isEqual(endTime)) {
@@ -30,10 +33,11 @@ public class AuctionTimer {
                 stop();
             } else {
                 long hours   = ChronoUnit.HOURS.between(now, endTime);
-                long minutes = ChronoUnit.MINUTES.between(now, endTime) % 60;
-                long seconds = ChronoUnit.SECONDS.between(now, endTime) % 60;
+                long minutes = ChronoUnit.MINUTES.between(now, endTime) % TIME_UNIT_MODULO;
+                long seconds = ChronoUnit.SECONDS.between(now, endTime) % TIME_UNIT_MODULO;
+                long totalSeconds = ChronoUnit.SECONDS.between(now, endTime);
 
-                onTick.accept(String.format("%02d : %02d : %02d", hours, minutes, seconds));
+                onTick.accept(String.format("%02d : %02d : %02d", hours, minutes, seconds), totalSeconds);
             }
         }));
 
@@ -49,11 +53,11 @@ public class AuctionTimer {
     }
 
     /**
-     * Cập nhật endTime mới và restart timer ngay lập tức.
+     * Cập nhật endTime mới và khởi động lại timer ngay lập tức.
      * Gọi khi nhận được "TIME_EXTENDED" hoặc "TIME_UPDATED" từ server.
      */
     public void updateEndTime(LocalDateTime newEndTime) {
         this.endTime = newEndTime;
-        start(); // stop() + restart với endTime mới
+        start(); // dừng rồi khởi động lại với endTime mới
     }
 }

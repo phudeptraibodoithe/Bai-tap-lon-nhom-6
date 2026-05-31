@@ -40,7 +40,7 @@ Hệ thống tuân thủ chặt chẽ nguyên lý hướng đối tượng (OOP)
 
 | Thành phần | Chi tiết |
 |---|---|
-| Ngôn ngữ | Java 21 |
+| Ngôn ngữ | Java 25 |
 | Giao diện | JavaFX 21.0.1 |
 | Kiến trúc mạng | Java Socket (TCP/IP, Client-Server) |
 | Định dạng dữ liệu | JSON (thư viện Gson 2.10.1) |
@@ -52,7 +52,7 @@ Hệ thống tuân thủ chặt chẽ nguyên lý hướng đối tượng (OOP)
 
 ### Yêu cầu cài đặt
 
-- **Java Development Kit (JDK)**: Phiên bản 21 trở lên ([Tải tại đây](https://www.oracle.com/java/technologies/downloads/))
+- **Java Development Kit (JDK)**: Phiên bản 25 trở lên ([Tải tại đây](https://www.oracle.com/java/technologies/downloads/))
 - **Cơ sở dữ liệu**: MySQL Server phiên bản 8.0 trở lên ([Tải tại đây](https://dev.mysql.com/downloads/mysql/))
 - **Công cụ quản lý mã nguồn**: Apache Maven 3.9 trở lên (nếu muốn build từ source)
 
@@ -60,7 +60,7 @@ Hệ thống tuân thủ chặt chẽ nguyên lý hướng đối tượng (OOP)
 
 1. Đăng nhập vào môi trường quản trị MySQL của bạn.
 2. Thực thi tệp script nằm tại đường dẫn server/src/main/resources/auction_database.sql để thiết lập hệ thống cơ sở dữ liệu.
-3. Đồng bộ lại thông tin cấu hình tài khoản kết nối của bạn trong dự án (Mật khẩu cấu hình kết nối mặc định: 123456789).
+3. Đồng bộ lại thông tin cấu hình tài khoản kết nối của bạn trong dự án (Mật khẩu cấu hình kết nối mặc định xem file cấu hình).
 
 ---
 
@@ -68,32 +68,37 @@ Hệ thống tuân thủ chặt chẽ nguyên lý hướng đối tượng (OOP)
 
 ```
 tboat-project/ (Root POM)
-├── .github/workflows/
-│   └── ci.yml                  # Cấu hình CI/CD (Khởi tạo DB ảo, Verify)
 ├── common/                       # Module dùng chung cho cả Server và Client
 │   └── src/main/java/com/tboat/
+│       ├── exception/            # Custom exceptions dùng chung
 │       ├── logging/              # Cấu hình nhật ký hệ thống
-│       └── models/               # Tầng Domain Models (Thực thể hệ thống)
+│       ├── models/               # Tầng Domain Models (Thực thể hệ thống)
+│       └── utils/                # Tiện ích dùng chung
 ├── server/                       # Module xử lý trung tâm (Backend)
 │   ├── src/main/java/com/tboat/
-│   │   ├── dao/                  # Tầng DAO (Data Access Object) - Thao tác MySQL
-│   │   ├── database/             # Quản lý Connection Pool kết nối DB
-│   │   ├── service/              # Tầng Business Logic nghiệp vụ chính
-│   │   ├── socket/               # Quản lý kết nối mạng, định tuyến ActionRouter
+│   │   ├── dao/                  # Tầng DAO - Thao tác MySQL
+│   │   ├── database/             # Quản lý Connection Pool
+│   │   ├── service/              # Tầng Business Logic
+│   │   ├── socket/               # Quản lý kết nối, định tuyến ActionRouter
 │   │   └── ServerMain.java       # Entry point khởi động Server
 │   └── src/main/resources/
-│       └── auction_database.sql  # Script cấu trúc khởi tạo CSDL
-└── client/                       # Module giao diện người dùng (Frontend)
-    ├── src/main/java/com/tboat/
-    │   ├── controllers/          # Tầng Presentation - Điều khiển UI JavaFX
-    │   ├── socket/               # SocketManager - Duy trì cổng kết nối duy nhất
-    │   ├── ucb/                  # Thuật toán tăng tốc tải tài nguyên
-    │   ├── ClientApp.java        # Lớp cấu hình giao diện chính
-    │   └── Launcher.java         # Lớp kích hoạt ứng dụng (Giải quyết xung đột môi trường)
-    └── src/main/resources/
-        ├── images                # Kho tài nguyên hình ảnh hệ thống
-        ├── styles                # Các tệp cấu hình CSS làm đẹp giao diện
-        └── views                 # Các tệp thiết kế giao diện độc lập định dạng .fxml
+│       └── auction_database.sql  # Script khởi tạo CSDL
+├── client/                       # Module giao diện người dùng (Frontend)
+│   ├── src/main/java/com/tboat/
+│   │   ├── controllers/          # Điều khiển UI JavaFX
+│   │   ├── socket/               # SocketManager - Duy trì kết nối
+│   │   ├── ucb/                  # Thuật toán tăng tốc tải tài nguyên
+│   │   ├── utilsclient/          # Tiện ích riêng phía Client
+│   │   ├── ClientApp.java        # Lớp cấu hình giao diện chính
+│   │   └── Launcher.java         # Entry point Client
+│   └── src/main/resources/
+│       ├── images/               # Tài nguyên hình ảnh
+│       ├── styles/               # CSS giao diện
+│       └── views/                # Giao diện FXML
+└── docs/                         # Tài liệu dự án
+    ├── png/                      # Sơ đồ UML xuất ảnh
+    ├── puml/                     # Source code sơ đồ PlantUML
+    └── BaoCao_Nhom6.pdf          # Báo cáo chính thức
 
 ```
 ---
@@ -135,6 +140,7 @@ java -jar client/target/client-1.0-SNAPSHOT.jar
 ```
 
 Có thể mở nhiều cửa sổ Client cùng lúc để mô phỏng nhiều người dùng.
+
 ---
 
 ## 6. Danh sách chức năng đã hoàn thành
@@ -156,21 +162,15 @@ Có thể mở nhiều cửa sổ Client cùng lúc để mô phỏng nhiều ng
 | 11 | Thông báo | Gửi thông báo cho seller khi phiên được duyệt, bắt đầu và kết thúc đồng bộ xuyên suốt ứng dụng dạng Push Notification. gửi thông báo cho bidder khi mua thành công, khi bị người khác vượt bid |
 | 12 | Xử lý lỗi & Ngoại lệ nghiệp vụ |Tự động chặn đặt giá thấp hơn giá hiện tại + bước giá, từ chối bid khi phiên đấu giá đã đóng hoặc kết thúc, Xử lý ngoại lệ kết nối mạng: Tự động dọn dẹp tài nguyên khi Client ngắt kết nối đột ngột |
 | 13 | Anti-sniping | Nếu có bất kỳ lệnh đặt giá hợp lệ nào xuất hiện trong 15 giây cuối cùng trước khi phiên đóng, hệ thống tự động gia hạn thời gian kết thúc của phiên thêm 30 giây để đảm bảo tính cạnh tranh công bằng|
-
-
-### 🔄 Chức năng đang phát triển
-
-| # | Chức năng | Tiến độ |
-|---|---|---|
-| 14 | Auto-bidding (đặt giá tự động) | ~50% |
+| 14 | Auto-bidding (đặt giá tự động)|cho phép người dùng tự động đặt giá mới ngay khi có giá cao hơn nhưng không vượt quá giới hạn|
 ---
 
 ## 7. Tài liệu & Demo
 
 | Tài nguyên | Link |
 |---|---|
-| 📄 Báo cáo PDF | *(Cập nhật sau)* |
-| 🎬 Video Demo | *(Cập nhật sau)* |
+| 📄 Báo cáo PDF | [Xem tại đây](docs/BaoCao_Nhom6.pdf) |
+| 🎬 Video Demo | [Xem tại đây](https://drive.google.com/drive/u/1/folders/1TUF1ZOv7UVe1dxQTJo61WgQNeoxP_Ew9) |
 
 ---
 

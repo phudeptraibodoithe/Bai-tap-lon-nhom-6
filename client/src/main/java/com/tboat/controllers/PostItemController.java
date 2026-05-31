@@ -41,18 +41,35 @@ public class PostItemController extends BaseController implements Initializable,
     private static final String STYLE_SUCCESS = "#2ecc71";
     private static final String STYLE_ERROR = "#e74c3c";
     private static final String STYLE_PROCESSING = "#3498db";
+    private static final double STARTING_PRICE_INITIAL = 0.0;
+    private static final double STARTING_PRICE_STEP = 10_000.0;
+    private static final double BID_INCREASE_INITIAL = 0.0;
+    private static final double BID_INCREASE_STEP = 5_000.0;
+    private static final double BUY_NOW_INITIAL = 0.0;
+    private static final double BUY_NOW_STEP = 10_000.0;
+    private static final double MAX_BID_INCREASE_RATE = 0.5;
+    private static final double NO_BUY_NOW_PRICE = 0.0;
+    private static final int HOUR_MIN = 0;
+    private static final int HOUR_MAX = 23;
+    private static final int MINUTE_MIN = 0;
+    private static final int MINUTE_MAX = 59;
+    private static final int DEFAULT_END_OFFSET_HOURS = 1;
+    private static final int IMAGE_CORNER_ARC_WIDTH = 20;
+    private static final int IMAGE_CORNER_ARC_HEIGHT = 20;
+    private static final int MIN_START_DELAY_MINUTES = 5;
+    private static final int MIN_AUCTION_DURATION_MINUTES = 5;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
         if (thongbao != null) thongbao.setText("");
         typeComboBox.getItems().addAll("Điện tử", "Thời trang", "Trang sức", "Khác");
-        CurrencyFormatter.setupCurrencySpinner(priceSpinner, 0.0, 10000.0);
-        CurrencyFormatter.setupCurrencySpinner(jumpSpinner, 0.0, 5000.0);
-        CurrencyFormatter.setupCurrencySpinner(buyNowSpinner, 0.0, 10000.0);
+        CurrencyFormatter.setupCurrencySpinner(priceSpinner, STARTING_PRICE_INITIAL, STARTING_PRICE_STEP);
+        CurrencyFormatter.setupCurrencySpinner(jumpSpinner, BID_INCREASE_INITIAL, BID_INCREASE_STEP);
+        CurrencyFormatter.setupCurrencySpinner(buyNowSpinner, BUY_NOW_INITIAL, BUY_NOW_STEP);
         priceSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal != null && newVal > 0) {
-                double maxJump = newVal * 0.5;
+            if (newVal != null && newVal > STARTING_PRICE_INITIAL) {
+                double maxJump = newVal * MAX_BID_INCREASE_RATE;
                 SpinnerValueFactory.DoubleSpinnerValueFactory jumpFactory =
                         (SpinnerValueFactory.DoubleSpinnerValueFactory) jumpSpinner.getValueFactory();
                 jumpFactory.setMax(maxJump);
@@ -60,13 +77,14 @@ public class PostItemController extends BaseController implements Initializable,
             }
         });
 
-        // 2. Setup Logic Thời gian bằng TimeUtils
+        // 2. Thiết lập logic thời gian bằng TimeUtils
         LocalTime now = LocalTime.now();
         TimeUtils.setupDatePickers(datePickerStart, datePickerEnd);
-        TimeUtils.setupTimeSpinner(hourStart, 0, 23, now.getHour(), " giờ");
-        TimeUtils.setupTimeSpinner(minuteStart, 0, 59, now.getMinute(), " phút");
-        TimeUtils.setupTimeSpinner(hourEnd, 0, 23, now.plusHours(1).getHour(), " giờ");
-        TimeUtils.setupTimeSpinner(minuteEnd, 0, 59, now.getMinute(), " phút");
+        TimeUtils.setupTimeSpinner(hourStart, HOUR_MIN, HOUR_MAX, now.getHour(), " giờ");
+        TimeUtils.setupTimeSpinner(minuteStart, MINUTE_MIN, MINUTE_MAX, now.getMinute(), " phút");
+        TimeUtils.setupTimeSpinner(hourEnd, HOUR_MIN, HOUR_MAX,
+                now.plusHours(DEFAULT_END_OFFSET_HOURS).getHour(), " giờ");
+        TimeUtils.setupTimeSpinner(minuteEnd, MINUTE_MIN, MINUTE_MAX, now.getMinute(), " phút");
     }
 
     public void uploadImage(MouseEvent event) {
@@ -74,7 +92,7 @@ public class PostItemController extends BaseController implements Initializable,
         if (selectedFile != null) {
             Image image = new Image(selectedFile.toURI().toString());
             myImageView.setPreserveRatio(true);
-            ImageUtils.applyRoundedClip(myImageView, 20, 20);
+            ImageUtils.applyRoundedClip(myImageView, IMAGE_CORNER_ARC_WIDTH, IMAGE_CORNER_ARC_HEIGHT);
             myImageView.setImage(image);
         }
     }
@@ -92,15 +110,15 @@ public class PostItemController extends BaseController implements Initializable,
             AlertUtils.showStatus(thongbao, "Vui lòng điền đầy đủ thông tin và chọn ảnh sản phẩm!", STYLE_ERROR);
             return;
         }
-        if (startDT.isBefore(LocalDateTime.now().plusMinutes(5))) {
+        if (startDT.isBefore(LocalDateTime.now().plusMinutes(MIN_START_DELAY_MINUTES))) {
             AlertUtils.showStatus(thongbao, "Thời gian bắt đầu phải sau hiện tại ít nhất 5 phút!", STYLE_ERROR);
             return;
         }
-        if (endDT.isBefore(startDT.plusMinutes(5))) {
+        if (endDT.isBefore(startDT.plusMinutes(MIN_AUCTION_DURATION_MINUTES))) {
             AlertUtils.showStatus(thongbao, "Thời gian kết thúc phải cách thời gian bắt đầu ít nhất 5 phút!", STYLE_ERROR);
             return;
         }
-        if (buyNowSpinner.getValue() != null && buyNowSpinner.getValue() > 0
+        if (buyNowSpinner.getValue() != null && buyNowSpinner.getValue() > NO_BUY_NOW_PRICE
                 && buyNowSpinner.getValue() <= priceSpinner.getValue()) {
             AlertUtils.showStatus(thongbao, "Giá bán ngay phải lớn hơn giá khởi điểm!", STYLE_ERROR);
             return;
@@ -141,9 +159,8 @@ public class PostItemController extends BaseController implements Initializable,
                     JsonObject json = JsonParser.parseString(response).getAsJsonObject();
                     String id = json.has("payload") && !json.get("payload").isJsonNull()
                             ? json.get("payload").getAsString() : "N/A";
-                    AlertUtils.showStatus(thongbao, "Đăng bán thành công! ID Phiên: " + id, STYLE_SUCCESS);
                     AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Thành công", "Đăng sản phẩm thành công!");
-                    changeScene(thongbao, "trangchu.fxml");
+                    changeScene(thongbao, "home.fxml");
                 } else if (status == ServerEvent.ERROR || status == ServerEvent.FAILED) {
                     AlertUtils.showStatus(thongbao, message, STYLE_ERROR);
                 }

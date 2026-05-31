@@ -5,14 +5,14 @@ import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit Test cho AuctionManager (sau khi đã xóa autoStartAuctions).
- * KHÔNG cần DB — AuctionManager chỉ quản lý Map in-memory.
+ * Kiểm thử đơn vị cho AuctionManager (sau khi đã xóa autoStartAuctions).
+ * KHÔNG cần DB vì AuctionManager chỉ quản lý Map trong bộ nhớ.
  */
 class AuctionManagerTest {
 
     private AuctionManager manager;
 
-    // ID dùng riêng cho test, tránh xung đột với data thật
+    // ID dùng riêng cho test, tránh xung đột với dữ liệu thật
     private static final int ID_A = 9001;
     private static final int ID_B = 9002;
     private static final int ID_C = 9003;
@@ -29,7 +29,7 @@ class AuctionManagerTest {
         manager.removeRoom(ID_C);
     }
 
-    // ===================== SINGLETON =====================
+    // ===================== SINGLETON DÙNG CHUNG =====================
 
     @Test
     @DisplayName("getInstance() phải trả về cùng một object (Singleton)")
@@ -45,7 +45,7 @@ class AuctionManagerTest {
         assertNotNull(AuctionManager.getInstance());
     }
 
-    // ===================== CREATE ROOM =====================
+    // ===================== TẠO PHÒNG =====================
 
     @Test
     @DisplayName("createRoom rồi getRoom: phải trả về room đúng sessionId")
@@ -117,7 +117,7 @@ class AuctionManagerTest {
         assertSame(first, second, "Phải là cùng 1 object AuctionRoom.");
     }
 
-    // ===================== GET ROOM =====================
+    // ===================== LẤY PHÒNG =====================
 
     @Test
     @DisplayName("getRoom với ID không tồn tại → null")
@@ -131,7 +131,7 @@ class AuctionManagerTest {
         assertNull(manager.getRoom(-1));
     }
 
-    // ===================== REMOVE ROOM =====================
+    // ===================== XÓA PHÒNG =====================
 
     @Test
     @DisplayName("removeRoom sau createRoom: getRoom phải trả về null")

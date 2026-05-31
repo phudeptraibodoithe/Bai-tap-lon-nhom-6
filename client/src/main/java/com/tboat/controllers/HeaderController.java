@@ -25,7 +25,7 @@ public class HeaderController extends BaseController implements Initializable {
     @FXML private Label     lblBadge;
     @FXML private StackPane bellPane;
 
-    // ── Trỏ thẳng vào Singleton — KHÔNG tự lưu state ────────────────────────
+    // ── Trỏ thẳng vào Singleton, không tự lưu trạng thái ────────────────────
     private final NotificationManager mgr = NotificationManager.getInstance();
 
     private FilteredList<NotificationItem> filteredItems;
@@ -51,7 +51,7 @@ public class HeaderController extends BaseController implements Initializable {
     public void initialize(URL location, ResourceBundle resources) {
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
 
-        // FilteredList bọc list của Singleton — dữ liệu không bao giờ mất
+        // FilteredList bọc danh sách của Singleton, dữ liệu không bị mất
         filteredItems = new FilteredList<>(mgr.getItems(), item -> true);
 
         buildPopup();
@@ -160,9 +160,9 @@ public class HeaderController extends BaseController implements Initializable {
         return tabs;
     }
 
-    // Chiều cao mỗi cell (title + subtitle + time + padding)
+    // Chiều cao mỗi ô (tiêu đề + phụ đề + thời gian + padding)
     private static final double CELL_HEIGHT = 76.0;
-    // Hiện tối đa 5 cell, thêm thì scroll dọc
+    // Hiện tối đa 5 ô, nhiều hơn thì cuộn dọc
     private static final int    MAX_VISIBLE = 5;
 
     private ListView<NotificationItem> buildList() {
@@ -253,7 +253,7 @@ public class HeaderController extends BaseController implements Initializable {
             setOnMouseClicked(e -> {
                 NotificationItem item = getItem();
                 if (item != null && !item.isRead()) {
-                    item.markRead(); // ghi thẳng vào object trong Singleton
+                    item.markRead(); // ghi thẳng vào đối tượng trong Singleton
                     updateBadge();
                     if (activeTab.equals("unread")) {
                         filteredItems.setPredicate(i -> !i.isRead());
@@ -361,7 +361,7 @@ public class HeaderController extends BaseController implements Initializable {
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // FXML ACTIONS
+    // HÀNH ĐỘNG FXML
     // ════════════════════════════════════════════════════════════════════════
     @FXML
     private void toggleNotificationPopup() {

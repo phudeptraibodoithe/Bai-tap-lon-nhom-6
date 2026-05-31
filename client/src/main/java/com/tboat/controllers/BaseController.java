@@ -108,7 +108,7 @@ public abstract class BaseController {
         // Cập nhật màn hình hiện tại
         currentScreenKey = toKey;
 
-        // Trigger prefetch cho màn hình tiếp theo (ngầm, không block UI)
+        // Kích hoạt tải trước cho màn hình tiếp theo (ngầm, không chặn UI)
         PrefetchManager.getInstance().onScreenEntered(toKey);
 
         log.info(String.format("[UCB-Nav] %s → %s | cacheHit=%b",
@@ -116,7 +116,7 @@ public abstract class BaseController {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Helper: "home.fxml" → "TrangChuFxml", "admin.fxml" → "adminFxml"
+    // Hàm hỗ trợ: "home.fxml" → "TrangChuFxml", "admin.fxml" → "adminFxml"
     // ─────────────────────────────────────────────────────────────────────────
     public static String toScreenKey(String fxmlFile) {
         return fxmlFile.replace(".fxml", "") + "Fxml";

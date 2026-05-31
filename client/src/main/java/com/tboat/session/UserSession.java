@@ -5,6 +5,7 @@ import com.tboat.models.core.User;
 public class UserSession {
     private static UserSession instance;
     private User currentUser;
+    private static final double GUEST_BALANCE = 0.0;
 
     // Private constructor để ngăn chặn khởi tạo từ bên ngoài
     private UserSession() {}
@@ -36,6 +37,6 @@ public class UserSession {
     }
 
     public double getBalance() {
-        return (currentUser != null) ? currentUser.getBalance() : 0.0;
+        return (currentUser != null) ? currentUser.getBalance() : GUEST_BALANCE;
     }
 }

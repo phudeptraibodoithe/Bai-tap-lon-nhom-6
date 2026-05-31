@@ -1,0 +1,124 @@
+@startuml AuctionSystem
+left to right direction
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FFFFFF
+skinparam class {
+    BackgroundColor #EFF6FF
+    BorderColor #2563EB
+    FontColor #1E293B
+    HeaderBackgroundColor #BFDBFE
+    HeaderFontColor #1E40AF
+    ArrowColor #2563EB
+}
+skinparam enum {
+    BackgroundColor #FEF9C3
+    BorderColor #CA8A04
+    FontColor #1E293B
+    HeaderBackgroundColor #FDE68A
+    HeaderFontColor #92400E
+}
+skinparam stereotypeCBackgroundColor #DBEAFE
+skinparam stereotypeABackgroundColor #FCE7F3
+
+together {
+    abstract class Person {
+        - String accountName
+        - String nickname
+        - String password
+        - double balance
+    }
+    class User {
+        - String description
+        - String avatarURL
+        - String email
+        - String phone
+    }
+    class Admin {
+        + censorSession(AuctionSession session) : void
+    }
+}
+
+together {
+    abstract class Item {
+        - int id
+        - String sellerAccountName
+        - String type
+        - String name
+        - String description
+        - String imageURL
+    }
+    class ElectronicItem {}
+    class FashionItem {}
+    class JewelryItem {}
+    class OtherItem {}
+}
+
+together {
+    class AuctionSession {
+        - int id
+        - Item item
+        - LocalDateTime startTime
+        - LocalDateTime endTime
+        - double currentPrice
+        - double bidIncrease
+        - StatusOfAuction statusOfAuction
+        - String highestBidderAccount
+    }
+    enum StatusOfAuction {
+        NOT_STARTED
+        ONGOING
+        ENDED
+        PENDING
+        CANCELED
+    }
+}
+
+together {
+    class Bid {
+        - int id
+        - int auctionSessionId
+        - String bidderAccount
+        - double bidAmount
+        - LocalDateTime bidTime
+    }
+    class History {
+        - int auctionSessionId
+        - String winnerAccount
+        - double finalPrice
+        - LocalDateTime completedAt
+    }
+    class Participation {
+        - String accountName
+        - int auctionSessionId
+        - String roleType
+    }
+}
+
+' Inheritance
+Person <|-- User
+Person <|-- Admin
+Item <|-- ElectronicItem
+Item <|-- FashionItem
+Item <|-- JewelryItem
+Item <|-- OtherItem
+
+' User owns Items
+Item "*" --* "1" User : owned by
+
+' AuctionSession chứa Item (thoi ở AuctionSession, trỏ vào Item)
+Item "1" *-- "1" AuctionSession : contains
+
+' AuctionSession owns Bid, History, Participation
+Bid "*" --* "1" AuctionSession : received by
+History "1" --* "1" AuctionSession : results in
+Participation "*" --* "1" AuctionSession : has
+
+' User tham gia
+User "1" --> "*" Bid : places
+User "1" --> "*" Participation : joins
+
+' Enum
+AuctionSession --> StatusOfAuction : has status
+
+@enduml

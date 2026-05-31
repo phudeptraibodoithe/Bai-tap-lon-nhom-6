@@ -69,7 +69,7 @@ public class HomeController extends BaseController implements Initializable, Soc
 
     public void loadAuctions() {
         if (itemContainer != null) itemContainer.getChildren().clear();
-        // 👉 Rút gọn siêu cấp: Gửi request thông qua SocketHelper
+        // Gửi request thông qua SocketHelper
         SocketHelper.sendRequest(ServerEvent.LIST_AVAILABLE, "");
     }
 

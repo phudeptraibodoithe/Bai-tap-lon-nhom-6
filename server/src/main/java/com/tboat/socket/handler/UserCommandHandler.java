@@ -18,6 +18,7 @@ import java.sql.SQLException;
 public class UserCommandHandler {
 
     private static final Logger log = LoggerFactory.getLogger(UserCommandHandler.class);
+    private static final double ZERO_TRANSACTION_AMOUNT = 0.0;
 
     private final ClientSession context;
     private final UserDAO       userDAO = new UserDAO();
@@ -67,7 +68,7 @@ public class UserCommandHandler {
             return;
         }
 
-        if (amount == 0) {
+        if (amount == ZERO_TRANSACTION_AMOUNT) {
             context.sendResponse(new Response<>(ServerEvent.TRANSACTION.name(), ServerEvent.FAILED.name(),
                     "Số tiền giao dịch không thể bằng 0", null));
             return;
@@ -83,8 +84,8 @@ public class UserCommandHandler {
                     isPaid ? amount : null));
             if (isPaid) {
                 User updatedUser = userDAO.getUser(context.getClientId());
-                double newBalance = updatedUser != null ? updatedUser.getBalance() : 0;
-                if (amount > 0) {
+                double newBalance = updatedUser != null ? updatedUser.getBalance() : ZERO_TRANSACTION_AMOUNT;
+                if (amount > ZERO_TRANSACTION_AMOUNT) {
                     NotificationService.getInstance().onDeposit(context.getClientId(), amount, newBalance);
                 } else {
                     NotificationService.getInstance().onWithdraw(context.getClientId(), Math.abs(amount), newBalance);

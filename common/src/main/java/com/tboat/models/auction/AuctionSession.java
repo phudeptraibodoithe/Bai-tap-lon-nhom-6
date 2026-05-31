@@ -45,7 +45,7 @@ public class AuctionSession {
         this.bidIncrease = bidIncrease;
         this.buyNowPrice = 0.0;
         this.item = item;
-        // Tự động đồng bộ itemId từ object Item sang trường itemId của session
+        // Tự động đồng bộ itemId từ đối tượng Item sang trường itemId của session
         this.itemId = (item != null) ? item.getId() : 0;
         this.highestBidderAccount = null;
         updateStatusBasedOnTime();

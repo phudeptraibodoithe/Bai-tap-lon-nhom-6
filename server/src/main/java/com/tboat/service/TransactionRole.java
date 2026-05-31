@@ -9,7 +9,7 @@ import com.tboat.models.core.User;
 
 public interface TransactionRole {
     /*
-     * Mỗi role nhận các DAO cần dùng để caller giữ được một luồng transaction rõ ràng,
+     * Mỗi vai trò nhận các DAO cần dùng để bên gọi giữ được một luồng giao dịch rõ ràng,
      * không tạo dependency ẩn bên trong role.
      */
     boolean execute(User user, AuctionSession session, double amount,

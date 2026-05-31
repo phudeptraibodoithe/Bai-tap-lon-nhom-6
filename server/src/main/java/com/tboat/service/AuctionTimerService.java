@@ -16,8 +16,10 @@ import java.util.concurrent.*;
 public class AuctionTimerService {
 
     private static final Logger log = LoggerFactory.getLogger(AuctionTimerService.class);
+    private static final int TIMER_THREAD_POOL_SIZE = 4;
+    private static final long IMMEDIATE_DELAY_SECONDS = 0L;
 
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(TIMER_THREAD_POOL_SIZE);
     private final Map<Integer, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
     private static volatile AuctionTimerService instance;
     private final AuctionSessionDAO sessionDao = new AuctionSessionDAO();
@@ -45,8 +47,8 @@ public class AuctionTimerService {
         }
 
         /*
-         * Each auction has only one active timer. We cancel the old task first,
-         * then add either a start task or an end task based on current time.
+         * Mỗi phiên đấu giá chỉ có một bộ hẹn giờ đang hoạt động. Hủy tác vụ cũ trước,
+         * rồi thêm tác vụ bắt đầu hoặc kết thúc dựa trên thời điểm hiện tại.
          */
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startTime = session.getStartTime();
@@ -105,7 +107,7 @@ public class AuctionTimerService {
         cancelTask(sessionId);
         long delay = Duration.between(LocalDateTime.now(), endTime).getSeconds();
 
-        if (delay <= 0) {
+        if (delay <= IMMEDIATE_DELAY_SECONDS) {
             closeAuction(sessionId);
             return;
         }
@@ -116,7 +118,7 @@ public class AuctionTimerService {
     }
 
     /**
-     * Add more time to an active auction and tell every room client to reset its timer.
+     * Gia hạn một phiên đấu giá đang hoạt động và báo cho mọi máy khách trong phòng đặt lại timer.
      */
     public void extendAuction(int sessionId, int secondsToAdd) {
         AuctionSession session = sessionDao.getAuctionById(sessionId);

@@ -2,11 +2,11 @@ package com.tboat.models.item;
 
 public abstract class Item {
     private int id;
-    protected String sellerAccountName;
-    protected String name;
-    protected String description;
-    protected String imageURL;
-    protected String type;
+    private String sellerAccountName;
+    private String name;
+    private String description;
+    private String imageURL;
+    private String type;
 
     public Item(String sellerAccountName, String name, String description, String imageURL) {
         this.sellerAccountName = sellerAccountName;
@@ -17,7 +17,7 @@ public abstract class Item {
     }
     public Item() {}
 
-    // Getters
+    // Hàm truy xuất
     public String getSellerAccountName() { return sellerAccountName; }
     public abstract String getType();
     public String getName() { return name; }
@@ -27,7 +27,7 @@ public abstract class Item {
         return id;
     }
 
-    // Setters
+    // Hàm cập nhật
     public void setSellerAccountName(String sellerAccountName) { this.sellerAccountName = sellerAccountName; }
     public void setName(String name) { this.name = name; }
     public void setDescription(String description) { this.description = description; }

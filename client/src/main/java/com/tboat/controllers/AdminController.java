@@ -28,7 +28,6 @@ import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-
 import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.ResourceBundle;
@@ -42,7 +41,7 @@ public class AdminController extends BaseController implements Initializable, So
     @FXML private TableColumn<AuctionSession, Double> colStartPrice;
     @FXML private TableColumn<AuctionSession, Double> colJump;
     @FXML private TableColumn<AuctionSession, String> colSeller;
-    @FXML private TableColumn<AuctionSession, StatusOfAuction> colStatus; // ← thêm
+    @FXML private TableColumn<AuctionSession, StatusOfAuction> colStatus;
     @FXML private TableColumn<AuctionSession, Void> colApprove;
     @FXML private TableColumn<AuctionSession, Void> colReject;
     @FXML private Label err;
@@ -173,7 +172,6 @@ public class AdminController extends BaseController implements Initializable, So
                 btn.setOnAction(e -> {
                     AuctionSession session = getTableView().getItems().get(getIndex());
                     SocketHelper.sendRequest(ServerEvent.APPROVE_ITEM, session.getId());
-                    // Cập nhật status local ngay để UI phản hồi nhanh
                     session.setStatusOfAuction(StatusOfAuction.NOT_STARTED);
                     getTableView().refresh();
                 });

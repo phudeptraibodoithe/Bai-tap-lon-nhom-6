@@ -1,13 +1,13 @@
 package com.tboat.models.core;
 
 public class User extends Person {
-    // Attributes
+    // Thuộc tính
     private String description;
     private String avatarURL;
     private String email;
     private String phone;
 
-    // Constructor
+    // Hàm khởi tạo
     public User(String accountName, String password, String nickname,double balance,String description,String avatarURL) {
         super(accountName, password, nickname,balance);
         this.avatarURL=avatarURL;
@@ -15,7 +15,7 @@ public class User extends Person {
     }
     public User(){    }
 
-    // Setters
+    // Hàm cập nhật
     public void setDescription(String description) {
         this.description = description;
     }
@@ -29,7 +29,7 @@ public class User extends Person {
         this.phone = phone;
     }
 
-    // Getters
+    // Hàm truy xuất
     public String getDescription() {
         return description;
     }

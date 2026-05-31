@@ -24,6 +24,9 @@ public class AuctionUIHelper {
     private static final String STYLE_SUCCESS = "-fx-text-fill: #2ecc71; -fx-font-weight: bold; -fx-font-size: 17px;";
     private static final String STYLE_WARNING = "-fx-text-fill: #e67e22; -fx-font-weight: bold; -fx-font-size: 17px;";
     private static final String STYLE_ENDED   = "-fx-text-fill: red;    -fx-font-weight: bold; -fx-font-size: 17px;";
+    private static final String STYLE_URGENT  = "-fx-text-fill: #e74c3c; -fx-font-weight: bold; -fx-font-size: 28px;";
+    private static final long URGENT_TIME_THRESHOLD_SECONDS = 15;
+    private static final int TIME_LABEL_START_INDEX = 11;
 
     public static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -70,12 +73,12 @@ public class AuctionUIHelper {
 
         this.priceSeries = new XYChart.Series<>();
         this.priceSeries.setName("Diễn biến giá (VNĐ)");
-        // Tắt animation — tránh giật khi append điểm mới realtime
+        // Tắt animation để tránh giật khi thêm điểm mới theo thời gian thực
         bidLineChart.setAnimated(false);
         bidLineChart.getData().add(priceSeries);
     }
 
-    // ── Setup ─────────────────────────────────────────────────────────────────
+    // ── Thiết lập ─────────────────────────────────────────────────────────────
 
     public void setupBidHistoryTable() {
         if (colBidTime == null) return;
@@ -161,8 +164,12 @@ public class AuctionUIHelper {
         if (session.getEndTime() == null) return;
         auctionTimer = new AuctionTimer(
                 session.getEndTime(),
-                timeStr -> Platform.runLater(() -> {
-                    if (timeRemaining != null) timeRemaining.setText(timeStr);
+                (timeStr, remainingSeconds) -> Platform.runLater(() -> {
+                    if (timeRemaining != null) {
+                        timeRemaining.setText(timeStr);
+                        timeRemaining.setStyle(remainingSeconds <= URGENT_TIME_THRESHOLD_SECONDS
+                                ? STYLE_URGENT : STYLE_SUCCESS);
+                    }
                 }),
                 () -> Platform.runLater(() -> {
                     if (timeRemaining != null) {
@@ -186,7 +193,7 @@ public class AuctionUIHelper {
 
     // ── Bids & Chart ──────────────────────────────────────────────────────────
 
-    // Dùng khi load lịch sử lần đầu (GET_SESSION_BIDS) — redraw toàn bộ
+    // Dùng khi tải lịch sử lần đầu (GET_SESSION_BIDS), vẽ lại toàn bộ
     public void refreshBidsAndChart() {
         if (listBids.isEmpty()) return;
         listBids.sort((a, b) -> b.getTime().compareTo(a.getTime()));
@@ -195,18 +202,18 @@ public class AuctionUIHelper {
             ObservableList<BidEntry> chrono = FXCollections.observableArrayList(listBids);
             chrono.sort((a, b) -> a.getTime().compareTo(b.getTime()));
             for (BidEntry bid : chrono) {
-                String label = bid.getTime().length() > 11
-                        ? bid.getTime().substring(11) : bid.getTime();
+                String label = bid.getTime().length() > TIME_LABEL_START_INDEX
+                        ? bid.getTime().substring(TIME_LABEL_START_INDEX) : bid.getTime();
                 priceSeries.getData().add(new XYChart.Data<>(label, bid.getPrice()));
             }
         });
     }
 
-    // Dùng khi có NEW_BID realtime — chỉ append 1 điểm, không redraw, không giật
+    // Dùng khi có NEW_BID theo thời gian thực, chỉ thêm 1 điểm và không vẽ lại
     public void appendBidToChart(BidEntry entry) {
         if (priceSeries == null) return;
-        String label = entry.getTime().length() > 11
-                ? entry.getTime().substring(11) : entry.getTime();
+        String label = entry.getTime().length() > TIME_LABEL_START_INDEX
+                ? entry.getTime().substring(TIME_LABEL_START_INDEX) : entry.getTime();
         Platform.runLater(() ->
                 priceSeries.getData().add(new XYChart.Data<>(label, entry.getPrice()))
         );
@@ -218,9 +225,9 @@ public class AuctionUIHelper {
     }
 
     /**
-     * FIX: Phân biệt rõ 3 case:
-     *   - winner != null → "Người chiến thắng: X"  (vàng)
-     *   - winner null    → "Không có người thắng"   (xám)
+     * Sửa lỗi: phân biệt rõ 3 trường hợp:
+     *   - winner != null → "Người chiến thắng: X"  (màu vàng)
+     *   - winner null    → "Không có người thắng"  (màu xám)
      * Trước đây cả 2 case đều hiển thị giống nhau nếu highestBidderAccount còn sót từ lúc bid.
      */
     public void setAuctionEndedLabel(AuctionSession session) {
@@ -236,8 +243,8 @@ public class AuctionUIHelper {
     }
 
     /**
-     * FIX: setupTimerState thêm log để tránh silent fail khi endTime null.
-     * Không thay đổi logic, chỉ thêm guard rõ ràng hơn.
+     * Sửa lỗi: setupTimerState thêm chốt kiểm tra để tránh lỗi im lặng khi endTime null.
+     * Không thay đổi logic, chỉ thêm chốt kiểm tra rõ ràng hơn.
      */
     public void setupTimerState(StatusOfAuction status, AuctionSession session) {
         stopTimer();
@@ -255,7 +262,7 @@ public class AuctionUIHelper {
             }
             case ONGOING -> {
                 if (session.getEndTime() == null) {
-                    timeRemaining.setText("-- : -- : --");   // FIX: tránh NPE silent
+                    timeRemaining.setText("-- : -- : --");   // Tránh NPE im lặng
                     timeRemaining.setStyle(STYLE_WARNING);
                     return;
                 }

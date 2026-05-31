@@ -2,7 +2,7 @@ package com.tboat.models.item;
 
 public class ElectronicsItem extends Item {
 
-    // Constructor dùng cho Factory
+    // Hàm khởi tạo dùng cho Factory
     public ElectronicsItem( String sellerAccountName, String name,
                             String description, String imageURL) {
         super(sellerAccountName, name, description, imageURL);

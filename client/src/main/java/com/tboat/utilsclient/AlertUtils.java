@@ -16,7 +16,7 @@ public class AlertUtils {
     // Thời gian hiển thị thông báo status (giây)
     private static final double STATUS_DISPLAY_SECONDS = 6.0;
 
-    // ── Internal helper ──────────────────────────────────────────────────────
+    // ── Hàm hỗ trợ nội bộ ───────────────────────────────────────────────────
 
     private static void styleAlert(Alert alert) {
         DialogPane pane = alert.getDialogPane();
@@ -33,7 +33,7 @@ public class AlertUtils {
         }
     }
 
-    // ── Public API ───────────────────────────────────────────────────────────
+    // ── API dùng bên ngoài ──────────────────────────────────────────────────
 
     public static void showAlert(Alert.AlertType type, String title, String message) {
         Alert alert = new Alert(type);
@@ -70,7 +70,7 @@ public class AlertUtils {
         Platform.runLater(() -> {
             label.setText(msg);
 
-            // 👉 KIỂM TRA THÔNG MINH: Nếu chuỗi truyền vào là CSS hợp lệ thì xài luôn
+            // Nếu chuỗi truyền vào là CSS hợp lệ thì dùng trực tiếp.
             if (styleOrColor != null && styleOrColor.contains("-fx-")) {
                 label.setStyle(styleOrColor);
             } else {
@@ -89,7 +89,7 @@ public class AlertUtils {
     }
 
     /**
-     * Overload cho phép tuỳ chỉnh thời gian hiển thị (giây).
+     * Phiên bản nạp chồng cho phép tuỳ chỉnh thời gian hiển thị (giây).
      */
     public static void showStatus(Label label, String msg, String styleOrColor, double seconds) {
         if (label == null) return;
@@ -97,7 +97,7 @@ public class AlertUtils {
         Platform.runLater(() -> {
             label.setText(msg);
 
-            // 👉 ĐỒNG BỘ LOGIC KIỂM TRA BÊN TRÊN
+            // Đồng bộ logic kiểm tra CSS với phương thức phía trên.
             if (styleOrColor != null && styleOrColor.contains("-fx-")) {
                 label.setStyle(styleOrColor);
             } else {

@@ -125,7 +125,7 @@ public class ItemCommandHandler {
                 context.sendResponse(new Response<>(ServerEvent.EDIT_ITEM.name(), ServerEvent.SUCCESS.name(),
                         "Cập nhật thông tin sản phẩm thành công!", sessionId));
 
-                // Load lại session đã lưu để timer dùng startTime và endTime mới nhất.
+                // Tải lại session đã lưu để timer dùng startTime và endTime mới nhất.
                 AuctionSession refreshed = auctionDAO.getAuctionById(sessionId);
                 if (refreshed != null) {
 

@@ -10,13 +10,13 @@ import java.io.StringWriter;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit Test cho UserManager.
- * Không cần DB cho các test về onlineUsers map.
+ * Kiểm thử đơn vị cho UserManager.
+ * Không cần DB cho các test về bản đồ người dùng online.
  *
  * LƯU Ý quan trọng:
  * - ConcurrentHashMap.get(null) ném NPE — đây là hành vi Java chuẩn.
  *   Test getHandler(null) được viết để chấp nhận cả null lẫn NPE.
- * - register() / login() với account không online gọi DB → chấp nhận RuntimeException từ DB.
+ * - register() / login() với account không online gọi DB nên chấp nhận RuntimeException từ DB.
  */
 class UserManagerTest {
 
@@ -41,7 +41,7 @@ class UserManagerTest {
         }
     }
 
-    // ===================== SINGLETON =====================
+    // ===================== SINGLETON DÙNG CHUNG =====================
 
     @Test
     @DisplayName("UserManager phải là Singleton")
@@ -55,7 +55,7 @@ class UserManagerTest {
         assertNotNull(UserManager.getInstance());
     }
 
-    // ===================== ONLINE USERS MAP =====================
+    // ===================== BẢN ĐỒ NGƯỜI DÙNG ONLINE =====================
 
     @Test
     @DisplayName("onlineUsers phải trống sau setUp()")
@@ -69,12 +69,12 @@ class UserManagerTest {
         assertNotNull(UserManager.getOnlineUsers());
     }
 
-    // ===================== LOGIN — kiểm tra online map (KHÔNG cần DB) =====================
+    // ===================== ĐĂNG NHẬP — kiểm tra bản đồ online (KHÔNG cần DB) =====================
 
     @Test
     @DisplayName("Login khi account đang online → ALREADY_LOGGED_IN (không gọi DB)")
     void testLogin_AlreadyOnline_ReturnsAlreadyLoggedIn() {
-        // Guard onlineUsers.containsKey() chạy TRƯỚC khi gọi DB → không cần DB
+        // Chốt kiểm tra onlineUsers.containsKey() chạy TRƯỚC khi gọi DB nên không cần DB
         UserManager.getOnlineUsers().put("alice", new MockContext("alice"));
         ResponseCode result = userManager.login("alice", "anypass", new MockContext());
         assertEquals(ResponseCode.ALREADY_LOGGED_IN, result);
@@ -100,7 +100,7 @@ class UserManagerTest {
                 userManager.login("userB", "pass", new MockContext()));
     }
 
-    // ===================== LOGOUT =====================
+    // ===================== ĐĂNG XUẤT =====================
 
     @Test
     @DisplayName("logout user đang online: bị xóa khỏi map")
@@ -137,7 +137,7 @@ class UserManagerTest {
         assertDoesNotThrow(() -> userManager.logout("alice"));
     }
 
-    // ===================== GET HANDLER =====================
+    // ===================== LẤY HANDLER =====================
 
     @Test
     @DisplayName("getHandler trả về đúng ClientSession đã đăng ký")
@@ -156,9 +156,9 @@ class UserManagerTest {
     @Test
     @DisplayName("getHandler với null: ConcurrentHashMap không chấp nhận null key → NPE là hành vi hợp lệ")
     void testGetHandler_Null_BehaviorDocumented() {
-        // ConcurrentHashMap.get(null) ném NullPointerException theo spec Java.
+        // ConcurrentHashMap.get(null) ném NullPointerException theo đặc tả Java.
         // Test này xác nhận hành vi hiện tại (NPE) và tài liệu hoá nó.
-        // Nếu muốn an toàn hơn, cần thêm null-guard vào UserManager.getHandler().
+        // Nếu muốn an toàn hơn, cần thêm chốt kiểm tra null vào UserManager.getHandler().
         assertThrows(NullPointerException.class, () -> UserManager.getHandler(null),
                 "ConcurrentHashMap.get(null) phải throw NPE theo đặc tả Java.");
     }
@@ -171,7 +171,7 @@ class UserManagerTest {
         assertNull(UserManager.getHandler("alice"));
     }
 
-    // ===================== NHIỀU USER =====================
+    // ===================== NHIỀU NGƯỜI DÙNG =====================
 
     @Test
     @DisplayName("Thêm 3 user vào map: size phải là 3")
@@ -216,7 +216,7 @@ class UserManagerTest {
         assertSame(second, UserManager.getHandler("alice"));
     }
 
-    // ===================== REGISTER (gọi DB — chỉ test không phát sinh NPE) =====================
+    // ===================== ĐĂNG KÝ (gọi DB, chỉ test không phát sinh NPE) =====================
 
     @Test
     @DisplayName("register với account rỗng: nếu có DB trả về ResponseCode, nếu không có DB throw RuntimeException (không phải NPE)")

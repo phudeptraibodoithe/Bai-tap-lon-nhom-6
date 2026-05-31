@@ -1,13 +1,13 @@
 package com.tboat.models.core;
 
 public abstract class Person {
-    // Attributes
-    protected String accountName;
-    protected String password;
-    protected String nickname;
-    protected double balance;
+    // Thuộc tính
+    private String accountName;
+    private String password;
+    private String nickname;
+    private double balance;
 
-    // Constructor
+    // Hàm khởi tạo
     public Person(String accountName, String password, String nickname) {
         this.accountName = accountName;
         this.password = password;
@@ -24,7 +24,7 @@ public abstract class Person {
 
     public Person(){}
 
-    // Setters
+    // Hàm cập nhật
     public void setNickname(String nickname) {
         this.nickname = nickname;
     }
@@ -32,7 +32,7 @@ public abstract class Person {
         this.balance = balance;
     }
 
-    // Getters
+    // Hàm truy xuất
     public String getAccountName() {
         return accountName;
     }

@@ -8,14 +8,11 @@ import com.tboat.models.core.Person;
 
 public class PersonTest {
  
-    // Concrete subclass for testing abstract Person
+    // Lớp con cụ thể dùng để kiểm thử Person trừu tượng
     static class ConcretePerson extends Person {
         public ConcretePerson(String accountName, String nickname,
                               String password, double balance) {
-            this.accountName = accountName;
-            this.nickname = nickname;
-            this.password = password;
-            this.balance = balance;
+            super(accountName, password, nickname, balance);
         }
     }
  

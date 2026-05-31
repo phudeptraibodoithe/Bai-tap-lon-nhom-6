@@ -117,7 +117,7 @@ public class HistoryController extends BaseController implements Initializable, 
                 : null;
     }
 
-    /** Tính label, statusText, moneyDisplay, colorStatus cho 1 dòng lịch sử */
+    /** Tính nhãn, trạng thái, số tiền hiển thị và màu trạng thái cho 1 dòng lịch sử */
     private HistoryRowData buildHistoryRowData(String name, String role,
                                                String winner, double finalPrice, String me) {
         String label, statusText, moneyDisplay, colorStatus;
@@ -152,7 +152,7 @@ public class HistoryController extends BaseController implements Initializable, 
         return new HistoryRowData(label, statusText, moneyDisplay, colorStatus);
     }
 
-    /** Data class nội bộ, chỉ dùng trong HistoryController */
+    /** Lớp dữ liệu nội bộ, chỉ dùng trong HistoryController */
     private record HistoryRowData(String label, String statusText,
                                   String moneyDisplay, String colorStatus) {}
 

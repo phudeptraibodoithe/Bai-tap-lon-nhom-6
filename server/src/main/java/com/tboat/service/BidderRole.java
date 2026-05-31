@@ -17,7 +17,7 @@ public class BidderRole implements TransactionRole {
     private static final Logger logger = LoggerFactory.getLogger(BidderRole.class);
 
     /**
-     * Lưu một lần đặt giá trong một transaction database:
+     * Lưu một lần đặt giá trong một giao dịch database:
      * trừ tiền người mới, cập nhật phiên, hoàn tiền người cũ, rồi lưu lịch sử bid.
      */
     @Override

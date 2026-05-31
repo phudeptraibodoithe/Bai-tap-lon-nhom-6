@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * Một SocketListener đặc biệt — luôn lắng nghe TẤT CẢ response
+ * Một SocketListener đặc biệt — luôn lắng nghe TẤT CẢ phản hồi
  * và tự động lưu vào DataCache theo action.
  *
  * Đăng ký 1 lần duy nhất trong ClientApp, sau đó hoạt động ngầm mãi mãi.
@@ -19,7 +19,7 @@ public class CacheInterceptor implements SocketListener {
     private static final Logger log = Logger.getLogger(CacheInterceptor.class.getName());
     private static CacheInterceptor instance;
 
-    // Map message → action key để biết cache dưới key nào
+    // Bản đồ thông điệp sang khóa action để biết cache dưới khóa nào
     private static final Map<String, ServerEvent> MESSAGE_TO_ACTION = Map.of(
             "Danh sách chờ duyệt",         ServerEvent.GET_ALL_ITEMS,
             "Thông tin tài khoản",          ServerEvent.GET_PROFILE,
@@ -38,7 +38,7 @@ public class CacheInterceptor implements SocketListener {
 
     @Override
     public void handleServerResponse(String response) {
-        // Chạy trên background (không cần Platform.runLater vì chỉ update cache)
+        // Chạy trên luồng nền (không cần Platform.runLater vì chỉ cập nhật cache)
         try {
             JsonObject json = JsonParser.parseString(response).getAsJsonObject();
             String status  = json.has("status")  ? json.get("status").getAsString()  : "";
@@ -46,7 +46,7 @@ public class CacheInterceptor implements SocketListener {
 
             if (!ServerEvent.SUCCESS.name().equals(status)) return; // Chỉ cache khi thành công
 
-            // Tìm action key tương ứng với message này
+            // Tìm action key tương ứng với thông điệp này
             ServerEvent actionKey = null;
             for (Map.Entry<String, ServerEvent> entry : MESSAGE_TO_ACTION.entrySet()) {
                 if (message.contains(entry.getKey())) {

@@ -1,0 +1,67 @@
+@startuml Observer_PlaceBid
+skinparam backgroundColor #FFFFFF
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 5
+skinparam sequenceParticipantBorderColor #2563EB
+skinparam sequenceParticipantBackgroundColor #EFF6FF
+skinparam sequenceParticipantFontColor #1E293B
+skinparam sequenceActorBorderColor #2563EB
+skinparam noteBackgroundColor #FEF9C3
+skinparam noteBorderColor #CA8A04
+
+actor "Client (JavaFX)" as Client
+participant "SocketManager" as Socket
+participant "ActionRouter" as Router
+participant "BiddingService" as BS
+participant "ParticipationContext" as Context
+participant "Database" as DB
+participant "DAOs" as DAOs
+participant "BroadcastService" as Broadcaster
+
+== Gửi Request ==
+Client -> Socket : Nhấn nút Trả giá
+Socket -> Router : {action: "PLACE_BID", payload}
+
+== Xử lý đồng bộ ==
+Router -> BS : handleAction(payload)
+note over BS : synchronized(sessionId)\nChống race condition
+
+BS -> DAOs : Lấy Session & kiểm tra giá
+DAOs --> BS : Session object
+
+BS -> Context : executeAction(user, session, newPrice)
+Context -> DB : getConnection()\nsetAutoCommit(false)
+
+Context -> DAOs : 1. updateBalance() — Trừ tiền người mới
+Context -> DAOs : 2. updateSession() — Cập nhật giá phiên
+
+alt Có người giữ giá cũ
+    Context -> DAOs : 3. updateBalance() — Hoàn tiền người cũ
+end
+
+Context -> DAOs : 4. addBid() — Lưu lịch sử
+
+alt Transaction thành công
+    Context -> DB : commit()
+    Context --> BS : return true
+else Thất bại
+    Context -> DB : rollback()
+    Context --> BS : return false
+end
+
+== Phản hồi & Broadcast ==
+alt true
+    BS -> Router : Success Response
+    Router -> Socket : {status: "SUCCESS"}
+    Socket --> Client : runLater() — Cập nhật UI
+
+    BS -> Broadcaster : broadcastNewPrice(sessionId, newPrice)
+    note over Broadcaster : Tìm tất cả Socket\nthuộc Session này
+    Broadcaster -> Socket : {action: "UPDATE_PRICE"} → TẤT CẢ clients
+else false
+    BS -> Router : Error Response
+    Router -> Socket : {status: "ERROR", message}
+    Socket --> Client : runLater() — Hiển thị lỗi
+end
+
+@enduml

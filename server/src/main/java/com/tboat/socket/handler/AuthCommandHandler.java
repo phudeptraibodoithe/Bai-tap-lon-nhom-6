@@ -23,7 +23,7 @@ public class AuthCommandHandler {
     public AuthCommandHandler(ClientSession context) { this.context = context; }
 
     /*
-     * Login lưu clientId vào context. Sau đó các handler khác có thể dùng
+     * Đăng nhập lưu clientId vào context. Sau đó các handler khác có thể dùng
      * context.getClientId() thay vì đọc accountName từ request.
      */
     public void login(String raw) {

@@ -34,7 +34,8 @@ public class WalletController extends BaseController implements Initializable, S
     @FXML private ImageView userAvatar;
 
     private double currentBalance = UserSession.getInstance().getBalance();
-    private final String CORRECT_PIN = "123456";
+    private static final String CORRECT_PIN = "123456";
+    private static final double MIN_TRANSACTION_AMOUNT = 0.0;
     private boolean isDepositMode = true;
     private static final Logger logger = Logger.getLogger(WalletController.class.getName());
 
@@ -43,7 +44,7 @@ public class WalletController extends BaseController implements Initializable, S
         HeaderUtils.setupHeader(lblGreeting, userAvatar, this);
         updateBalanceLabel();
         setupAmountFieldFormat();
-        txtPin.setText("123456");
+        txtPin.setText(CORRECT_PIN);
         btnTabDeposit.setOnAction(event -> switchToDepositMode());
         btnTabWithdraw.setOnAction(event -> switchToWithdrawMode());
         btnSubmit.setOnAction(event -> handleTransaction());
@@ -84,7 +85,7 @@ public class WalletController extends BaseController implements Initializable, S
         }
         try {
             double amount = CurrencyFormatter.parse(amountText);
-            if (amount <= 0) {
+            if (amount <= MIN_TRANSACTION_AMOUNT) {
                 AlertUtils.showAlert(Alert.AlertType.ERROR, "Lỗi số tiền", "Số tiền giao dịch phải lớn hơn 0!");
                 return;
             }

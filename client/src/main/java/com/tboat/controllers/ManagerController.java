@@ -36,6 +36,7 @@ public class ManagerController extends BaseController implements Initializable, 
     private final ObservableList<AuctionSession> listMyItems = FXCollections.observableArrayList();
 
     private static final String STYLE_BTN_EDIT   = "-fx-background-color: #3498db; -fx-text-fill: white; -fx-cursor: hand;";
+    private static final String STYLE_BTN_VIEW   = "-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-cursor: hand;";
     private static final String STYLE_BTN_CLOSED = "-fx-background-color: #bdc3c7; -fx-text-fill: white;";
 
     @FXML private TableView<AuctionSession> tableMyItems;
@@ -90,10 +91,20 @@ public class ManagerController extends BaseController implements Initializable, 
             {
                 btn.setOnAction((ActionEvent event) -> {
                     AuctionSession data = getTableView().getItems().get(getIndex());
-                    logger.info("Bạn vừa bấm vào sản phẩm để sửa: " + data.getName());
-                    EditItemController editController = changeSceneAndGetController((Node) event.getSource(), "edit-item.fxml");
-                    if (editController != null) {
-                        editController.setEditData(data);
+                    if (data.getStatusOfAuction() == StatusOfAuction.ENDED) {
+                        logger.info("Bạn vừa bấm vào sản phẩm đã kết thúc để xem chi tiết: " + data.getName());
+                        AuctionController auctionController =
+                                changeSceneAndGetController((Node) event.getSource(), "auction.fxml");
+                        if (auctionController != null) {
+                            auctionController.setItemData(data);
+                        }
+                    } else {
+                        logger.info("Bạn vừa bấm vào sản phẩm để sửa: " + data.getName());
+                        EditItemController editController =
+                                changeSceneAndGetController((Node) event.getSource(), "edit-item.fxml");
+                        if (editController != null) {
+                            editController.setEditData(data);
+                        }
                     }
                 });
             }
@@ -106,10 +117,14 @@ public class ManagerController extends BaseController implements Initializable, 
                 } else {
                     AuctionSession session = getTableRow().getItem();
                     StatusOfAuction status = session.getStatusOfAuction();
-                    if (status == StatusOfAuction.ENDED || status == StatusOfAuction.CANCELED) {
+                    if (status == StatusOfAuction.CANCELED) {
                         btn.setDisable(true);
-                        btn.setText("Đã đóng");
+                        btn.setText("Đã hủy");
                         btn.setStyle(STYLE_BTN_CLOSED);
+                    } else if (status == StatusOfAuction.ENDED) {
+                        btn.setDisable(false);
+                        btn.setText("Xem chi tiết");
+                        btn.setStyle(STYLE_BTN_VIEW);
                     } else {
                         btn.setDisable(false);
                         btn.setText("Chỉnh sửa");

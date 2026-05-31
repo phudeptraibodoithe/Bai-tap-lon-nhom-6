@@ -1,0 +1,56 @@
+@startuml Business_Flow
+skinparam backgroundColor #FFFFFF
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 5
+skinparam sequenceParticipantBorderColor #2563EB
+skinparam sequenceParticipantBackgroundColor #EFF6FF
+skinparam sequenceParticipantFontColor #1E293B
+skinparam sequenceActorBorderColor #2563EB
+skinparam noteBackgroundColor #FEF9C3
+skinparam noteBorderColor #CA8A04
+
+actor "User A (Seller)" as A
+actor "User B (Bidder)" as B
+participant "Tboat Server" as Server
+database "auction_session" as DBSession
+database "participation" as DBPart
+database "bid" as DBBid
+database "user" as DBUser
+database "history" as DBHistory
+
+== 1. A Tạo phòng đấu giá ==
+A -> Server : Request Tạo Phiên
+Server -> DBSession : INSERT phiên mới
+Server -> DBPart : INSERT (A, role: SELLER)
+
+== 2. B Join lần đầu ==
+B -> Server : Request JOIN
+Server -> DBPart : SELECT — B đã tồn tại?
+DBPart --> Server : Chưa tồn tại
+Server -> DBPart : INSERT (B, role: BIDDER)
+
+== 3. B Thoát rồi Join lại ==
+B -> Server : Request JOIN
+Server -> DBPart : SELECT — B đã tồn tại?
+DBPart --> Server : Đã tồn tại
+note over Server : Bỏ qua — không INSERT thêm\n(Idempotent)
+
+== 4. B Đặt giá 500k ==
+B -> Server : Request Đặt giá 500k
+Server -> DBUser : UPDATE trừ 500k của B
+Server -> DBSession : UPDATE price=500k, highest=B
+Server -> DBBid : INSERT (B, 500k)
+
+== 5. B Đặt giá 600k ==
+B -> Server : Request Đặt giá 600k
+Server -> DBUser : UPDATE hoàn 500k + trừ 600k của B
+Server -> DBSession : UPDATE price=600k, highest=B
+Server -> DBBid : INSERT (B, 600k)
+
+== 6. Đồng hồ kết thúc ==
+Server -> Server : Timer Trigger: AUCTION_FINISHED
+Server -> DBSession : Lấy HighestBidder = B
+Server -> DBHistory : INSERT (winner: B, final: 600k)
+Server -> DBSession : UPDATE status = ENDED
+
+@enduml

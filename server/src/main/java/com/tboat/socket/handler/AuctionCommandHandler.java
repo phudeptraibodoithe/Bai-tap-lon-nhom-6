@@ -30,8 +30,8 @@ public class AuctionCommandHandler {
     public AuctionCommandHandler(ClientSession context) { this.context = context; }
 
     /*
-     * Handler chỉ parse dữ liệu từ socket và gọi service. AuctionRoom giữ state
-     * realtime của phòng, còn DAO chịu trách nhiệm đọc ghi database.
+     * Handler chỉ phân tích dữ liệu từ socket và gọi service. AuctionRoom giữ trạng thái
+     * thời gian thực của phòng, còn DAO chịu trách nhiệm đọc ghi cơ sở dữ liệu.
      */
     public void listAvailable() {
         context.sendResponse(new Response<>(ServerEvent.LIST_AVAILABLE.name(), ServerEvent.SUCCESS.name(),
@@ -51,9 +51,33 @@ public class AuctionCommandHandler {
             }
 
             StatusOfAuction status = session.getStatusOfAuction();
-            if (status == StatusOfAuction.ENDED || status == StatusOfAuction.CANCELED) {
+            if (status == StatusOfAuction.CANCELED) {
                 context.sendResponse(new Response<>(ServerEvent.JOIN.name(), ServerEvent.ERROR.name(),
-                        "Phiên đã kết thúc hoặc bị hủy", null));
+                        "Phiên đã bị hủy", null));
+                return;
+            }
+
+            String sellerNickname = userDAO.getNickname(session.getSellerAccountName());
+            String leaderNickname = null;
+            String highestBidder  = session.getHighestBidderAccount();
+            if (highestBidder != null && !highestBidder.isBlank())
+                leaderNickname = userDAO.getNickname(highestBidder);
+
+            JsonObject joinPayload = new JsonObject();
+            joinPayload.addProperty("currentPrice",   session.getCurrentPrice());
+            joinPayload.addProperty("buyNowPrice",    session.getBuyNowPrice());
+            joinPayload.addProperty("isSeller",       session.getSellerAccountName().equals(context.getClientId()));
+            joinPayload.addProperty("sellerNickname", sellerNickname);
+            joinPayload.addProperty("readOnly",       status == StatusOfAuction.ENDED);
+            if (leaderNickname != null)
+                joinPayload.addProperty("leaderNickname", leaderNickname);
+
+            if (status == StatusOfAuction.ENDED) {
+                AuctionRoom oldRoom = context.getCurrentRoom();
+                if (oldRoom != null) oldRoom.removeSubscriber(context);
+                context.setCurrentRoom(null);
+                context.sendResponse(new Response<>(ServerEvent.JOIN.name(), ServerEvent.JOIN_SUCCESS.name(),
+                        "Xem lại phiên đã kết thúc", joinPayload));
                 return;
             }
 
@@ -70,19 +94,10 @@ public class AuctionCommandHandler {
             context.setCurrentRoom(room);
             room.addSubscriber(context);
 
-            String sellerNickname = userDAO.getNickname(session.getSellerAccountName());
-            String leaderNickname = null;
-            String highestBidder  = session.getHighestBidderAccount();
-            if (highestBidder != null && !highestBidder.isBlank())
-                leaderNickname = userDAO.getNickname(highestBidder);
-
-            JsonObject joinPayload = new JsonObject();
-            joinPayload.addProperty("currentPrice",   room.getCurrentPrice());
-            joinPayload.addProperty("buyNowPrice",    session.getBuyNowPrice());
-            joinPayload.addProperty("isSeller",       session.getSellerAccountName().equals(context.getClientId()));
-            joinPayload.addProperty("sellerNickname", sellerNickname);
-            if (leaderNickname != null)
-                joinPayload.addProperty("leaderNickname", leaderNickname);
+            joinPayload.addProperty("currentPrice", room.getCurrentPrice());
+            double myMaxBid = room.getAutoBidMax(context.getClientId());
+            if (myMaxBid > 0)
+                joinPayload.addProperty("autoBidMax", myMaxBid);
 
             context.sendResponse(new Response<>(ServerEvent.JOIN.name(), ServerEvent.JOIN_SUCCESS.name(),
                     "Vào phòng thành công", joinPayload));
@@ -153,9 +168,11 @@ public class AuctionCommandHandler {
                     }
                 }
 
-                EventBroadcaster.getInstance().broadcastToAdmins(
-                        new Response<>(ServerEvent.RELOAD_ALL_ITEMS, ServerEvent.NOTIFY,
-                                "Có bid mới trong phiên " + room.getSessionId(), room.getSessionId()));
+                // 4. Auto-bid chạy SAU CÙNG — client đã nhận bid thường rồi
+                room.triggerAutoBids();
+
+                EventBroadcaster.getInstance().broadcastToAdmins(new Response<>(ServerEvent.RELOAD_ALL_ITEMS, ServerEvent.NOTIFY,
+                        "Có bid mới trong phiên " + room.getSessionId(), room.getSessionId()));
             }
             case INSUFFICIENT_BALANCE ->
                     context.sendResponse(new Response<>(ServerEvent.BID.name(), ServerEvent.FAILED.name(),

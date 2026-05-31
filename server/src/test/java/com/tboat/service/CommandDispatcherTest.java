@@ -14,11 +14,11 @@ import java.io.StringWriter;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit Test cho CommandRouter.
- * KHÔNG cần DB — test layer routing/auth trước khi chạm DAO.
+ * Kiểm thử đơn vị cho CommandRouter.
+ * KHÔNG cần DB vì test tầng định tuyến/xác thực trước khi chạm DAO.
  *
- * Lưu ý: Response serialize field tên là "type" (không phải "action").
- * Các helper đọc field "type" từ JSON output.
+ * Lưu ý: Response tuần tự hóa trường tên là "type" (không phải "action").
+ * Các hàm hỗ trợ đọc trường "type" từ JSON output.
  */
 class CommandRouterTest {
 
@@ -34,14 +34,14 @@ class CommandRouterTest {
         dispatcher = new CommandRouter(context);
     }
 
-    // ─── Helpers ────────────────────────────────────────────────────────
+    // ─── Hàm hỗ trợ ─────────────────────────────────────────────────────
 
     /** Trả về true nếu có ít nhất 1 dòng JSON trong output. */
     private boolean hasOutput() {
         return !sw.toString().trim().isEmpty();
     }
 
-    /** Parse dòng JSON cuối cùng, trả về null nếu output rỗng hoặc parse lỗi. */
+    /** Phân tích dòng JSON cuối cùng, trả về null nếu output rỗng hoặc phân tích lỗi. */
     private JsonObject lastResponseOrNull() {
         String raw = sw.toString().trim();
         if (raw.isEmpty()) return null;
@@ -60,7 +60,7 @@ class CommandRouterTest {
     }
 
     /**
-     * Đọc field "type" từ Response (field tên trong Response class là "type", không phải "action").
+     * Đọc trường "type" từ Response (trường trong class Response là "type", không phải "action").
      */
     private String lastType() {
         JsonObject obj = lastResponse();
@@ -76,7 +76,7 @@ class CommandRouterTest {
         return obj.get("status").getAsString();
     }
 
-    // ===================== RETURN VALUE =====================
+    // ===================== GIÁ TRỊ TRẢ VỀ =====================
 
     @Test
     @DisplayName("dispatch trả về action string viết hoa từ JSON")
@@ -142,8 +142,8 @@ class CommandRouterTest {
         assertTrue(message.contains("FAKE_CMD"));
     }
 
-    // ===================== GUEST ACCESS CONTROL =====================
-    // Các action bị chặn ở AUTH guard → response luôn được ghi ngay
+    // ===================== KIỂM SOÁT TRUY CẬP CỦA KHÁCH =====================
+    // Các action bị chặn ở chốt xác thực → phản hồi luôn được ghi ngay
 
     @Test
     @DisplayName("Guest gọi BID → AUTH_ERROR")
@@ -223,8 +223,8 @@ class CommandRouterTest {
         assertEquals("AUTH_ERROR", lastType());
     }
 
-    // ===================== PUBLIC ACTIONS (GUEST ĐƯỢC PHÉP) =====================
-    // Vượt qua auth guard — chỉ assert KHÔNG phải AUTH_ERROR
+    // ===================== ACTION CÔNG KHAI (KHÁCH ĐƯỢC PHÉP) =====================
+    // Vượt qua chốt xác thực, chỉ kiểm tra KHÔNG phải AUTH_ERROR
 
     @Test
     @DisplayName("Guest gọi LIST_AVAILABLE → KHÔNG phải AUTH_ERROR")
@@ -253,9 +253,9 @@ class CommandRouterTest {
         }
     }
 
-    // ===================== ADMIN ACCESS CONTROL =====================
+    // ===================== KIỂM SOÁT TRUY CẬP ADMIN =====================
     // ADMIN_ACTIONS = ["GET_ALL_ITEMS", "APPROVE_ITEM", "REJECT_ITEM"]
-    // Bị chặn trước khi chạm DB → response luôn được ghi
+    // Bị chặn trước khi chạm DB nên phản hồi luôn được ghi
 
     @Test
     @DisplayName("User thường gọi APPROVE_ITEM → AUTH_ERROR")
@@ -318,7 +318,7 @@ class CommandRouterTest {
         }
     }
 
-    // ===================== CASE INSENSITIVITY =====================
+    // ===================== KHÔNG PHÂN BIỆT HOA THƯỜNG =====================
 
     @Test
     @DisplayName("action viết thường 'bid' (guest) → AUTH_ERROR (normalize uppercase)")
@@ -344,7 +344,7 @@ class CommandRouterTest {
     void testDispatch_LoggedIn_BID_NotInRoom() {
         context.setClientId("alice");
         dispatcher.dispatch("{\"action\":\"BID\",\"payload\":5000}");
-        // BID handler ghi response ngay khi không trong phòng (không cần DB)
+        // Handler BID ghi phản hồi ngay khi không trong phòng (không cần DB)
         assertEquals("BID", lastType());
         assertNotEquals("AUTH_ERROR", lastType());
     }
@@ -369,7 +369,7 @@ class CommandRouterTest {
         }
     }
 
-    // ===================== RESPONSE ĐỦ FIELDS =====================
+    // ===================== PHẢN HỒI ĐỦ TRƯỜNG =====================
 
     @Test
     @DisplayName("AUTH_ERROR response phải có đủ type, status, message")

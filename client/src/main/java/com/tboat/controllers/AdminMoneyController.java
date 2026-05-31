@@ -32,7 +32,8 @@ public class AdminMoneyController extends BaseController implements Initializabl
     @FXML private Button btnSubmit;
 
     private double currentBalance;
-    private final String CORRECT_PIN = "123456";
+    private static final String CORRECT_PIN = "123456";
+    private static final double MIN_TRANSACTION_AMOUNT = 0.0;
     private boolean isDepositMode = true;
     private static final Logger log = LoggerFactory.getLogger(AdminMoneyController.class);
 
@@ -45,7 +46,7 @@ public class AdminMoneyController extends BaseController implements Initializabl
         updateBalanceLabel();
         CurrencyFormatter.attachCurrencyListener(txtAmount);
 
-        txtPin.setText("123456");
+        txtPin.setText(CORRECT_PIN);
         btnTabDeposit.setOnAction(event -> switchToDepositMode());
         btnTabWithdraw.setOnAction(event -> switchToWithdrawMode());
         btnSubmit.setOnAction(event -> handleTransaction());
@@ -102,7 +103,7 @@ public class AdminMoneyController extends BaseController implements Initializabl
         try {
             double amount = CurrencyFormatter.parse(amountText);
 
-            if (amount <= 0) {
+            if (amount <= MIN_TRANSACTION_AMOUNT) {
                 AlertUtils.showAlert(Alert.AlertType.ERROR, "Lỗi số tiền", "Số tiền giao dịch phải lớn hơn 0!");
                 return;
             }

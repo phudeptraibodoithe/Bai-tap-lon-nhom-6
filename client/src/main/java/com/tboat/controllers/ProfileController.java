@@ -65,7 +65,7 @@ public class ProfileController extends BaseController implements Initializable, 
         SocketHelper.sendRequest(ServerEvent.GET_PROFILE);
     }
 
-    // ── Edit mode toggle ──────────────────────────────────────────────────────
+    // ── Bật/tắt chế độ chỉnh sửa ────────────────────────────────────────────
 
     @FXML
     public void onEdit(ActionEvent e) {
@@ -132,7 +132,7 @@ public class ProfileController extends BaseController implements Initializable, 
         btnEdit.setVisible(!editing);
         btnSave.setVisible(editing);
         btnCancel.setVisible(editing);
-        // Style field khi view mode: xám nhạt
+        // Tạo kiểu ô nhập khi ở chế độ xem: xám nhạt
         String fieldStyle = editing
                 ? "-fx-background-color: white; -fx-border-color: #cbd5e1; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10 14;"
                 : "-fx-background-color: #F4F5F7; -fx-border-color: transparent; -fx-background-radius: 10; -fx-padding: 12 15;";
@@ -195,7 +195,7 @@ public class ProfileController extends BaseController implements Initializable, 
         }
     }
 
-    // ── Server response ───────────────────────────────────────────────────────
+    // ── Phản hồi từ server ───────────────────────────────────────────────────
 
     @Override
     public void handleServerResponse(String response) {

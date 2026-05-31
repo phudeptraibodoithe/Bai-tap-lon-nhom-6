@@ -7,32 +7,37 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 /**
- * Lưu cache response từ server theo từng action.
- * Thread-safe dùng ConcurrentHashMap.
+ * Lưu cache phản hồi từ server theo từng action.
+ * An toàn luồng nhờ dùng ConcurrentHashMap.
  *
- * TTL (Time-To-Live) theo từng loại action:
- *  - Dữ liệu đấu giá (giá, bid): TTL ngắn ~15-30s (thay đổi liên tục)
- *  - Danh sách chờ duyệt: TTL ~30s
- *  - Profile/Balance: TTL ~2 phút
+ * Thời gian sống theo từng loại action:
+ *  - Dữ liệu đấu giá (giá, bid): ngắn khoảng 15-30 giây vì thay đổi liên tục
+ *  - Danh sách chờ duyệt: khoảng 30 giây
+ *  - Hồ sơ/Số dư: khoảng 2 phút
  */
 public class DataCache {
 
     private static final Logger log = Logger.getLogger(DataCache.class.getName());
     private static DataCache instance;
+    private static final long AUCTION_LIST_TTL_MS = 30_000L;
+    private static final long PROFILE_TTL_MS = 120_000L;
+    private static final long AVAILABLE_LIST_TTL_MS = 20_000L;
+    private static final long AUCTION_HISTORY_TTL_MS = 60_000L;
+    private static final long SESSION_BIDS_TTL_MS = 15_000L;
+    private static final long DEFAULT_TTL_FALLBACK = 30_000L;
 
-    // Map<action, CacheEntry>
+    // Bản đồ action sang mục cache
     private final Map<ServerEvent, CacheEntry> cache = new ConcurrentHashMap<>();
 
-    // ── TTL mặc định theo action (milliseconds) ──────────────────────────────
+    // ── TTL mặc định theo action (mili giây) ────────────────────────────────
     public static final Map<ServerEvent, Long> DEFAULT_TTL = Map.of(
-            ServerEvent.GET_ALL_ITEMS,      30_000L,
-            ServerEvent.GET_PROFILE,       120_000L,
-            ServerEvent.LIST_AVAILABLE,     20_000L,
-            ServerEvent.GET_MY_AUCTIONS,    30_000L,
-            ServerEvent.GET_HISTORY,        60_000L,
-            ServerEvent.GET_SESSION_BIDS,   15_000L
+            ServerEvent.GET_ALL_ITEMS,      AUCTION_LIST_TTL_MS,
+            ServerEvent.GET_PROFILE,        PROFILE_TTL_MS,
+            ServerEvent.LIST_AVAILABLE,     AVAILABLE_LIST_TTL_MS,
+            ServerEvent.GET_MY_AUCTIONS,    AUCTION_LIST_TTL_MS,
+            ServerEvent.GET_HISTORY,        AUCTION_HISTORY_TTL_MS,
+            ServerEvent.GET_SESSION_BIDS,   SESSION_BIDS_TTL_MS
     );
-    private static final long DEFAULT_TTL_FALLBACK = 30_000L;
 
     private DataCache() {}
 
@@ -41,13 +46,13 @@ public class DataCache {
         return instance;
     }
 
-    // ─── Lưu response vào cache ───────────────────────────────────────────────
+    // ─── Lưu phản hồi vào cache ─────────────────────────────────────────────
     public void put(ServerEvent action, String jsonResponse) {
         cache.put(action, new CacheEntry(jsonResponse, System.currentTimeMillis()));
         log.fine("[Cache] Saved: " + action.name());
     }
 
-    // ─── Lấy cache nếu còn fresh ─────────────────────────────────────────────
+    // ─── Lấy cache nếu còn mới ──────────────────────────────────────────────
     public String get(ServerEvent action) {
         long ttl = DEFAULT_TTL.getOrDefault(action, DEFAULT_TTL_FALLBACK);
         CacheEntry entry = cache.get(action);
@@ -77,7 +82,7 @@ public class DataCache {
         log.info("[Cache] Cleared all.");
     }
 
-    // ─── Inner class ─────────────────────────────────────────────────────────
+    // ─── Lớp nội bộ ─────────────────────────────────────────────────────────
     private static class CacheEntry {
         final String json;
         final long timestamp;

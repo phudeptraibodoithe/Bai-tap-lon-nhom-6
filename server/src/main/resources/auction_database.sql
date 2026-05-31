@@ -1,6 +1,3 @@
-CREATE DATABASE IF NOT EXISTS auction_db;
-USE auction_db;
-
 CREATE TABLE `user` (
   `accountName` varchar(50) NOT NULL,
   `nickname` varchar(50) NOT NULL, 
@@ -19,7 +16,7 @@ VALUES ('admin', 'admin', 'Quản trị viên', 0, 'Tài khoản điều hành h
 CREATE TABLE `item` (
                         `id` int NOT NULL AUTO_INCREMENT,
                         `sellerAccountName` varchar(50) NOT NULL,
-                        `type` varchar(50) NOT NULL,        -- discriminator cho ItemFactoryProducer
+                        `type` varchar(50) NOT NULL,
                         `name` varchar(100) NOT NULL,
                         `description` text DEFAULT NULL,
                         `imageURL` MEDIUMTEXT DEFAULT NULL,
@@ -38,8 +35,7 @@ CREATE TABLE `auction_session` (
                                    `highestBidderAccount` varchar(100) DEFAULT NULL,
                                    `itemId` int NOT NULL,
                                    PRIMARY KEY (`id`),
-                                   CONSTRAINT `fk_session_item` FOREIGN KEY (`itemId`) REFERENCES `item` (`id`),
-                                   CONSTRAINT `fk_session_highest_bidder` FOREIGN KEY (`highestBidderAccount`) REFERENCES `user` (`accountName`)
+                                   CONSTRAINT `fk_session_item` FOREIGN KEY (`itemId`) REFERENCES `item` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `bid` (

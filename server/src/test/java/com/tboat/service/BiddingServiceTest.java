@@ -6,17 +6,17 @@ import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit Test cho BiddingService.placeBid().
+ * Kiểm thử đơn vị cho BiddingService.placeBid().
  *
- * Vì DatabaseConnection.getConnection() có thể throw RuntimeException
- * khi không có DB, helper safePlace() bắt RuntimeException và map về
+ * Vì DatabaseConnection.getConnection() có thể ném RuntimeException
+ * khi không có DB, hàm hỗ trợ safePlace() bắt RuntimeException và ánh xạ về
  * BidResult tương ứng — chỉ NPE mới bị fail cứng.
  *
  * Các BidResult được kiểm tra:
  *   SESSION_NOT_FOUND  — sessionId không tồn tại
  *   USER_NOT_FOUND     — account không tồn tại / null / rỗng
- *   PRICE_TOO_LOW      — giá <= currentPrice (cần guard trước DB)
- *   INSUFFICIENT_BALANCE — số dư không đủ (cần guard trước DB)
+ *   PRICE_TOO_LOW      — giá <= currentPrice (cần chốt kiểm tra trước DB)
+ *   INSUFFICIENT_BALANCE — số dư không đủ (cần chốt kiểm tra trước DB)
  *   OK / DB_ERROR      — chỉ kiểm tra được khi có DB thật
  */
 class BiddingServiceTest {
@@ -28,18 +28,18 @@ class BiddingServiceTest {
         biddingService = new BiddingService();
     }
 
-    // ── Helper ────────────────────────────────────────────────────────────────
+    // ── Hàm hỗ trợ ───────────────────────────────────────────────────────────
 
     /**
      * Gọi placeBid và bắt RuntimeException từ DB.
-     * NPE vẫn fail test vì đó là lỗi logic, không phải lỗi DB.
+     * NPE vẫn làm test fail vì đó là lỗi logic, không phải lỗi DB.
      */
     private BidResult safePlaceBid(String account, int sessionId, double price) {
         try {
             return biddingService.placeBid(account, sessionId, price);
         } catch (NullPointerException e) {
             fail("Không được throw NPE — lỗi logic nội bộ: " + e);
-            return BidResult.DB_ERROR; // unreachable
+            return BidResult.DB_ERROR; // không đi tới nhánh này
         } catch (RuntimeException e) {
             // DB không khả dụng → session/user không load được → tương đương NOT_FOUND
             return BidResult.SESSION_NOT_FOUND;
@@ -93,8 +93,8 @@ class BiddingServiceTest {
                 "actual: " + r);
     }
 
-    // ── Giá không hợp lệ — guard TRƯỚC DB call ────────────────────────────────
-    // Các case này phụ thuộc DB load session trước, nên vẫn wrap safePlaceBid.
+    // ── Giá không hợp lệ — chốt kiểm tra TRƯỚC khi gọi DB ───────────────────
+    // Các trường hợp này phụ thuộc DB tải session trước, nên vẫn bọc bằng safePlaceBid.
     // Nếu có DB: trả PRICE_TOO_LOW. Nếu không DB: trả SESSION_NOT_FOUND.
 
     @Test
@@ -145,7 +145,7 @@ class BiddingServiceTest {
         }
     }
 
-    // ── Enum đầy đủ ──────────────────────────────────────────────────────────
+    // ── Bao phủ đầy đủ enum ─────────────────────────────────────────────────
 
     @Test
     @DisplayName("BidResult enum có đủ 6 giá trị cần thiết")

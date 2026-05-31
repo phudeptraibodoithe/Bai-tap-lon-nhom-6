@@ -19,6 +19,10 @@ public class TimeUtils {
 
     private static final DateTimeFormatter STANDARD_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final Logger logger = Logger.getLogger(TimeUtils.class.getName());
+    private static final int ISO_LOCAL_MINUTE_LENGTH = 16;
+    private static final int ISO_LOCAL_SECOND_LENGTH = 19;
+    private static final int DEFAULT_SPINNER_VALUE = 0;
+    private static final String ZERO_PADDED_TIME_UNIT = "00";
 
     // Ép kiểu thời gian từ Server (timestamp hoặc chuỗi ISO) về chuẩn hiển thị
     // Ép kiểu thời gian từ Server (timestamp hoặc chuỗi) về chuẩn LocalDateTime của Java
@@ -32,17 +36,17 @@ public class TimeUtils {
                         ZoneId.systemDefault()
                 );
             } else {
-                // Trường hợp 2: Server trả về chuỗi String
+                // Trường hợp 2: Server trả về chuỗi
                 String timeStr = timeElement.getAsString().replace(" ", "T");
 
                 // Nếu chuỗi bị thiếu giây (VD: 2026-05-16T17:22 - dài 16 ký tự), tự động bù thêm ":00"
-                if (timeStr.length() == 16) {
+                if (timeStr.length() == ISO_LOCAL_MINUTE_LENGTH) {
                     timeStr += ":00";
                 }
 
                 // Cắt đi phần thừa nếu chuỗi dài hơn chuẩn (chống lỗi OutOfBounds)
-                if (timeStr.length() > 19) {
-                    timeStr = timeStr.substring(0, 19);
+                if (timeStr.length() > ISO_LOCAL_SECOND_LENGTH) {
+                    timeStr = timeStr.substring(0, ISO_LOCAL_SECOND_LENGTH);
                 }
 
                 return LocalDateTime.parse(timeStr);
@@ -58,22 +62,33 @@ public class TimeUtils {
         factory.setConverter(new StringConverter<>() {
             @Override
             public String toString(Integer value) {
-                return (value == null) ? "00" + suffix : String.format("%02d%s", value, suffix);
+                return (value == null) ? ZERO_PADDED_TIME_UNIT + suffix : String.format("%02d%s", value, suffix);
             }
             @Override
             public Integer fromString(String string) {
                 try {
-                    if (string == null || string.isEmpty()) return 0;
+                    if (string == null || string.isEmpty()) return DEFAULT_SPINNER_VALUE;
                     return Integer.parseInt(string.replace(suffix, "").trim());
-                } catch (Exception e) { return 0; }
+                } catch (Exception e) { return DEFAULT_SPINNER_VALUE; }
             }
         });
         spinner.setValueFactory(factory);
         spinner.setEditable(true);
-        // Commit giá trị khi click ra ngoài
+        spinner.getEditor().setOnAction(event -> commitTimeSpinner(spinner));
+        // Commit giá trị khi click ra ngoài, không dùng increment(0) để tránh nhảy số.
         spinner.getEditor().focusedProperty().addListener((obs, oldV, newV) -> {
-            if (!newV) spinner.increment(0);
+            if (!newV) commitTimeSpinner(spinner);
         });
+    }
+
+    private static void commitTimeSpinner(Spinner<Integer> spinner) {
+        if (spinner == null || spinner.getValueFactory() == null) return;
+        SpinnerValueFactory.IntegerSpinnerValueFactory factory =
+                (SpinnerValueFactory.IntegerSpinnerValueFactory) spinner.getValueFactory();
+        int value = factory.getConverter().fromString(spinner.getEditor().getText());
+        value = Math.max(factory.getMin(), Math.min(value, factory.getMax()));
+        factory.setValue(value);
+        spinner.getEditor().setText(factory.getConverter().toString(value));
     }
 
     // --- ĐÃ THÊM: Đóng gói Logic ràng buộc DatePicker ---

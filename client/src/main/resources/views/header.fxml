@@ -46,7 +46,7 @@
                     <font><Font name="System Bold" size="14.0" /></font>
                 </Label>
 
-                <!-- Bell button + badge, Popup được tạo hoàn toàn trong Controller -->
+                <!-- Nút chuông và huy hiệu, Popup được tạo hoàn toàn trong Controller -->
                 <StackPane fx:id="bellPane" minWidth="40" minHeight="40">
                     <Button fx:id="btnBell" mnemonicParsing="false"
                             onAction="#toggleNotificationPopup"

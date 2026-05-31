@@ -17,6 +17,8 @@ public class HeaderUtils {
 
     // Khởi tạo logger để thay thế
     private static final Logger logger = LoggerFactory.getLogger(HeaderUtils.class);
+    private static final double AVATAR_RADIUS_DIVISOR = 2.0;
+    private static final double DEFAULT_AVATAR_RADIUS = 20.0;
 
     public static void setupHeader(Label lblGreeting, ImageView userAvatar, BaseController controller) {
         User currentUser = UserSession.getInstance().getUser();
@@ -39,15 +41,16 @@ public class HeaderUtils {
                     }
                     if (image != null) {
                         userAvatar.setImage(image);
-                        double radius = Math.min(userAvatar.getFitWidth(), userAvatar.getFitHeight()) / 2;
-                        if (radius <= 0) radius = 20;
+                        double radius = Math.min(userAvatar.getFitWidth(), userAvatar.getFitHeight()) / AVATAR_RADIUS_DIVISOR;
+                        if (radius <= 0) radius = DEFAULT_AVATAR_RADIUS;
                         userAvatar.setClip(new Circle(radius, radius, radius));
                     }
                 } catch (Exception e) {
                     try {
                         image = new Image(HeaderUtils.class.getResource("/images/avtDefault.jpg").toExternalForm());
                         userAvatar.setImage(image);
-                        userAvatar.setClip(new Circle(20, 20, 20));
+                        userAvatar.setClip(new Circle(
+                                DEFAULT_AVATAR_RADIUS, DEFAULT_AVATAR_RADIUS, DEFAULT_AVATAR_RADIUS));
                     } catch (Exception ignored) {}
                 }
             }

@@ -2,6 +2,7 @@ package com.tboat.controllers;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.tboat.controllers.helper.NotificationManager;
 import com.tboat.models.core.User;
 import com.tboat.models.network.ServerEvent;
 import com.tboat.session.UserSession;
@@ -25,7 +26,7 @@ public class LoginController extends BaseController implements SocketListener {
 
     private static final Logger log = Logger.getLogger(LoginController.class.getName());
 
-    // --- CONSTANTS ---
+    // --- HẰNG SỐ ---
     private static final String STYLE_ERROR = "#e74c3c";
     private static final String STYLE_PROCESSING = "#3498db";
 
@@ -71,6 +72,7 @@ public class LoginController extends BaseController implements SocketListener {
 
                         User loggedUser = new User(signText.getText(), null, nickname, balance, description, avatarURL);
                         UserSession.getInstance().createUserSession(loggedUser);
+                        NotificationManager.getInstance().useAccount(loggedUser.getAccountName());
                         if ("admin".equalsIgnoreCase(signText.getText().trim()) || "ADMIN".equalsIgnoreCase(role)) {
                             changeScene(signText, "admin.fxml");
                         } else {

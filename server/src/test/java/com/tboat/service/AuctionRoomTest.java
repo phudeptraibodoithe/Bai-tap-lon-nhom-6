@@ -11,14 +11,14 @@ import java.io.StringWriter;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit Test cho AuctionRoom.
+ * Kiểm thử đơn vị cho AuctionRoom.
  *
  * Chiến lược:
- * - Test trạng thái (state) và subscribe/unsubscribe: KHÔNG cần DB.
- * - finishAuction gọi DB — wrap try/catch, kiểm tra isFinished vì flag
- *   được set ở DÒNG ĐẦU TIÊN trước mọi thao tác DB.
- * - placeBid vào phòng finished: guard đầu method trả DB_ERROR, KHÔNG cần DB.
- *   Các case khác (PRICE_TOO_LOW, INSUFFICIENT_BALANCE...) cần DB thật.
+ * - Test trạng thái và đăng ký/hủy đăng ký theo dõi: KHÔNG cần DB.
+ * - finishAuction gọi DB, bọc try/catch và kiểm tra isFinished vì cờ
+ *   được gán ở DÒNG ĐẦU TIÊN trước mọi thao tác DB.
+ * - placeBid vào phòng đã kết thúc: chốt kiểm tra đầu method trả DB_ERROR, KHÔNG cần DB.
+ *   Các trường hợp khác (PRICE_TOO_LOW, INSUFFICIENT_BALANCE...) cần DB thật.
  */
 class AuctionRoomTest {
 
@@ -35,9 +35,9 @@ class AuctionRoomTest {
         AuctionManager.getInstance().removeRoom(101);
     }
 
-    // ── Helper ────────────────────────────────────────────────────────────────
+    // ── Hàm hỗ trợ ───────────────────────────────────────────────────────────
 
-    /** Finish room, bỏ qua lỗi DB trong môi trường test */
+    /** Kết thúc phòng, bỏ qua lỗi DB trong môi trường test */
     private void finishRoomSafely() {
         try { room.finishAuction(); } catch (RuntimeException ignored) {}
     }
@@ -68,7 +68,7 @@ class AuctionRoomTest {
         assertFalse(room.isFinished());
     }
 
-    // ── finishAuction ─────────────────────────────────────────────────────────
+    // ── Kết thúc phiên ───────────────────────────────────────────────────────
 
     @Test
     @DisplayName("finishAuction: isFinished = true ngay (trước DB call)")
@@ -96,7 +96,7 @@ class AuctionRoomTest {
         assertTrue(room.isFinished());
     }
 
-    // ── placeBid — phòng đã finished (không cần DB) ───────────────────────────
+    // ── placeBid — phòng đã kết thúc (không cần DB) ─────────────────────────
 
     @Test
     @DisplayName("placeBid vào phòng finished → DB_ERROR (guard đầu method)")
@@ -153,9 +153,9 @@ class AuctionRoomTest {
         assertNull(room.getLastBidder());
     }
 
-    // ── placeBid — phòng chưa finished, không có DB ───────────────────────────
-    // Các case này BiddingService sẽ gọi DB → RuntimeException nếu không có DB.
-    // Ta chỉ đảm bảo không throw NPE và result là non-null.
+    // ── placeBid — phòng chưa kết thúc, không có DB ─────────────────────────
+    // Các trường hợp này BiddingService sẽ gọi DB → RuntimeException nếu không có DB.
+    // Ta chỉ đảm bảo không ném NPE và kết quả không null.
 
     @Test
     @DisplayName("placeBid phòng chưa finished, không có DB → không throw NPE")
@@ -172,7 +172,7 @@ class AuctionRoomTest {
         assertNotNull(result);
     }
 
-    // ── registerAutoBid — guard isFinished ───────────────────────────────────
+    // ── registerAutoBid — chốt kiểm tra isFinished ──────────────────────────
 
     @Test
     @DisplayName("registerAutoBid vào phòng finished → return ngay, không throw")
@@ -188,7 +188,7 @@ class AuctionRoomTest {
         assertDoesNotThrow(() -> room.registerAutoBid(null, 1_000.0));
     }
 
-    // ── Subscriber ───────────────────────────────────────────────────────────
+    // ── Người theo dõi phòng ────────────────────────────────────────────────
 
     @Test
     @DisplayName("addSubscriber hợp lệ → không throw")
@@ -227,7 +227,7 @@ class AuctionRoomTest {
         assertDoesNotThrow(() -> room.removeSubscriber(null));
     }
 
-    // ── Broadcast ────────────────────────────────────────────────────────────
+    // ── Phát thông báo ──────────────────────────────────────────────────────
 
     @Test
     @DisplayName("broadcast phòng trống → không throw")
@@ -247,7 +247,7 @@ class AuctionRoomTest {
         assertDoesNotThrow(() -> room.broadcast(null, "msg", null));
     }
 
-    // ── Getter / state độc lập ────────────────────────────────────────────────
+    // ── Hàm truy xuất / trạng thái độc lập ──────────────────────────────────
 
     @Test
     @DisplayName("getSessionId đúng với constructor")
@@ -273,7 +273,7 @@ class AuctionRoomTest {
         assertFalse(r2.isFinished(), "r2 không bị ảnh hưởng bởi r1");
     }
 
-    // ── BidResult enum coverage ───────────────────────────────────────────────
+    // ── Bao phủ enum BidResult ──────────────────────────────────────────────
 
     @Test
     @DisplayName("BidResult.DB_ERROR được trả khi phòng finished — đúng semantic")

@@ -35,6 +35,15 @@ public class AuctionController extends BaseController implements SocketListener 
 
     private static final String STYLE_SUCCESS = "-fx-text-fill: #2ecc71; -fx-font-weight: bold; -fx-font-size: 17px;";
     private static final String STYLE_ERROR   = "-fx-text-fill: #e74c3c; -fx-font-weight: bold; -fx-font-size: 17px;";
+    private static final String STYLE_WARNING = "-fx-text-fill: #f39c12; -fx-font-weight: bold;";
+    private static final String STYLE_WARNING_LARGE = "-fx-text-fill: #f39c12; -fx-font-weight: bold; -fx-font-size: 17px;";
+    private static final double VISIBLE_INPUT_OPACITY = 1.0;
+    private static final double DISABLED_AUTO_BID_OPACITY = 0.85;
+    private static final double STATUS_DISPLAY_SECONDS = 10.0;
+    private static final double DEFAULT_BID_PRICE = 0.0;
+    private static final double NO_AUTO_BID_MAX = 0.0;
+    private static final double SELLER_REVENUE_RATE = 0.9;
+    private static final int NEWEST_BID_INDEX = 0;
 
     @FXML private ImageView itemImage;
     @FXML private Label timeRemaining, nameItem, idItem, sellerName;
@@ -70,7 +79,7 @@ public class AuctionController extends BaseController implements SocketListener 
         if (autoBidCheckBox != null) {
             autoBidCheckBox.selectedProperty().addListener((obs, wasSelected, isNowSelected) -> {
                 if (!isNowSelected && bidAmount != null) {
-                    bidAmount.setOpacity(1.0);
+                    bidAmount.setOpacity(VISIBLE_INPUT_OPACITY);
                     bidAmount.clear();
                 }
             });
@@ -127,7 +136,7 @@ public class AuctionController extends BaseController implements SocketListener 
             }
 
             AlertUtils.showStatus(lblNotification, "Đang gửi lệnh đặt giá...",
-                    "-fx-text-fill: #f39c12; -fx-font-weight: bold;");
+                    STYLE_WARNING);
 
             boolean isAutoBid = autoBidCheckBox != null && autoBidCheckBox.isSelected();
             if (isAutoBid) {
@@ -136,7 +145,7 @@ public class AuctionController extends BaseController implements SocketListener 
                 SocketHelper.sendRequest(ServerEvent.REGISTER_AUTO_BID, payload);
 
                 // Giữ checkbox + giá trị, chỉ làm mờ ô nhập
-                if (bidAmount != null) bidAmount.setOpacity(0.85);
+                if (bidAmount != null) bidAmount.setOpacity(DISABLED_AUTO_BID_OPACITY);
             } else {
                 SocketHelper.sendRequest(ServerEvent.BID, bidValue);
                 bidAmount.clear();
@@ -151,7 +160,7 @@ public class AuctionController extends BaseController implements SocketListener 
     public void handleServerResponse(String response) {
         Platform.runLater(() -> {
             try {
-                ServerEvent type   = SocketHelper.getTypeEnum(response);   // ← parse thành enum
+                ServerEvent type   = SocketHelper.getTypeEnum(response);   // ← chuyển thành enum
                 ServerEvent status = SocketHelper.getStatusEnum(response);
                 String msg         = SocketHelper.getMessage(response);
                 JsonObject json    = JsonParser.parseString(response).getAsJsonObject();
@@ -198,11 +207,12 @@ public class AuctionController extends BaseController implements SocketListener 
 // ── Handlers (các method đã thay đổi / thêm mới) ─────────────────────────────
 
     /**
-     * FIX: Reset countdown timer theo newEndTime server gửi về.
+     * Sửa lỗi: đặt lại bộ đếm ngược theo newEndTime server gửi về.
      * Trước đây chỉ show Alert, bộ đếm vẫn chạy theo endTime cũ.
      */
     private void handleTimeExtended(JsonObject json, String msg) {
-        AlertUtils.showAlert(Alert.AlertType.WARNING, "Đấu giá kịch tính!", msg);
+        AlertUtils.showStatus(lblNotification, "⏰ " + msg,
+                STYLE_WARNING_LARGE, STATUS_DISPLAY_SECONDS);
         try {
             if (json.has("payload") && json.get("payload").isJsonObject()) {
                 String newEndStr = json.getAsJsonObject("payload").get("newEndTime").getAsString();
@@ -239,22 +249,22 @@ public class AuctionController extends BaseController implements SocketListener 
             ui.updateUI(currentSession);
             if (winner != null) updateUserBalance(winner, finalPrice);
         } else {
-            // FIX: không có ai bid → clear winner rõ ràng, tránh sót nickname cũ
+            // Không có ai bid: xóa winner rõ ràng, tránh sót nickname cũ
             currentSession.setHighestBidderAccount(null);
             ui.updateUI(currentSession);
         }
 
         refreshAuctionState();
-        ui.setAuctionEndedLabel(currentSession);   // hiển thị đúng theo null/non-null winner
-        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Kết thúc", msg);
+        ui.setAuctionEndedLabel(currentSession);   // hiển thị đúng theo trường hợp có hoặc không có người thắng
+        AlertUtils.showStatus(lblNotification, "🏁 " + msg, STYLE_SUCCESS, STATUS_DISPLAY_SECONDS);
     }
 
     /** Tách ra method riêng cho gọn handleServerResponse */
     private void handleAuctionCanceled() {
         currentSession.setStatusOfAuction(StatusOfAuction.CANCELED);
         refreshAuctionState();
-        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Thông báo",
-                "Phiên đấu giá này đã bị hủy bởi người bán!");
+        AlertUtils.showStatus(lblNotification, "❌ Phiên đấu giá đã bị hủy!",
+                STYLE_ERROR, STATUS_DISPLAY_SECONDS);
     }
 
 
@@ -263,7 +273,7 @@ public class AuctionController extends BaseController implements SocketListener 
     private void handleNewBid(JsonObject payload) {
         double newPrice    = payload.get("newPrice").getAsDouble();
         String newLeader   = payload.get("newLeader").getAsString(); // account — cho logic
-        // Dùng nickname để hiển thị, fallback về account nếu server chưa gửi
+        // Dùng nickname để hiển thị, nếu server chưa gửi thì dùng account
         String displayName = payload.has("newLeaderNickname")
                 ? payload.get("newLeaderNickname").getAsString() : newLeader;
         LocalDateTime dt   = payload.has("bidTime")
@@ -275,12 +285,10 @@ public class AuctionController extends BaseController implements SocketListener 
 
         // Thêm vào bảng (mới nhất lên đầu)
         BidEntry entry = new BidEntry(dt.format(AuctionUIHelper.TIME_FORMATTER), displayName, newPrice);
-        ui.getListBids().add(0, entry);
+        ui.getListBids().add(NEWEST_BID_INDEX, entry);
 
-        // Append vào chart — không clear, không giật
+        // Thêm vào biểu đồ, không xóa dữ liệu cũ để tránh giật
         ui.appendBidToChart(entry);
-
-        if (lblNotification != null) lblNotification.setText("");
     }
 
     private void handleSuccess(JsonObject json, String msg) {
@@ -292,10 +300,10 @@ public class AuctionController extends BaseController implements SocketListener 
                 String time  = dt != null ? dt.format(AuctionUIHelper.TIME_FORMATTER)
                         : LocalDateTime.now().format(AuctionUIHelper.TIME_FORMATTER);
                 String user  = bid.has("bidderAccount") ? bid.get("bidderAccount").getAsString() : "Unknown";
-                double price = bid.has("bidAmount")     ? bid.get("bidAmount").getAsDouble()     : 0.0;
+                double price = bid.has("bidAmount")     ? bid.get("bidAmount").getAsDouble()     : DEFAULT_BID_PRICE;
                 ui.getListBids().add(new BidEntry(time, user, price));
             }
-            ui.refreshBidsAndChart(); // redraw toàn bộ — chỉ gọi ở đây
+            ui.refreshBidsAndChart(); // vẽ lại toàn bộ, chỉ gọi ở đây
         } else if (msg.contains("Bạn đang dẫn đầu")) {
             AlertUtils.showStatus(lblNotification, "🎉 " + msg, STYLE_SUCCESS);
         }
@@ -313,7 +321,14 @@ public class AuctionController extends BaseController implements SocketListener 
             currentSession.setSellerAccountName(payload.get("sellerNickname").getAsString());
         if (payload.has("leaderNickname"))
             currentSession.setHighestBidderAccount(payload.get("leaderNickname").getAsString());
-
+        if (payload.has("autoBidMax")) {
+            double savedMax = payload.get("autoBidMax").getAsDouble();
+            if (savedMax > NO_AUTO_BID_MAX && autoBidCheckBox != null && bidAmount != null) {
+                autoBidCheckBox.setSelected(true);
+                bidAmount.setText(CurrencyFormatter.formatDisplay(savedMax));
+                bidAmount.setOpacity(DISABLED_AUTO_BID_OPACITY);
+            }
+        }
         refreshAuctionState();
         ui.updateUI(currentSession);
     }
@@ -321,7 +336,8 @@ public class AuctionController extends BaseController implements SocketListener 
     private void handleAuctionStarted(String msg) {
         currentSession.setStatusOfAuction(StatusOfAuction.ONGOING);
         refreshAuctionState();
-        AlertUtils.showAlert(Alert.AlertType.INFORMATION, "Đã đến giờ", msg);
+        ui.updateUI(currentSession);
+        AlertUtils.showStatus(lblNotification, "🔔 " + msg, STYLE_SUCCESS, STATUS_DISPLAY_SECONDS);
     }
 
     private void handleAutoBidOut(String msg) {
@@ -330,12 +346,10 @@ public class AuctionController extends BaseController implements SocketListener 
             autoBidCheckBox.setSelected(false);
             autoBidCheckBox.setDisable(false);
         }
-        // Xóa ô nhập và restore opacity
         if (bidAmount != null) {
             bidAmount.clear();
-            bidAmount.setOpacity(1.0);
+            bidAmount.setOpacity(VISIBLE_INPUT_OPACITY);
         }
-        // Thông báo cho user
         AlertUtils.showStatus(lblNotification,
                 "⚠️ " + msg, STYLE_ERROR);
     }
@@ -357,7 +371,7 @@ public class AuctionController extends BaseController implements SocketListener 
         if (myAccount.equalsIgnoreCase(winnerAccount)) {
             me.setBalance(me.getBalance() - finalPrice);
         } else if (myAccount.equalsIgnoreCase(currentSession.getSellerAccountName())) {
-            me.setBalance(me.getBalance() + finalPrice * 0.9);
+            me.setBalance(me.getBalance() + finalPrice * SELLER_REVENUE_RATE);
         }
     }
 }

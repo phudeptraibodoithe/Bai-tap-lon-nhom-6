@@ -10,14 +10,14 @@ import java.time.LocalDateTime;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit Test cho AuctionTimerService — KHÔNG dùng Mockito.
+ * Kiểm thử đơn vị cho AuctionTimerService, KHÔNG dùng Mockito.
  *
  * Chiến lược:
- * - Status PENDING/CANCELED/ENDED: scheduleAuction() return ngay trước khi chạm DB
+ * - Trạng thái PENDING/CANCELED/ENDED: scheduleAuction() trả về ngay trước khi chạm DB
  *   → dùng AuctionSession + Item thật, hoàn toàn an toàn.
  * - scheduleAuctionClose tương lai: chỉ lên lịch, không gọi DB ngay → an toàn.
- * - Các case gọi DB (quá khứ, extendAuction, ONGOING): wrap runAcceptingDbError().
- * - scheduleAuction(null): NPE documented behavior.
+ * - Các trường hợp gọi DB (quá khứ, extendAuction, ONGOING): bọc bằng runAcceptingDbError().
+ * - scheduleAuction(null): tài liệu hóa hành vi NPE hiện tại.
  */
 class AuctionTimerServiceTest {
 
@@ -28,12 +28,12 @@ class AuctionTimerServiceTest {
         timerService = AuctionTimerService.getInstance();
     }
 
-    // ─── Stub Item không dùng Mockito ────────────────────────────────────
+    // ─── Item giả lập không dùng Mockito ─────────────────────────────────
 
     /**
      * Item tối giản — subclass inline ghi đè những gì cần thiết.
-     * Nếu Item là class cụ thể với constructor(seller, name, desc, imageURL)
-     * thì dùng thẳng constructor đó.
+     * Nếu Item là lớp cụ thể với hàm khởi tạo (seller, name, desc, imageURL)
+     * thì dùng thẳng hàm khởi tạo đó.
      */
     private static Item stubItem() {
         return new Item("seller1", "Test Item", "desc", "http://img") {
@@ -44,7 +44,7 @@ class AuctionTimerServiceTest {
 
     /**
      * Tạo AuctionSession thật với status cho trước.
-     * Constructor: (id, start, end, price, bidIncrease, status, item, highestBidder)
+     * Hàm khởi tạo: (id, start, end, price, bidIncrease, status, item, highestBidder)
      */
     private AuctionSession sessionWithStatus(int id, StatusOfAuction status) {
         LocalDateTime start = LocalDateTime.now().plusHours(1);
@@ -60,7 +60,7 @@ class AuctionTimerServiceTest {
                 StatusOfAuction.ONGOING, stubItem(), null, 0.0);
     }
 
-    // ─── Helper chấp nhận DB error ───────────────────────────────────────
+    // ─── Hàm hỗ trợ chấp nhận lỗi DB ─────────────────────────────────────
 
     /**
      * Chạy action, chấp nhận RuntimeException bắt nguồn từ DB (không có kết nối).
@@ -75,11 +75,11 @@ class AuctionTimerServiceTest {
             if (cause instanceof NullPointerException) {
                 fail("Không chấp nhận NPE từ logic nội bộ: " + e);
             }
-            // RuntimeException khác (DB connection refused, access denied...) → pass
+            // RuntimeException khác (DB từ chối kết nối, không đủ quyền...) → cho qua
         }
     }
 
-    // ===================== SINGLETON =====================
+    // ===================== SINGLETON DÙNG CHUNG =====================
 
     @Test
     @DisplayName("getInstance() không được trả về null")
@@ -163,7 +163,7 @@ class AuctionTimerServiceTest {
         );
     }
 
-    // ===================== scheduleAuction — STATUS GUARD (return sớm, KHÔNG gọi DB) =====================
+    // ===================== scheduleAuction — CHỐT KIỂM TRA TRẠNG THÁI (trả về sớm, KHÔNG gọi DB) =====================
 
     @Test
     @DisplayName("scheduleAuction với PENDING: return ngay trước DB, không throw")
@@ -212,7 +212,7 @@ class AuctionTimerServiceTest {
         assertDoesNotThrow(() -> timerService.scheduleAuction(session));
     }
 
-    // ===================== scheduleAuction — ONGOING (gọi DB) =====================
+    // ===================== scheduleAuction — ĐANG DIỄN RA (gọi DB) =====================
 
     @Test
     @DisplayName("scheduleAuction ONGOING với endTime quá khứ: chấp nhận DB error")
@@ -247,13 +247,13 @@ class AuctionTimerServiceTest {
         runAcceptingDbError(() -> timerService.scheduleAuction(session));
     }
 
-    // ===================== scheduleAuction — NULL =====================
+    // ===================== scheduleAuction — GIÁ TRỊ NULL =====================
 
     @Test
     @DisplayName("scheduleAuction với session null: throw NullPointerException")
     void testScheduleAuction_NullSession_ThrowsNPE() {
-        // session.getId() trên null → NPE — hành vi hiện tại.
-        // Muốn bỏ test này thì thêm null-guard vào đầu scheduleAuction().
+        // session.getId() trên null → NPE, đây là hành vi hiện tại.
+        // Muốn bỏ test này thì thêm chốt kiểm tra null vào đầu scheduleAuction().
         assertThrows(NullPointerException.class,
                 () -> timerService.scheduleAuction(null));
     }

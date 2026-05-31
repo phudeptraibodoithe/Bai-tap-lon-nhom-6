@@ -1,4 +1,4 @@
-package com.tboat.models.network; // Đảm bảo đúng package của bạn
+package com.tboat.models.network; // Đảm bảo đúng gói của dự án
 
 public class Request<T> {
     private String action;

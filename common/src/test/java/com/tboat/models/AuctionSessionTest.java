@@ -31,7 +31,7 @@ class AuctionSessionTest {
         session.setId(1);
     }
 
-    // ── Constructor validation ────────────────────────────────────────────────
+    // ── Kiểm tra hàm khởi tạo ────────────────────────────────────────────────
 
     @Test
     @DisplayName("currentPrice âm trong constructor → throw ERR_SESSION_01")
@@ -63,7 +63,7 @@ class AuctionSessionTest {
         assertDoesNotThrow(() -> new AuctionSession(start, end, 0.0, 10.0, item));
     }
 
-    // ── Getters cơ bản ───────────────────────────────────────────────────────
+    // ── Hàm truy xuất cơ bản ─────────────────────────────────────────────────
 
     @Test
     @DisplayName("getId() trả đúng id đã set")
@@ -125,7 +125,7 @@ class AuctionSessionTest {
         assertEquals("Test Description", session.getDescription());
     }
 
-    // ── Setters / mutators ───────────────────────────────────────────────────
+    // ── Hàm cập nhật ─────────────────────────────────────────────────────────
 
     @Test
     @DisplayName("setCurrentPrice() hợp lệ → cập nhật đúng")
@@ -219,7 +219,7 @@ class AuctionSessionTest {
     @Test
     @DisplayName("updateStatusBasedOnTime(): startTime null → không throw, status giữ nguyên")
     void testUpdateStatus_NullTimes_NoThrow() {
-        AuctionSession s = new AuctionSession(); // constructor rỗng
+        AuctionSession s = new AuctionSession(); // hàm khởi tạo rỗng
         assertDoesNotThrow(s::updateStatusBasedOnTime);
         assertNull(s.getStatusOfAuction()); // chưa set gì → null
     }

@@ -8,13 +8,14 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * Dùng UCB để prefetch data của màn hình user SẮP chuyển đến,
- * gửi request ngầm và cache response trước khi user bấm.
+ * Dùng UCB để tải trước dữ liệu của màn hình người dùng có khả năng sắp chuyển đến,
+ * gửi request ngầm và cache phản hồi trước khi người dùng bấm.
  */
 public class PrefetchManager {
 
     private static final Logger log = Logger.getLogger(PrefetchManager.class.getName());
     private static PrefetchManager instance;
+    private static final int PREFETCH_SCREEN_LIMIT = 2;
 
     private static final Map<String, List<ServerEvent>> SCREEN_ACTIONS = Map.of(
             "adminFxml",       List.of(ServerEvent.GET_ALL_ITEMS),
@@ -38,13 +39,13 @@ public class PrefetchManager {
 
     /**
      * Gọi hàm này ngay sau khi user đến màn hình mới.
-     * UCB sẽ tự tính toán và prefetch những màn hình có khả năng cao nhất.
+     * UCB sẽ tự tính toán và tải trước những màn hình có khả năng cao nhất.
      *
      * @param currentScreen tên màn hình hiện tại (vd: "adminFxml")
      */
     public void onScreenEntered(String currentScreen) {
         List<String> topScreens = UCBEngine.getInstance()
-                .getTopScreensToPrefetch(currentScreen, 2); // Prefetch top 2
+                .getTopScreensToPrefetch(currentScreen, PREFETCH_SCREEN_LIMIT);
 
         if (topScreens.isEmpty()) {
             log.info("[Prefetch] Không đủ dữ liệu UCB để prefetch từ: " + currentScreen);
@@ -71,7 +72,7 @@ public class PrefetchManager {
                 continue;
             }
 
-            // Gửi request ngầm — response sẽ được cache bởi CacheInterceptor
+            // Gửi request ngầm, phản hồi sẽ được bộ chặn cache lưu lại
             SocketHelper.sendRequest(action);
             log.info("[Prefetch] → Gửi prefetch request: " + action.name());
         }

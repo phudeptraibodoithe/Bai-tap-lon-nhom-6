@@ -17,12 +17,17 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ServerMain {
-    private static final ExecutorService threadPool = Executors.newFixedThreadPool(30);
-    public static final ExecutorService broadcastExecutor = Executors.newFixedThreadPool(10);
+    private static final int CLIENT_THREAD_POOL_SIZE = 30;
+    private static final int BROADCAST_THREAD_POOL_SIZE = 10;
+    private static final int LOG_RETENTION_MINUTES = 10;
+    private static final int SERVER_PORT = 8888;
+
+    private static final ExecutorService threadPool = Executors.newFixedThreadPool(CLIENT_THREAD_POOL_SIZE);
+    public static final ExecutorService broadcastExecutor = Executors.newFixedThreadPool(BROADCAST_THREAD_POOL_SIZE);
     private static final Logger logger = LoggerFactory.getLogger(ServerMain.class);
 
     public static void main(String[] args) {
-        LogConfig logConfig = new LogConfig("logs/server", 10);
+        LogConfig logConfig = new LogConfig("logs/server", LOG_RETENTION_MINUTES);
         logConfig.start();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -30,10 +35,9 @@ public class ServerMain {
             logConfig.stop();
         }));
 
-        int port = 8888;
         logger.info("[System]: Đang khởi tạo danh sách phòng đấu giá...");
         initAuctionRooms();
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
+        try (ServerSocket serverSocket = new ServerSocket(SERVER_PORT)) {
             while (true) {
                 Socket clientSocket = serverSocket.accept();
                 threadPool.execute(new ClientConnection(clientSocket));

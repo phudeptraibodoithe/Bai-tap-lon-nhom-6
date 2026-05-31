@@ -10,6 +10,10 @@ import com.tboat.models.auction.StatusOfAuction;
 import java.time.LocalDateTime;
 
 public class JsonMapperUtils {
+    private static final double DEFAULT_PRICE_VALUE = 0.0;
+    private static final int DEFAULT_SESSION_ID = 0;
+    private static final int DEFAULT_END_OFFSET_DAYS = 1;
+    private static final int BASE64_DATA_OFFSET = 1;
 
     /**
      * Chuyển đổi một JsonObject thành đối tượng AuctionSession
@@ -27,16 +31,16 @@ public class JsonMapperUtils {
         String sellerAccount = getStringJson(itemObj, "sellerAccountName", "N/A");
         String highestBidder = getStringJson(dataObj, "highestBidderAccount", "");
 
-        double currentPrice  = getDoubleJson(dataObj, "currentPrice", 0.0);
-        double bidIncrease   = getDoubleJson(dataObj, "bidIncrease", 0.0);
-        double buyNowPrice   = getDoubleJson(dataObj, "buyNowPrice", 0.0);
+        double currentPrice  = getDoubleJson(dataObj, "currentPrice", DEFAULT_PRICE_VALUE);
+        double bidIncrease   = getDoubleJson(dataObj, "bidIncrease", DEFAULT_PRICE_VALUE);
+        double buyNowPrice   = getDoubleJson(dataObj, "buyNowPrice", DEFAULT_PRICE_VALUE);
 
         LocalDateTime startTime = dataObj.has("startTime") ? TimeUtils.parseServerTime(dataObj.get("startTime")) : LocalDateTime.now();
-        LocalDateTime endTime   = dataObj.has("endTime")   ? TimeUtils.parseServerTime(dataObj.get("endTime"))   : LocalDateTime.now().plusDays(1);
+        LocalDateTime endTime   = dataObj.has("endTime")   ? TimeUtils.parseServerTime(dataObj.get("endTime"))   : LocalDateTime.now().plusDays(DEFAULT_END_OFFSET_DAYS);
 
         // Xử lý chuỗi Base64
         if (imageURL.startsWith("data:image")) {
-            imageURL = imageURL.substring(imageURL.indexOf(",") + 1);
+            imageURL = imageURL.substring(imageURL.indexOf(",") + BASE64_DATA_OFFSET);
         }
 
         ItemFactory factory = ItemFactoryProducer.getFactory(type);
@@ -44,7 +48,7 @@ public class JsonMapperUtils {
 
         AuctionSession session = new AuctionSession(startTime, endTime, currentPrice, bidIncrease, item);
         session.setBuyNowPrice(buyNowPrice);
-        session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : 0);
+        session.setId(dataObj.has("id") ? dataObj.get("id").getAsInt() : DEFAULT_SESSION_ID);
         session.setHighestBidderAccount(highestBidder);
 
         String statusStr = getStringJson(dataObj, "statusOfAuction", "ONGOING");
@@ -57,7 +61,7 @@ public class JsonMapperUtils {
         return session;
     }
 
-    // ── Các hàm Helper trích xuất an toàn ──
+    // ── Các hàm hỗ trợ trích xuất an toàn ──
 
     public static String getStringJson(JsonObject json, String key, String defaultValue) {
         return json.has(key) && !json.get(key).isJsonNull() ? json.get(key).getAsString() : defaultValue;

@@ -15,6 +15,11 @@ public class NotificationService {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
     private static final NotificationService INSTANCE = new NotificationService();
+    private static final int MINUTES_PER_HOUR = 60;
+    private static final int SINGLE_NAME_INITIAL_LIMIT = 2;
+    private static final int MONEY_GROUP_SIZE = 3;
+    private static final int FIRST_GROUP_SIZE = 0;
+    private static final int LAST_INDEX_OFFSET = 1;
 
     private final Map<String, ClientSession> onlineClients = new ConcurrentHashMap<>();
 
@@ -35,8 +40,8 @@ public class NotificationService {
     }
 
     /*
-     * Notification methods only build the message. The push method below owns
-     * the socket send step, so all notification types use the same response shape.
+     * Các phương thức thông báo chỉ dựng nội dung. Phương thức push bên dưới
+     * chịu trách nhiệm gửi qua socket, nhờ vậy mọi loại thông báo có cùng dạng phản hồi.
      */
     public void onNewBid(AuctionSession session, String bidderName, double price) {
         push(session.getSellerAccountName(), new NotificationPayload(
@@ -58,9 +63,29 @@ public class NotificationService {
         ));
     }
 
+    public void onAutoBidPlaced(AuctionSession session, String bidder, double price) {
+        push(bidder, new NotificationPayload(
+                ServerEvent.NEW_BID,
+                "Auto-bid đã đặt giá mới",
+                session.getName() + " — giá mới: " + formatMoney(price),
+                "A",
+                "#DCE8FD"
+        ));
+    }
+
+    public void onAutoBidOut(AuctionSession session, String bidder, double currentPrice) {
+        push(bidder, new NotificationPayload(
+                ServerEvent.OUTBID,
+                "Auto-bid đã dừng",
+                session.getName() + " — giá hiện tại: " + formatMoney(currentPrice),
+                "!",
+                "#FFF3E0"
+        ));
+    }
+
     public void onAuctionEnding(AuctionSession session, List<String> participants, int minutesLeft) {
-        String timeText = minutesLeft >= 60
-                ? (minutesLeft / 60) + " giờ"
+        String timeText = minutesLeft >= MINUTES_PER_HOUR
+                ? (minutesLeft / MINUTES_PER_HOUR) + " giờ"
                 : minutesLeft + " phút";
         String subtitle = session.getName() + " — còn " + timeText + " nữa";
 
@@ -122,7 +147,7 @@ public class NotificationService {
                 ServerEvent.ITEM_REJECTED,
                 "Sản phẩm bị từ chối duyệt",
                 itemName + " — " + reason,
-                "⚠️",
+                "!",
                 "#FFF3E0"
         ));
     }
@@ -167,18 +192,19 @@ public class NotificationService {
         if (fullName == null || fullName.isBlank()) return "?";
         String[] nameParts = fullName.trim().split("\\s+");
         if (nameParts.length == 1) {
-            return nameParts[0].substring(0, Math.min(2, nameParts[0].length())).toUpperCase();
+            return nameParts[0].substring(0,
+                    Math.min(SINGLE_NAME_INITIAL_LIMIT, nameParts[0].length())).toUpperCase();
         }
         return ("" + nameParts[0].charAt(0)
-                + nameParts[nameParts.length - 1].charAt(0)).toUpperCase();
+                + nameParts[nameParts.length - LAST_INDEX_OFFSET].charAt(0)).toUpperCase();
     }
 
     private String formatMoney(double amount) {
         String digits = String.valueOf((long) amount);
         StringBuilder text = new StringBuilder();
-        int groupSize = 0;
-        for (int i = digits.length() - 1; i >= 0; i--) {
-            if (groupSize > 0 && groupSize % 3 == 0) text.insert(0, '.');
+        int groupSize = FIRST_GROUP_SIZE;
+        for (int i = digits.length() - LAST_INDEX_OFFSET; i >= 0; i--) {
+            if (groupSize > FIRST_GROUP_SIZE && groupSize % MONEY_GROUP_SIZE == 0) text.insert(0, '.');
             text.insert(0, digits.charAt(i));
             groupSize++;
         }

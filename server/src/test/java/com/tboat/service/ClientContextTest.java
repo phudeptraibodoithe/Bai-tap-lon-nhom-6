@@ -15,11 +15,11 @@ import java.io.StringWriter;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit Test cho ClientSession.
+ * Kiểm thử đơn vị cho ClientSession.
  * KHÔNG cần DB.
  *
- * Lưu ý quan trọng: Response class serialize với field tên "type" (constructor param 1),
- * không phải "action". Tất cả assertion đọc field "type" từ JSON output.
+ * Lưu ý quan trọng: class Response tuần tự hóa với trường tên "type" (tham số khởi tạo 1),
+ * không phải "action". Tất cả assertion đọc trường "type" từ JSON output.
  *
  * sendSystemMessage(action, message, payload) → new Response<>(action, "SYSTEM", message, payload)
  * → JSON: { "type": action, "status": "SYSTEM", "message": ..., "payload": ... }
@@ -38,7 +38,7 @@ class ClientSessionTest {
         context.setOut(printWriter);
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────
+    // ─── Hàm hỗ trợ ─────────────────────────────────────────────────────
 
     private JsonObject lastOutput() {
         String raw = stringWriter.toString().trim();
@@ -47,7 +47,7 @@ class ClientSessionTest {
         return JsonParser.parseString(lines[lines.length - 1].trim()).getAsJsonObject();
     }
 
-    /** Lấy string field an toàn: trả về null nếu absent hoặc JsonNull */
+    /** Lấy trường chuỗi an toàn: trả về null nếu vắng mặt hoặc JsonNull */
     private String getField(JsonObject obj, String field) {
         if (!obj.has(field) || obj.get(field).isJsonNull()) return null;
         return obj.get(field).getAsString();
@@ -79,7 +79,7 @@ class ClientSessionTest {
         assertNull(context.getCurrentRoom());
     }
 
-    // ===================== SET CLIENT ID =====================
+    // ===================== GÁN CLIENT ID =====================
 
     @Test
     @DisplayName("setClientId('alice'): getClientId phải trả về 'alice'")
@@ -110,7 +110,7 @@ class ClientSessionTest {
         assertTrue(context.isGuest());
     }
 
-    // ===================== SEND RESPONSE =====================
+    // ===================== GỬI PHẢN HỒI =====================
 
     @Test
     @DisplayName("sendResponse với out hợp lệ: output phải chứa JSON hợp lệ")
@@ -168,7 +168,7 @@ class ClientSessionTest {
         assertTrue(json.contains("my-payload"));
     }
 
-    // ===================== SEND SYSTEM MESSAGE =====================
+    // ===================== GỬI THÔNG ĐIỆP HỆ THỐNG =====================
 
     @Test
     @DisplayName("sendSystemMessage: field 'status' phải là 'SYSTEM'")
@@ -208,7 +208,7 @@ class ClientSessionTest {
         assertEquals("SYSTEM", getField(lastOutput(), "status"));
     }
 
-    // ===================== GSON STATIC =====================
+    // ===================== GSON TĨNH =====================
 
     @Test
     @DisplayName("gson() không được trả về null")
@@ -234,7 +234,7 @@ class ClientSessionTest {
         });
     }
 
-    // ===================== CLEANUP =====================
+    // ===================== DỌN DẸP =====================
 
     @Test
     @DisplayName("cleanup() khi chưa login và không có phòng: không throw Exception")
@@ -262,12 +262,12 @@ class ClientSessionTest {
     void testCleanup_DoesNotResetClientId() {
         context.setClientId("alice");
         context.cleanup();
-        // cleanup() gọi logout() nhưng không set clientId = "Guest"
-        // hành vi này tuỳ implementation — chỉ assert không throw
+        // cleanup() gọi logout() nhưng không gán clientId = "Guest"
+        // hành vi này tuỳ cách triển khai, chỉ kiểm tra không ném lỗi
         assertDoesNotThrow(() -> context.getClientId());
     }
 
-    // ===================== SET CURRENT ROOM =====================
+    // ===================== GÁN PHÒNG HIỆN TẠI =====================
 
     @Test
     @DisplayName("setCurrentRoom(null): getCurrentRoom phải trả về null")

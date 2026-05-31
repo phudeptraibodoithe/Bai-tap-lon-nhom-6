@@ -124,7 +124,10 @@ public class UserDAO {
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, accountName);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return rs.getString("nickname");
+                if (rs.next()){
+                    String nickname = rs.getString("nickname");
+                    return (nickname == null || nickname.isBlank()) ? accountName : nickname;
+                }
             }
         } catch (SQLException e) {
             logger.error("Lỗi khi lấy nickname của {}: ", accountName, e);

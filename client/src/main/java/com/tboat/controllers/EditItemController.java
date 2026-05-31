@@ -203,7 +203,6 @@ public class EditItemController extends BaseController implements Initializable,
                     DataCache.getInstance().invalidate(ServerEvent.LIST_AVAILABLE);
                     DataCache.getInstance().invalidate(ServerEvent.GET_MY_AUCTIONS);
                     String label = (type == ServerEvent.EDIT_ITEM) ? "Cập nhật" : "Xóa";
-                    AlertUtils.showStatus(thongbao, label + " thành công!", STYLE_SUCCESS);
                     AlertUtils.showAlert(Alert.AlertType.INFORMATION, label + " thành công",
                             "Đã " + label.toLowerCase() + " sản phẩm thành công!");
                     changeScene(thongbao, "manager.fxml");

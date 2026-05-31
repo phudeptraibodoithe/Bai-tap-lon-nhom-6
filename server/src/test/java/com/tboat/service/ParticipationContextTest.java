@@ -13,10 +13,10 @@ import java.time.LocalDateTime;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit Test cho ParticipationContext (Strategy Pattern).
+ * Kiểm thử đơn vị cho ParticipationContext (mẫu Strategy).
  *
- * Dùng lambda thủ công làm TransactionRole stub — không cần DB, không cần Mockito.
- * Signature đúng: (User, AuctionSession, double, UserDAO, AuctionSessionDAO, HistoryDAO, BidDAO)
+ * Dùng lambda thủ công làm TransactionRole giả lập, không cần DB và không cần Mockito.
+ * Chữ ký hàm đúng: (User, AuctionSession, double, UserDAO, AuctionSessionDAO, HistoryDAO, BidDAO)
  */
 class ParticipationContextTest {
 
@@ -36,7 +36,7 @@ class ParticipationContextTest {
         dummySession.setId(1);
     }
 
-    // ===================== STRATEGY — ROLE LUÔN TRUE =====================
+    // ===================== CHIẾN LƯỢC — VAI TRÒ LUÔN TRUE =====================
 
     @Test
     @DisplayName("Role trả về true → Context trả về true")
@@ -49,7 +49,7 @@ class ParticipationContextTest {
                 null, null, null, null));
     }
 
-    // ===================== STRATEGY — ROLE LUÔN FALSE =====================
+    // ===================== CHIẾN LƯỢC — VAI TRÒ LUÔN FALSE =====================
 
     @Test
     @DisplayName("Role trả về false → Context trả về false")
@@ -62,7 +62,7 @@ class ParticipationContextTest {
                 null, null, null, null));
     }
 
-    // ===================== ROLE NULL =====================
+    // ===================== VAI TRÒ NULL =====================
 
     @Test
     @DisplayName("roleBehavior = null → trả về false ngay, không throw")
@@ -72,7 +72,7 @@ class ParticipationContextTest {
                 null, null, null, null));
     }
 
-    // ===================== THAM SỐ TRUYỀN VÀO ROLE =====================
+    // ===================== THAM SỐ TRUYỀN VÀO VAI TRÒ =====================
 
     @Test
     @DisplayName("Role nhận đúng User được truyền vào")
@@ -169,7 +169,7 @@ class ParticipationContextTest {
         );
     }
 
-    // ===================== STRATEGY — TÍNH HOÁN ĐỔI =====================
+    // ===================== CHIẾN LƯỢC — TÍNH HOÁN ĐỔI =====================
 
     @Test
     @DisplayName("2 context với 2 role khác nhau: kết quả độc lập")
@@ -190,7 +190,7 @@ class ParticipationContextTest {
     }
 
     @Test
-    @DisplayName("Role có thể throw RuntimeException: Context phải propagate exception")
+    @DisplayName("Role có thể ném RuntimeException: Context phải lan truyền exception")
     void testExecuteAction_RoleThrowsException_Propagates() {
         TransactionRole throwingRole =
                 (u, s, a, ud, sd, hd, bd) -> { throw new RuntimeException("test error"); };

@@ -1,7 +1,7 @@
 package com.tboat.models.item;
 
 public class OtherItem extends Item {
-    // Constructors
+    // Hàm khởi tạo
     public OtherItem() {
         super();
     }

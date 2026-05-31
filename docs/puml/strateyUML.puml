@@ -1,0 +1,63 @@
+@startuml Strategy_Pattern
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FFFFFF
+skinparam class {
+    BackgroundColor #EFF6FF
+    BorderColor #2563EB
+    FontColor #1E293B
+    HeaderBackgroundColor #BFDBFE
+    HeaderFontColor #1E40AF
+    ArrowColor #2563EB
+}
+skinparam interface {
+    BackgroundColor #FCE7F3
+    BorderColor #9333EA
+    FontColor #1E293B
+    HeaderBackgroundColor #F3E8FF
+    HeaderFontColor #6B21A8
+}
+
+' ========== STRATEGY INTERFACE ==========
+interface TransactionRole {
+    + execute(user, session, newPrice) : boolean
+}
+
+' ========== CONCRETE STRATEGIES ==========
+class BidderRole {
+    + execute(user, session, newPrice) : boolean
+}
+
+class SellerEditRole {
+    + execute(user, session, newPrice) : boolean
+}
+
+class SellerCancelRole {
+    + execute(user, session, newPrice) : boolean
+}
+
+' ========== CONTEXT ==========
+class ParticipationContext {
+    - TransactionRole strategy
+    + setStrategy(strategy : TransactionRole) : void
+    + executeAction(user, session, newPrice) : boolean
+}
+
+' ========== CLIENT ==========
+class BiddingService {
+    + handleAction(payload) : Response
+}
+
+' ========== RELATIONSHIPS ==========
+TransactionRole <|.. BidderRole
+TransactionRole <|.. SellerEditRole
+TransactionRole <|.. SellerCancelRole
+
+ParticipationContext o--> TransactionRole : uses
+
+BiddingService ..> ParticipationContext : creates & sets strategy
+BiddingService ..> BidderRole : new
+BiddingService ..> SellerEditRole : new
+BiddingService ..> SellerCancelRole : new
+
+@enduml

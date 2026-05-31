@@ -15,14 +15,14 @@ public class NavigationContext {
         return instance;
     }
 
-    /** Controller gọi hàm này khi biết mình có cache hit hay không */
+    /** Controller gọi hàm này khi biết mình có dùng được cache hay không */
     public void reportCacheHit(String screenKey, boolean hit) {
         cacheHitMap.put(screenKey, hit);
     }
 
-    /** BaseController gọi sau khi navigate để lấy kết quả (1 lần dùng 1 lần xóa) */
+    /** BaseController gọi sau khi điều hướng để lấy kết quả (1 lần dùng 1 lần xóa) */
     public boolean popCacheHit(String screenKey) {
         Boolean result = cacheHitMap.remove(screenKey); // Lấy & xóa 1 lần
-        return result != null && result;                // null-safe
+        return result != null && result;                // an toàn với null
     }
 }

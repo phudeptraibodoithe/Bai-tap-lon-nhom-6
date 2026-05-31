@@ -29,7 +29,7 @@ public class History {
         this.completedAt = completedAt;
     }
 
-    // Getters
+    // Hàm truy xuất
     public int getAuctionSessionId() {
         return auctionSessionId;
     }

@@ -23,7 +23,7 @@
 
                 <HBox alignment="CENTER_LEFT" prefHeight="50.0" maxWidth="Infinity">
                     <children>
-                        <Label text="Live Auctions" textFill="#0A1128">
+                        <Label text="Đấu Giá Trực Tuyến" textFill="#0A1128">
                             <font><Font name="System Bold" size="32.0" /></font>
                         </Label>
 

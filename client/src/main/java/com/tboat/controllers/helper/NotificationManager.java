@@ -1,35 +1,50 @@
 package com.tboat.controllers.helper;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tboat.models.network.ServerEvent;
+import com.tboat.session.UserSession;
 import com.tboat.socket.SocketHelper;
 import com.tboat.socket.SocketListener;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import java.util.Set;
+import java.util.prefs.Preferences;
 /**
- * NotificationManager — nhận JSON từ server, giữ state trên client.
+ * NotificationManager — nhận JSON từ server, giữ trạng thái trên client.
  *
- * Flow:
- *   Server (NotificationService.push) → socket → Client (SocketListener)
+ * Luồng xử lý:
+ *   Máy chủ (NotificationService.push) → socket → máy khách (SocketListener)
  *   → NotificationManager.receive() → ObservableList → HeaderController (UI)
  *
  * Gọi receive() từ SocketListener khi nhận action thuộc nhóm NOTIF_ACTIONS.
  */
 public class NotificationManager implements SocketListener {
 
-    // ── Singleton ─────────────────────────────────────────────────────────────
+    // ── Singleton dùng chung toàn ứng dụng ───────────────────────────────────
     private static final NotificationManager INSTANCE = new NotificationManager();
     private NotificationManager() {}
     public static NotificationManager getInstance() { return INSTANCE; }
+    private static final Preferences PREFS = Preferences.userNodeForPackage(NotificationManager.class);
+    private static final String PREFS_PREFIX = "notifications.";
+    private static final int MAX_STORED_ITEMS = 50;
+    private String activeAccount;
 
     // ── Danh sách thông báo — HeaderController bọc FilteredList vào đây ───────
     private final ObservableList<NotificationItem> items =
             FXCollections.observableArrayList();
 
     public ObservableList<NotificationItem> getItems() { return items; }
+
+    public synchronized void useAccount(String account) {
+        if (account == null || account.isBlank() || account.equals(activeAccount)) return;
+        saveCurrent();
+        activeAccount = account;
+        items.setAll(load(account));
+    }
 
     // ── Các action server gửi xuống được coi là thông báo ─────────────────────
     private static final Set<ServerEvent> NOTIF_ACTIONS = Set.of(
@@ -55,23 +70,24 @@ public class NotificationManager implements SocketListener {
     // ════════════════════════════════════════════════════════════════════════
 
     /**
-     * Gọi từ SocketListener khi nhận response từ server.
+     * Gọi từ SocketListener khi nhận phản hồi từ server.
      * Tự lọc action — chỉ xử lý những action thuộc nhóm thông báo.
      *
      * <pre>
-     * // SocketListener.java (hoặc ResponseHandler.java)
+     * // SocketListener.java (hoặc bộ xử lý phản hồi)
      * String action = response.getAction();
      * NotificationManager.getInstance().receive(action, response.getPayload());
      * // Các action khác (JOIN_SUCCESS, BID_RESULT...) xử lý riêng như cũ
      * </pre>
      *
-     * @param event  action string từ Response (ví dụ "NEW_BID")
-     * @param payload JsonObject chứa title, subtitle, avatarText, avatarColor
+     * @param event  action dạng chuỗi từ Response (ví dụ "NEW_BID")
+     * @param payload JsonObject chứa tiêu đề, phụ đề, chữ đại diện và màu đại diện
      */
     public void receive(ServerEvent event, JsonObject payload) {
         if (!NOTIF_ACTIONS.contains(event)) return;
         if (payload == null) return;
         if (!payload.has("title") || !payload.has("subtitle")) return;
+        ensureActiveAccount();
 
         NotificationItem item = new NotificationItem(
                 getStr(payload, "title",       event.name()),
@@ -81,11 +97,11 @@ public class NotificationManager implements SocketListener {
                 getStr(payload, "avatarColor", "#E8F0FE")
         );
 
-        // Luôn update UI trên FX thread — SocketListener thường chạy trên background thread
+        // Luôn cập nhật UI trên luồng FX vì SocketListener thường chạy trên luồng nền
         if (Platform.isFxApplicationThread()) {
-            items.add(0, item);
+            addItem(item);
         } else {
-            Platform.runLater(() -> items.add(0, item));
+            Platform.runLater(() -> addItem(item));
         }
     }
 
@@ -97,7 +113,7 @@ public class NotificationManager implements SocketListener {
             ServerEvent type   = SocketHelper.getTypeEnum(response);
             JsonObject payload = SocketHelper.getPayloadObject(response);
 
-            // Nếu là NOTIFICATION wrapper → đọc notifType bên trong
+            // Nếu là gói bọc NOTIFICATION thì đọc notifType bên trong
             if (type == ServerEvent.NOTIFICATION && payload != null
                     && payload.has("notifType")) {
                 try {
@@ -114,6 +130,7 @@ public class NotificationManager implements SocketListener {
 
     public void markAllRead() {
         items.forEach(NotificationItem::markRead);
+        saveCurrent();
     }
 
     public long getUnreadCount() {
@@ -121,10 +138,73 @@ public class NotificationManager implements SocketListener {
     }
 
     public void addNotification(NotificationItem item) {
-        items.add(0, item);
+        addItem(item);
     }
 
-    // ── Helper ────────────────────────────────────────────────────────────────
+    // ── Hàm hỗ trợ ───────────────────────────────────────────────────────────
+    private void addItem(NotificationItem item) {
+        items.add(0, item);
+        while (items.size() > MAX_STORED_ITEMS) {
+            items.remove(items.size() - 1);
+        }
+        saveCurrent();
+    }
+
+    private void ensureActiveAccount() {
+        if (activeAccount == null) {
+            useAccount(UserSession.getInstance().getUsername());
+        }
+    }
+
+    private synchronized void saveCurrent() {
+        if (activeAccount == null || activeAccount.isBlank()) return;
+
+        JsonArray arr = new JsonArray();
+        int count = Math.min(items.size(), MAX_STORED_ITEMS);
+        for (int i = 0; i < count; i++) {
+            NotificationItem item = items.get(i);
+            JsonObject obj = new JsonObject();
+            obj.addProperty("title", item.title);
+            obj.addProperty("subtitle", item.subtitle);
+            obj.addProperty("time", item.time);
+            obj.addProperty("avatarText", item.avatarText);
+            obj.addProperty("avatarColor", item.avatarColor);
+            obj.addProperty("read", item.read);
+            arr.add(obj);
+        }
+        while (arr.toString().length() > Preferences.MAX_VALUE_LENGTH && arr.size() > 0) {
+            arr.remove(arr.size() - 1);
+        }
+        PREFS.put(storageKey(activeAccount), arr.toString());
+    }
+
+    private ObservableList<NotificationItem> load(String account) {
+        ObservableList<NotificationItem> loaded = FXCollections.observableArrayList();
+        String raw = PREFS.get(storageKey(account), "[]");
+        try {
+            JsonArray arr = JsonParser.parseString(raw).getAsJsonArray();
+            for (JsonElement element : arr) {
+                JsonObject obj = element.getAsJsonObject();
+                NotificationItem item = new NotificationItem(
+                        getStr(obj, "title", ""),
+                        getStr(obj, "subtitle", ""),
+                        getStr(obj, "time", "Vừa xong"),
+                        getStr(obj, "avatarText", "📢"),
+                        getStr(obj, "avatarColor", "#E8F0FE")
+                );
+                item.read = obj.has("read") && obj.get("read").getAsBoolean();
+                loaded.add(item);
+            }
+        } catch (Exception ignored) {
+            PREFS.remove(storageKey(account));
+        }
+        return loaded;
+    }
+
+    private String storageKey(String account) {
+        return PREFS_PREFIX + account.replaceAll("[^a-zA-Z0-9_.-]", "_");
+    }
+
     private String getStr(JsonObject obj, String key, String fallback) {
         return obj.has(key) && !obj.get(key).isJsonNull()
                 ? obj.get(key).getAsString()
@@ -158,6 +238,11 @@ public class NotificationManager implements SocketListener {
         public String  getAvatarText()  { return avatarText; }
         public String  getAvatarColor() { return avatarColor; }
         public boolean isRead()         { return read; }
-        public void    markRead()       { this.read = true; }
+        public void    markRead()       {
+            if (!read) {
+                this.read = true;
+                NotificationManager.getInstance().saveCurrent();
+            }
+        }
     }
 }

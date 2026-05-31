@@ -83,7 +83,7 @@ public class SocketHelper {
         }
     }
 
-    // Hàm Overload cho các request không cần payload (như PROFILE, LOGOUT)
+    // Hàm nạp chồng cho các request không cần payload (như PROFILE, LOGOUT)
     public static void sendRequest(ServerEvent action) {
         sendRequest(action, null);
     }

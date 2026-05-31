@@ -24,7 +24,7 @@ public class Participation {
         this.roleType = roleType;
     }
 
-    // Getter và Setter
+    // Hàm truy xuất và cập nhật
     public String getAccountName() { return accountName; }
     public void setAccountName(String accountName) { this.accountName = accountName; }
 

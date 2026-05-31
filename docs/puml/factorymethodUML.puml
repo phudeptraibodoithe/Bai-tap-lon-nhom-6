@@ -1,0 +1,84 @@
+@startuml Factory_Method_Pattern
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FFFFFF
+skinparam class {
+    BackgroundColor #EFF6FF
+    BorderColor #2563EB
+    FontColor #1E293B
+    HeaderBackgroundColor #BFDBFE
+    HeaderFontColor #1E40AF
+    ArrowColor #2563EB
+}
+skinparam interface {
+    BackgroundColor #FCE7F3
+    BorderColor #9333EA
+    FontColor #1E293B
+    HeaderBackgroundColor #F3E8FF
+    HeaderFontColor #6B21A8
+}
+
+' ========== PRODUCT INTERFACE ==========
+abstract class Item {
+    - int id
+    - String sellerAccountName
+    - String type
+    - String name
+    - String description
+    - String imageURL
+}
+
+' ========== CONCRETE PRODUCTS ==========
+together {
+    class ElectronicsItem {}
+    class FashionItem {}
+    class JewelryItem {}
+    class OtherItem {}
+}
+
+' ========== CREATOR ==========
+abstract class ItemFactory {
+    + createItem() : Item
+}
+
+' ========== CONCRETE CREATORS ==========
+together {
+    class ElectronicsFactory {
+        + createItem() : Item
+    }
+    class FashionFactory {
+        + createItem() : Item
+    }
+    class JewelryFactory {
+        + createItem() : Item
+    }
+    class OtherFactory {
+        + createItem() : Item
+    }
+}
+
+' ========== CLIENT ==========
+class ItemFactoryProducer {
+    + getFactory(type : String) : ItemFactory
+}
+
+' ========== INHERITANCE ==========
+Item <|-- ElectronicsItem
+Item <|-- FashionItem
+Item <|-- JewelryItem
+Item <|-- OtherItem
+
+ItemFactory <|-- ElectronicsFactory
+ItemFactory <|-- FashionFactory
+ItemFactory <|-- JewelryFactory
+ItemFactory <|-- OtherFactory
+
+' ========== RELATIONSHIPS ==========
+ElectronicsFactory ..> ElectronicsItem : creates
+FashionFactory ..> FashionItem : creates
+JewelryFactory ..> JewelryItem : creates
+OtherFactory ..> OtherItem : creates
+
+ItemFactoryProducer ..> ItemFactory : returns
+
+@enduml

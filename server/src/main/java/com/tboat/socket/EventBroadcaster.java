@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Gửi một event của server tới nhiều client đang online.
- * Client thường và client admin được lưu riêng vì một số event reload chỉ nên
+ * Máy khách thường và máy khách admin được lưu riêng vì một số sự kiện tải lại chỉ nên
  * gửi tới màn hình quản trị.
  */
 public class EventBroadcaster {
@@ -75,20 +75,5 @@ public class EventBroadcaster {
             }
         }
         log.info("[EventBroadcaster] broadcastToAdmins '{}' → {} admins", response.getType(), count);
-    }
-
-    public void broadcastToClient(String accountName, Response<?> response) {
-        for (ClientSession client : allClients) {
-            if (accountName.equals(client.getClientId())) {
-                try {
-                    client.sendResponse(response);
-                    log.info("[EventBroadcaster] Sent '{}' to client: {}", response.getType(), accountName);
-                } catch (Exception e) {
-                    log.warn("[EventBroadcaster] Không thể gửi đến {}: {}", accountName, e.getMessage());
-                }
-                return;
-            }
-        }
-        log.debug("[EventBroadcaster] Client {} không online, bỏ qua broadcast.", accountName);
     }
 }

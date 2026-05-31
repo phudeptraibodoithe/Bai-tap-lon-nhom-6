@@ -21,7 +21,7 @@
         <StackPane prefHeight="240.0" styleClass="product-image-pane">
             <children>
                 <ImageView fx:id="itemImage" fitHeight="240.0" fitWidth="300.0" pickOnBounds="true" preserveRatio="false" />
-                <Button mnemonicParsing="false" styleClass="btn-heart" text="🤍" textFill="WHITE" StackPane.alignment="TOP_RIGHT">
+                <Button fx:id="btnFavorite" mnemonicParsing="false" styleClass="btn-heart" text="♡" textFill="WHITE" StackPane.alignment="TOP_RIGHT">
                     <StackPane.margin><Insets right="15.0" top="15.0" /></StackPane.margin>
                     <font><Font size="14.0" /></font>
                 </Button>
@@ -41,7 +41,7 @@
                     <children>
                         <VBox alignment="CENTER_LEFT" prefHeight="65.0" spacing="3.0" styleClass="card-info-box" HBox.hgrow="ALWAYS">
                             <children>
-                                <Label styleClass="card-label-title" text="CURRENT BID">
+                                <Label styleClass="card-label-title" text="GIÁ HIỆN TẠI">
                                     <font><Font name="System Bold" size="10.0" /></font>
                                 </Label>
                                 <Label fx:id="lblCurrentBid" styleClass="card-label-value" text="0 VNĐ">
@@ -52,7 +52,7 @@
 
                         <VBox alignment="CENTER_LEFT" prefHeight="65.0" spacing="3.0" styleClass="card-info-box" HBox.hgrow="ALWAYS">
                             <children>
-                                <Label styleClass="card-label-title" text="STATUS">
+                                <Label styleClass="card-label-title" text="TRẠNG THÁI">
                                     <font><Font name="System Bold" size="10.0" /></font>
                                 </Label>
                                 <Label fx:id="lblStatus" styleClass="card-label-status" text="ONGOING">
@@ -63,7 +63,7 @@
                     </children>
                 </HBox>
 
-                <Button fx:id="btnBid" maxWidth="1.7976931348623157E308" onAction="#handlePlaceBid" prefHeight="45.0" styleClass="btn-place-bid" text="PLACE BID">
+                <Button fx:id="btnBid" maxWidth="1.7976931348623157E308" onAction="#handlePlaceBid" prefHeight="45.0" styleClass="btn-place-bid" text="ĐẶT GIÁ NGAY">
                     <font><Font name="System Bold" size="14.0" /></font>
                 </Button>
             </children>

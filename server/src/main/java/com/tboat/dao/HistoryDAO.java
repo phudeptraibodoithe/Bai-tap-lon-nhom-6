@@ -29,24 +29,6 @@ public class HistoryDAO {
         }
     }
 
-    public boolean addHistory(History history) {
-        String sql = "INSERT INTO history (auctionSessionId, winnerAccount, finalPrice, completedAt) " +
-                "VALUES (?, ?, ?, ?)";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, history.getAuctionSessionId());
-            ps.setString(2, history.getWinnerAccountName());
-            ps.setDouble(3, history.getFinalPrice());
-            ps.setTimestamp(4, history.getCompletedAt() != null
-                    ? Timestamp.valueOf(history.getCompletedAt())
-                    : new Timestamp(System.currentTimeMillis()));
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            logger.error("Lỗi khi thêm lịch sử (addHistory): ", e);
-            return false;
-        }
-    }
-
     public List<Map<String, Object>> getHistoryByAccount(String accountName) {
         List<Map<String, Object>> list = new ArrayList<>();
         String sql = "SELECT p.auctionSessionId, p.roleType, i.name, h.winnerAccount, h.finalPrice " +
@@ -72,35 +54,6 @@ public class HistoryDAO {
             }
         } catch (SQLException e) {
             logger.error("Lỗi lấy lịch sử theo account: ", e);
-        }
-        return list;
-    }
-
-    public List<Map<String, Object>> getAllHistory() {
-        List<Map<String, Object>> list = new ArrayList<>();
-        String sql = "SELECT h.auctionSessionId, h.winnerAccount, h.finalPrice, h.completedAt, " +
-                "       i.name, i.type, s.sellerAccountName " +
-                "FROM history h " +
-                "JOIN auction_session s ON h.auctionSessionId = s.id " +
-                "JOIN item i ON s.itemId = i.id " +
-                "ORDER BY h.completedAt DESC";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                Map<String, Object> row = new HashMap<>();
-                row.put("auctionSessionId",  rs.getInt("auctionSessionId"));
-                row.put("winnerAccountName", rs.getString("winnerAccount"));
-                row.put("finalPrice",        rs.getDouble("finalPrice"));
-                row.put("completedAt",       rs.getTimestamp("completedAt") != null
-                        ? rs.getTimestamp("completedAt").toLocalDateTime().toString() : null);
-                row.put("name",              rs.getString("name"));
-                row.put("type",              rs.getString("type"));
-                row.put("sellerAccountName", rs.getString("sellerAccountName"));
-                list.add(row);
-            }
-        } catch (SQLException e) {
-            logger.error("Lỗi lấy toàn bộ lịch sử: ", e);
         }
         return list;
     }

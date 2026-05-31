@@ -22,7 +22,7 @@ public class BiddingService {
     private final ParticipationContext    bidContext  = new ParticipationContext(BIDDER_ROLE);
 
     /*
-     * Kiểm tra các điều kiện đơn giản trước. Tầng transaction chỉ chạy sau khi
+     * Kiểm tra các điều kiện đơn giản trước. Tầng giao dịch chỉ chạy sau khi
      * session, user, giá và số dư đều hợp lệ.
      */
     public BidResult placeBid(String bidderAccount, int sessionId, double newPrice) {

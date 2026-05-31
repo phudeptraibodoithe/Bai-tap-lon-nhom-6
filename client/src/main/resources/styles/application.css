@@ -171,6 +171,11 @@
 .btn-place-bid:hover {
     -fx-background-color: #050d1d;
 }
+.btn-place-bid:disabled {
+    -fx-background-color: #9DA3B4;
+    -fx-opacity: 1;
+    -fx-cursor: default;
+}
 /* ========================================= */
 /* TRANG ĐĂNG/SỬA SẢN PHẨM (FORM INPUT)      */
 /* ========================================= */

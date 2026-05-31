@@ -27,6 +27,14 @@ import java.util.concurrent.PriorityBlockingQueue;
 public class AuctionRoom {
 
     private static final Logger logger = LoggerFactory.getLogger(AuctionRoom.class);
+    private static final double NO_AUTO_BID_MAX = -1.0;
+    private static final int AUTO_BID_SAFETY_MULTIPLIER = 200;
+    private static final int AUTO_BID_SAFETY_OFFSET = 10;
+    private static final double BUY_NOW_DISABLED_PRICE = 0.0;
+    private static final long SNIPE_THRESHOLD_SECONDS = 15;
+    private static final int SNIPE_EXTENSION_SECONDS = 30;
+    private static final double ADMIN_COMMISSION_RATE = 0.10;
+    private static final String ADMIN_ACCOUNT = "admin";
 
     /*
      * Các lệnh auto-bid được xếp theo giá tối đa trước, rồi đến thời điểm đăng ký.
@@ -61,8 +69,8 @@ public class AuctionRoom {
     }
 
     /*
-     * Bid thường phải được lưu vào database trước. Chỉ khi database chấp nhận,
-     * room mới cập nhật state và cho auto-bid phản ứng với giá mới.
+     * Bid thường phải được lưu vào cơ sở dữ liệu trước. Chỉ khi cơ sở dữ liệu chấp nhận,
+     * phòng mới cập nhật trạng thái và cho auto-bid phản ứng với giá mới.
      */
     public synchronized BidResult placeBid(double newPrice, String bidderAccount) {
         if (isFinished) return BidResult.DB_ERROR;
@@ -73,15 +81,18 @@ public class AuctionRoom {
         currentPrice = newPrice;
         lastBidder   = bidderAccount;
         checkAndExtendIfSnipe();
-        triggerAutoBids(bidderAccount);
         return BidResult.OK;
     }
 
+    public synchronized double getAutoBidMax(String account) {
+        AutoBidEntry entry = autoBidMap.get(account);
+        return entry != null ? entry.maxBid() : NO_AUTO_BID_MAX;
+    }
     /*
-     * Auto-bid chạy trong lock của room. safetyLimit giúp tránh vòng lặp vô hạn
+     * Auto-bid chạy trong khóa của phòng. safetyLimit giúp tránh vòng lặp vô hạn
      * nếu dữ liệu trong room bị lệch trạng thái.
      */
-    private void triggerAutoBids(String justBidAccount) {
+    public synchronized void triggerAutoBids() {
         AuctionSession session = sessionDAO.getAuctionById(sessionId);
         if (session == null || isFinished) return;
 
@@ -92,19 +103,12 @@ public class AuctionRoom {
         double  lastAutoPrice  = currentPrice;
         boolean hasAutoBid     = false;
 
-        int safetyLimit = autoBidMap.size() * 200 + 10;
+        int safetyLimit = autoBidMap.size() * AUTO_BID_SAFETY_MULTIPLIER + AUTO_BID_SAFETY_OFFSET;
 
         while (!isFinished && safetyLimit-- > 0) {
             double nextPrice = currentPrice + bidStep;
 
-            // Báo một lần khi giá kế tiếp vượt quá maxBid của user.
-            autoBidMap.values().stream()
-                    .filter(autoBid -> autoBid.maxBid() < nextPrice
-                            && !outAccounts.contains(autoBid.account()))
-                    .forEach(autoBid -> {
-                        outAccounts.add(autoBid.account());
-                        notifyAutoBidOut(autoBid.account());
-                    });
+            expireAutoBidsBelow(nextPrice, outAccounts, session);
 
             AutoBidEntry challenger = autoBidMap.values().stream()
                     .filter(autoBid -> !autoBid.account().equals(lastBidder)
@@ -118,14 +122,23 @@ public class AuctionRoom {
 
             switch (result) {
                 case OK -> {
+                    String previousLeader = lastBidder;
                     currentPrice = nextPrice;
                     lastBidder   = challenger.account();
                     lastAutoLeader = challenger.account();
                     lastAutoPrice  = nextPrice;
                     hasAutoBid     = true;
                     checkAndExtendIfSnipe();
+                    if (previousLeader != null && !previousLeader.isBlank()
+                            && !previousLeader.equals(challenger.account())) {
+                        NotificationService.getInstance()
+                                .onAutoBidPlaced(session, challenger.account(), nextPrice);
+                        NotificationService.getInstance()
+                                .onOutbid(session, previousLeader, nextPrice);
+                    }
 
-                    if (session.getBuyNowPrice() > 0 && nextPrice >= session.getBuyNowPrice()) {
+                    if (session.getBuyNowPrice() > BUY_NOW_DISABLED_PRICE
+                            && nextPrice >= session.getBuyNowPrice()) {
                         finishAuction();
                         return;
                     }
@@ -133,12 +146,12 @@ public class AuctionRoom {
                 case INSUFFICIENT_BALANCE -> {
                     logger.info("[AutoBid] {} hết số dư, loại khỏi queue", challenger.account());
                     outAccounts.add(challenger.account());
-                    notifyAutoBidOut(challenger.account());
-                    autoBidQueue.remove(autoBidMap.remove(challenger.account()));
+                    notifyAutoBidOut(challenger.account(), session);
+                    removeAutoBid(challenger.account());
                 }
                 default -> {
                     logger.warn("[AutoBid] Loại {} do result={}", challenger.account(), result);
-                    autoBidQueue.remove(autoBidMap.remove(challenger.account()));
+                    removeAutoBid(challenger.account());
                 }
             }
         }
@@ -156,7 +169,27 @@ public class AuctionRoom {
         }
     }
 
-    private void notifyAutoBidOut(String account) {
+    private void expireAutoBidsBelow(double nextPrice, Set<String> outAccounts, AuctionSession session) {
+        List<String> expiredAccounts = autoBidMap.values().stream()
+                .filter(autoBid -> autoBid.maxBid() < nextPrice
+                        && !outAccounts.contains(autoBid.account()))
+                .map(AutoBidEntry::account)
+                .toList();
+
+        for (String account : expiredAccounts) {
+            outAccounts.add(account);
+            notifyAutoBidOut(account, session);
+            removeAutoBid(account);
+        }
+    }
+
+    private void removeAutoBid(String account) {
+        AutoBidEntry removed = autoBidMap.remove(account);
+        if (removed != null) autoBidQueue.remove(removed);
+    }
+
+    private void notifyAutoBidOut(String account, AuctionSession session) {
+        NotificationService.getInstance().onAutoBidOut(session, account, currentPrice);
         subscribers.stream()
                 .filter(client -> account.equals(client.getClientId()))
                 .findFirst()
@@ -181,7 +214,7 @@ public class AuctionRoom {
         autoBidQueue.add(newEntry);
 
         logger.info("[AutoBid] {} đăng ký auto-bid maxBid={} cho phiên {}", account, maxBid, sessionId);
-        triggerAutoBids(null);
+        triggerAutoBids();
     }
 
     /*
@@ -195,14 +228,14 @@ public class AuctionRoom {
         long secondsLeft = java.time.Duration.between(
                 LocalDateTime.now(), session.getEndTime()).getSeconds();
 
-        if (secondsLeft < 15) {
-            AuctionTimerService.getInstance().extendAuction(sessionId, 30);
+        if (secondsLeft < SNIPE_THRESHOLD_SECONDS) {
+            AuctionTimerService.getInstance().extendAuction(sessionId, SNIPE_EXTENSION_SECONDS);
         }
     }
 
     /*
-     * Finish được thiết kế idempotent: khi isFinished đã true thì mọi lần gọi sau
-     * sẽ return ngay. Điều này cần thiết vì timer, mua ngay và thao tác tay có thể chạy gần nhau.
+     * Kết thúc phiên được thiết kế để gọi lặp vẫn cho cùng kết quả: khi isFinished đã true thì mọi lần gọi sau
+     * sẽ trả về ngay. Điều này cần thiết vì timer, mua ngay và thao tác tay có thể chạy gần nhau.
      */
     public synchronized void finishAuction() {
         if (isFinished) return;
@@ -294,9 +327,9 @@ public class AuctionRoom {
      */
     private boolean divideMoney(Connection connection, String sellerAccount,
                                 double totalAmount) throws SQLException {
-        double adminFee      = totalAmount * 0.10;
+        double adminFee      = totalAmount * ADMIN_COMMISSION_RATE;
         double sellerRevenue = totalAmount - adminFee;
-        boolean isPaid = userDAO.updateBalance(connection, "admin", adminFee)
+        boolean isPaid = userDAO.updateBalance(connection, ADMIN_ACCOUNT, adminFee)
                 && userDAO.updateBalance(connection, sellerAccount, sellerRevenue);
         if (isPaid) logger.info("[Payment] Admin: +{} | Seller: +{}", adminFee, sellerRevenue);
         return isPaid;

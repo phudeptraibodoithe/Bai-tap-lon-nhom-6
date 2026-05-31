@@ -170,7 +170,7 @@ Có thể mở nhiều cửa sổ Client cùng lúc để mô phỏng nhiều ng
 | Tài nguyên | Link |
 |---|---|
 | 📄 Báo cáo PDF | [Xem tại đây](docs/BaoCao_Nhom6.pdf) |
-| 🎬 Video Demo | *(Cập nhật sau)* |
+| 🎬 Video Demo | [Xem tại đây](https://drive.google.com/drive/u/1/folders/1TUF1ZOv7UVe1dxQTJo61WgQNeoxP_Ew9) |
 
 ---
 
